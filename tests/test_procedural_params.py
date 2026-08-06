@@ -22,6 +22,17 @@ def test_infeasible_when_holes_hit_corner():
     assert not p.is_feasible()
 
 
+def test_infeasible_when_adjacent_holes_would_merge():
+    # 3 holes of d=6 on a short leg: spacing < d + 2 -> slot, not holes.
+    p = LBracketParams(
+        leg1=42.0, leg2=80.0, thickness=4.0, hole_diameter=6.0,
+        holes_per_leg=3, hole_margin=9.0,
+    )
+    positions = p.hole_positions(p.leg1)
+    assert positions[1] - positions[0] <= p.hole_diameter + 2.0  # scenario is real
+    assert not p.is_feasible()
+
+
 def test_hole_positions_stay_inside_leg():
     p = LBracketParams()
     for leg in (p.leg1, p.leg2):

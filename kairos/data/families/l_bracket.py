@@ -63,6 +63,12 @@ class LBracketParams:
                 return False
             if positions[-1] + radius >= leg:
                 return False
+            # Adjacent bores on one leg must not merge into a slot.
+            if any(
+                b - a <= self.hole_diameter + 2.0
+                for a, b in zip(positions, positions[1:], strict=False)
+            ):
+                return False
         if self.hole_diameter + 2.0 >= self.width:
             return False
         if self.fillet_radius >= self.thickness:
