@@ -1,6 +1,15 @@
 """Design families. Importing this package populates the registry."""
 
-from kairos.data.families import l_bracket, plate  # noqa: F401  (self-registering)
+from kairos.data.families import (  # noqa: F401  (self-registering)
+    corner_bracket,
+    flange,
+    l_bracket,
+    plate,
+    reinforced_plate,
+    spacer,
+    support_bracket,
+    u_bracket,
+)
 from kairos.data.families.base import (
     FAMILIES,
     Family,
