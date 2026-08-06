@@ -29,6 +29,9 @@ class ActionExecutor:
         self.render_dir = render_dir
         self.history: list[dict[str, Any]] = []
         self.finished = False
+        #: Post-execution hooks: fn(action, result), called after every
+        #: attempted action (used by trajectory recorders; must not raise).
+        self.callbacks: list[Callable[[Action, ActionResult], None]] = []
         self._dispatch: dict[Operation, Callable[[Action, dict], dict[str, Any]]] = {
             Operation.CREATE_SKETCH: self._create_sketch,
             Operation.ADD_LINE: self._add_line,
@@ -136,6 +139,8 @@ class ActionExecutor:
 
     def _record(self, action: Action, result: ActionResult) -> None:
         self.history.append({"action": action.to_dict(), "result": result.to_dict()})
+        for callback in self.callbacks:
+            callback(action, result)
 
     # ------------------------------------------------------------- handlers
 
