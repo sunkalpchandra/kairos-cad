@@ -125,12 +125,26 @@ def test_constraints_and_dof(engine):
 
 def test_mirror_doubles_volume(engine):
     engine.create_sketch("XY")
-    engine.add_rectangle(5, 0, 20, 10)  # offset from YZ plane, mirror across it
+    engine.add_rectangle(0, 0, 20, 10)  # touches the YZ plane so halves connect
     engine.pad(6)
     before = engine.measure_volume()
     pad_name = engine.last_feature_name
     engine.mirror([pad_name], plane="YZ")
     assert engine.measure_volume() == pytest.approx(2 * before, rel=1e-6)
+    assert engine.measure_bounding_box()["x_min"] == pytest.approx(-20)
+
+
+def test_disjoint_mirror_yields_two_solid_compound(engine):
+    # FreeCAD 1.1 permits disjoint pattern results as multi-solid compounds;
+    # the summary must expose the solid count so rewards can reason about it.
+    engine.create_sketch("XY")
+    engine.add_rectangle(5, 0, 20, 10)  # clear of the YZ plane: halves disjoint
+    engine.pad(6)
+    engine.mirror([engine.last_feature_name], plane="YZ")
+    summary = engine.summary()
+    assert summary["volume_mm3"] == pytest.approx(2400.0, rel=1e-6)
+    assert summary["topology"]["solids"] == 2
+    assert summary["valid"] is True
 
 
 def test_revolve_produces_solid_of_revolution(engine):

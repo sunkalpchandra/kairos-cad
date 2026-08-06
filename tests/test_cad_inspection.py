@@ -40,8 +40,9 @@ def test_hole_detection_diameter_filter(plate):
 
 
 def test_find_edges_by_direction_and_position(plate):
+    # 4 corner edges + the through-hole cylinder's vertical seam edge.
     vertical = plate.find_edges(curve="Line", direction=(0, 0, 1))
-    assert len(vertical) == 4
+    assert len(vertical) == 5
     near_origin = plate.find_edges(
         curve="Line", direction=(0, 0, 1), near=(0, 0, 5), near_tol=0.5
     )
