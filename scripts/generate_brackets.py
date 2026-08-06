@@ -22,12 +22,8 @@ def main() -> int:
     parser.add_argument("--count", type=int, default=25, help="validated designs to write")
     parser.add_argument("--out", type=Path, default=Path("dataset/designs"))
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument(
-        "--kinds",
-        nargs="+",
-        default=["l_bracket", "plate"],
-        choices=["l_bracket", "plate"],
-    )
+    parser.add_argument("--start-id", type=int, default=0, help="design id offset for sharding")
+    parser.add_argument("--kinds", nargs="+", default=None, help="family names (default: all registered)")
     args = parser.parse_args()
 
     from kairos.cad.backend import freecad_available, freecad_version
@@ -40,7 +36,13 @@ def main() -> int:
 
     print(f"FreeCAD {freecad_version()} — generating {args.count} designs → {args.out}")
     start = time.time()
-    stats = generate_dataset(args.out, args.count, seed=args.seed, kinds=tuple(args.kinds))
+    stats = generate_dataset(
+        args.out,
+        args.count,
+        seed=args.seed,
+        kinds=tuple(args.kinds) if args.kinds else None,
+        start_id=args.start_id,
+    )
     elapsed = time.time() - start
     print(
         f"done in {elapsed:.1f}s: {stats.written} written / {stats.attempted} attempted "
