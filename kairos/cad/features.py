@@ -12,7 +12,13 @@ from kairos.cad.document import CADDocument
 from kairos.cad.errors import FeatureError
 
 
-def _add_feature(cad_doc: CADDocument, type_id: str, name: str, configure) -> object:
+def _add_feature(
+    cad_doc: CADDocument,
+    type_id: str,
+    name: str,
+    configure,
+    require_volume_change: bool = False,
+) -> object:
     """Create a body feature transactionally.
 
     Args:
@@ -20,9 +26,17 @@ def _add_feature(cad_doc: CADDocument, type_id: str, name: str, configure) -> ob
         type_id: FreeCAD type, e.g. 'PartDesign::Pad'.
         name: object base name.
         configure: callback(feature) applying parameters before recompute.
+        require_volume_change: reject features that leave the solid volume
+            untouched — PartDesign silently drops pattern/mirror instances
+            that are disjoint from the base solid, which must surface as a
+            failure rather than a successful no-op.
     """
     body = cad_doc.body
     prev_tip = getattr(body, "Tip", None)
+    volume_before = None
+    if require_volume_change:
+        prev_shape = cad_doc.tip_shape()
+        volume_before = prev_shape.Volume if prev_shape is not None else 0.0
     try:
         feature = body.newObject(type_id, name)
     except Exception as err:
@@ -38,6 +52,20 @@ def _add_feature(cad_doc: CADDocument, type_id: str, name: str, configure) -> ob
             raise FeatureError(f"{name} produced a null shape")
         if not shape.isValid():
             raise FeatureError(f"{name} produced an invalid shape")
+        if (
+            require_volume_change
+            and volume_before is not None
+            and abs(shape.Volume - volume_before) < 1e-6
+        ):
+            raise FeatureError(
+                f"{name} left the solid unchanged — pattern instances are "
+                "likely disjoint from the base solid and were discarded"
+            )
+        # newObject does not advance the tip for transform features
+        # (Mirrored/patterns), leaving measurements reading the old solid.
+        if getattr(body, "Tip", None) is not feature:
+            body.Tip = feature
+            cad_doc.recompute()
         return feature
     except Exception as err:
         feature_name = feature.Name
@@ -196,7 +224,9 @@ def mirror(cad_doc: CADDocument, features: list, plane: str = "XZ", name: str = 
         f.Originals = list(features)
         f.MirrorPlane = (plane_obj, [""])
 
-    return _add_feature(cad_doc, "PartDesign::Mirrored", name, configure)
+    return _add_feature(
+        cad_doc, "PartDesign::Mirrored", name, configure, require_volume_change=True
+    )
 
 
 def linear_pattern(
@@ -222,7 +252,9 @@ def linear_pattern(
         f.Length = float(length)
         f.Occurrences = int(occurrences)
 
-    return _add_feature(cad_doc, "PartDesign::LinearPattern", name, configure)
+    return _add_feature(
+        cad_doc, "PartDesign::LinearPattern", name, configure, require_volume_change=True
+    )
 
 
 def polar_pattern(
@@ -248,4 +280,6 @@ def polar_pattern(
         f.Angle = float(angle)
         f.Occurrences = int(occurrences)
 
-    return _add_feature(cad_doc, "PartDesign::PolarPattern", name, configure)
+    return _add_feature(
+        cad_doc, "PartDesign::PolarPattern", name, configure, require_volume_change=True
+    )
