@@ -49,11 +49,14 @@ software rasterizer (no GUI, no external renderer):
 Development proceeds in phases (see `docs/`):
 
 - [x] **Phase 1 — CAD backend**: FreeCAD wrapper, structured action API,
-      geometry validation, procedural bracket generation. *(this code)*
-- [ ] Phase 2 — Procedural dataset (1,000+ validated designs)
-- [ ] Phase 3 — CAD representation (geometry graph, feature tree, renders)
+      geometry validation, procedural bracket generation.
+- [x] **Phase 2 — Procedural dataset**: 8 design families, 1,000+ validated
+      designs with reward-annotated expert trajectories.
+- [x] **Phase 3 — CAD representation**: geometry graph, observation
+      snapshots, numerical/feature encoders, rendered views.
 - [ ] Phase 4 — Multimodal VLA + behavioral cloning
-- [ ] Phase 5 — RL environment + PPO
+- [~] Phase 5 — RL: Gymnasium env, shaped reward, action masking done; PPO
+      training pending
 - [ ] Phase 6 — Engineering optimization + learned surrogate
 - [ ] Phase 7 — KAIROS-CAD benchmark, baselines, ablations
 - [ ] Phase 8 — Interactive Three.js dashboard
