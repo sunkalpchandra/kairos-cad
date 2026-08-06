@@ -11,8 +11,9 @@ registry rather than hardcoding kinds.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from kairos.actions.executor import ActionExecutor
 from kairos.actions.schema import Action

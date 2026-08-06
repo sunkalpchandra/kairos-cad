@@ -1,6 +1,5 @@
 """Pure-python tests of the constraint checker on synthetic observations."""
 
-import pytest
 
 from kairos.evaluation.constraints import check_constraints
 from kairos.language import parse_requirement

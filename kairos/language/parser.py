@@ -28,7 +28,7 @@ def _find_hole_spec(text: str) -> tuple[int | None, float | None]:
     diameter: float | None = None
 
     # "4 x M5 holes", "4 M5 mounting holes", "four M5 holes"
-    m = re.search(rf"(\d+)\s*[x×]?\s*(M\d+)\s+(?:mounting\s+)?holes?", text, re.I)
+    m = re.search(r"(\d+)\s*[x×]?\s*(M\d+)\s+(?:mounting\s+)?holes?", text, re.I)
     if m:
         count = int(m.group(1))
         diameter = _METRIC_THREADS.get(m.group(2).upper())

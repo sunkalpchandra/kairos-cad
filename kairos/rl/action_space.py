@@ -225,13 +225,18 @@ def encode(action: Action) -> tuple[int, np.ndarray, int]:
         p[0] = _choice_inv(prm.get("plane", "XY"), _PLANES)
         p[1] = _inv(prm.get("offset", 0.0), -50, 50)
     elif op is Operation.ADD_LINE:
-        p[0] = _inv(prm["x1"], -100, 100); p[1] = _inv(prm["y1"], -100, 100)
-        p[2] = _inv(prm["x2"], -100, 100); p[3] = _inv(prm["y2"], -100, 100)
+        p[0] = _inv(prm["x1"], -100, 100)
+        p[1] = _inv(prm["y1"], -100, 100)
+        p[2] = _inv(prm["x2"], -100, 100)
+        p[3] = _inv(prm["y2"], -100, 100)
     elif op is Operation.ADD_RECTANGLE:
-        p[0] = _inv(prm["x"], -100, 100); p[1] = _inv(prm["y"], -100, 100)
-        p[2] = _inv(prm["width"], 1, 150); p[3] = _inv(prm["height"], 1, 150)
+        p[0] = _inv(prm["x"], -100, 100)
+        p[1] = _inv(prm["y"], -100, 100)
+        p[2] = _inv(prm["width"], 1, 150)
+        p[3] = _inv(prm["height"], 1, 150)
     elif op is Operation.ADD_CIRCLE:
-        p[0] = _inv(prm["cx"], -100, 100); p[1] = _inv(prm["cy"], -100, 100)
+        p[0] = _inv(prm["cx"], -100, 100)
+        p[1] = _inv(prm["cy"], -100, 100)
         p[2] = _inv(prm["radius"], 0.5, 25)
     elif op is Operation.PAD:
         p[0] = _inv(prm["length"], 1, 100)

@@ -245,7 +245,7 @@ def build_geometry_graph(engine, max_vertices: int = 256) -> GeometryGraph:
                     edge_to_faces[edge_name].append(face_name)
                     break
     seen_pairs = set()
-    for edge_name, face_names in edge_to_faces.items():
+    for face_names in edge_to_faces.values():
         for a in range(len(face_names)):
             for c in range(a + 1, len(face_names)):
                 pair = tuple(sorted((face_names[a], face_names[c])))
