@@ -1,0 +1,87 @@
+# KAIROS
+
+**Knowledge-Augmented Interactive Reinforcement Optimization System**
+
+KAIROS is a research prototype for **sequential geometric decision-making**: an
+embodied multimodal agent that learns to perform sequences of parametric CAD
+operations that optimize engineering designs under geometric, manufacturing,
+and performance constraints.
+
+> **Research question.** Can an embodied multimodal agent learn to perform
+> sequences of parametric CAD operations that optimize engineering designs
+> under geometric, manufacturing, and performance constraints?
+
+The system combines reinforcement learning, vision-language-action modeling,
+parametric CAD (FreeCAD), computational geometry, constrained optimization,
+and engineering surrogate modeling.
+
+## Architecture (target)
+
+```text
+User requirement → Language parser → Engineering specification
+                                            │
+        CAD graph + rendered views + history + numerics + text
+                                            │
+                                  Multimodal CAD encoder
+                                            │
+                                  Hierarchical VLA policy
+                                            │
+                              Structured CAD action (no free code)
+                                            │
+                                     FreeCAD engine
+                                            │
+                       Observation → Reward model → RL environment ─┐
+                                            ▲                       │
+                                            └───────────────────────┘
+```
+
+## Project status
+
+Development proceeds in phases (see `docs/`):
+
+- [x] **Phase 1 — CAD backend**: FreeCAD wrapper, structured action API,
+      geometry validation, procedural bracket generation. *(this code)*
+- [ ] Phase 2 — Procedural dataset (1,000+ validated designs)
+- [ ] Phase 3 — CAD representation (geometry graph, feature tree, renders)
+- [ ] Phase 4 — Multimodal VLA + behavioral cloning
+- [ ] Phase 5 — RL environment + PPO
+- [ ] Phase 6 — Engineering optimization + learned surrogate
+- [ ] Phase 7 — KAIROS-CAD benchmark, baselines, ablations
+- [ ] Phase 8 — Interactive Three.js dashboard
+- [ ] Phase 9 — Paper (NeurIPS 2026 format)
+
+## Requirements
+
+- Python ≥ 3.10
+- [FreeCAD](https://www.freecad.org/) ≥ 0.21 (1.x recommended)
+
+FreeCAD is **not** pip-installable. KAIROS locates an installed FreeCAD and
+imports its Python modules (see `kairos/cad/backend.py` and
+`docs/freecad-setup.md`). On macOS the simplest route:
+
+```bash
+brew install --cask freecad
+```
+
+The CAD-dependent code and tests must run under FreeCAD's bundled
+interpreter; the `Makefile` resolves this automatically:
+
+```bash
+make setup       # install dev deps
+make test        # pure-python tests (schema, masking, planning)
+make test-cad    # CAD integration tests under FreeCAD's python
+make generate-data  # procedural bracket dataset
+```
+
+## Design principles
+
+- The agent never emits arbitrary code — every operation is a **structured
+  action** validated against a typed parameter schema before execution.
+- Every generated model is **validated** (solid validity, closed shells,
+  volume, feature errors) before entering any dataset.
+- Experiments are configured by YAML, seeded, and tracked; results are never
+  hand-edited.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
