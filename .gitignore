@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Testing / tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# FreeCAD backup files
+*.FCStd1
+*.FCBak
+*.fcstd1
+
+# Generated data (regenerate with `make generate-data`)
+dataset/
+outputs/
+mlruns/
+wandb/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
