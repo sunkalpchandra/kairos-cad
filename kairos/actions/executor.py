@@ -140,7 +140,14 @@ class ActionExecutor:
     def _record(self, action: Action, result: ActionResult) -> None:
         self.history.append({"action": action.to_dict(), "result": result.to_dict()})
         for callback in self.callbacks:
-            callback(action, result)
+            try:
+                callback(action, result)
+            except Exception as err:
+                # Callbacks must not break the executor's no-raise contract;
+                # surface the failure in the record instead of propagating.
+                result.info.setdefault("callback_errors", []).append(
+                    f"{type(err).__name__}: {err}"
+                )
 
     # ------------------------------------------------------------- handlers
 
