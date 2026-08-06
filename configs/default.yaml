@@ -1,0 +1,32 @@
+# KAIROS default experiment configuration.
+# Everything an experiment varies lives here — code contains no magic numbers
+# for episode limits, reward weights, or dataset sizes.
+
+seed: 0
+
+environment:
+  requirement: >-
+    Create an L-bracket with 4 M5 mounting holes, 3 mm minimum wall
+    thickness, 90 degree angle, and minimum possible mass.
+  max_steps: 40
+  material: aluminum
+
+reward:
+  valid_sketch: 0.2
+  fully_constrained_sketch: 0.5
+  first_solid: 0.5
+  constraint_satisfied: 0.5
+  all_constraints: 2.0
+  mass_progress: 1.0
+  finish_success: 5.0
+  finish_failure: -1.0
+  validity_broken: -1.0
+  invalid_action: -0.5
+  complexity: -0.02
+  action_cost: -0.01
+
+dataset:
+  designs: 1080
+  shards: 8
+  out_dir: dataset/designs
+  families: null  # null = all registered families
