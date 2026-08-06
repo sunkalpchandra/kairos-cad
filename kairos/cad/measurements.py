@@ -64,8 +64,22 @@ def bounding_box(shape) -> dict[str, float]:
 
 
 def center_of_mass(shape) -> tuple[float, float, float]:
-    com = _require_shape(shape).CenterOfMass
-    return (com.x, com.y, com.z)
+    s = _require_shape(shape)
+    # Compounds have no CenterOfMass; aggregate volume-weighted over solids.
+    if hasattr(s, "CenterOfMass"):
+        com = s.CenterOfMass
+        return (com.x, com.y, com.z)
+    solids = s.Solids
+    if not solids:
+        raise MeasurementError("shape has no solids for center of mass")
+    total = sum(solid.Volume for solid in solids)
+    if total <= 0:
+        raise MeasurementError("shape has no volume for center of mass")
+    weighted = [
+        sum(solid.CenterOfMass[i] * solid.Volume for solid in solids) / total
+        for i in range(3)
+    ]
+    return (weighted[0], weighted[1], weighted[2])
 
 
 def topology_counts(shape) -> dict[str, int]:
