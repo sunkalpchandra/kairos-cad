@@ -12,6 +12,8 @@ authors = [{ name = "Sunkalp Chandra", email = "sunkalp.chandra@gmail.com" }]
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24",
+    "gymnasium>=0.29",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
