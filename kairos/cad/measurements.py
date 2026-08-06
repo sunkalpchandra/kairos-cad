@@ -208,6 +208,8 @@ def list_faces(shape) -> list[dict[str, Any]]:
             entry["axis"] = (axis.x, axis.y, axis.z)
             entry["axis_point"] = (center.x, center.y, center.z)
             entry["concave"] = _cylinder_is_concave(face, surface)
+            u0, u1, _, _ = face.ParameterRange
+            entry["angular_extent"] = float(abs(u1 - u0))
         elif entry["surface"] == "Plane":
             normal = surface.Axis
             entry["normal"] = (normal.x, normal.y, normal.z)
@@ -219,7 +221,9 @@ def find_cylindrical_holes(
     shape, diameter: float | None = None, tol: float = 0.05
 ) -> list[dict[str, Any]]:
     """Detect cylindrical holes by grouping concave cylindrical faces on a
-    shared axis line. Optionally filter by hole diameter (mm).
+    shared axis line, keeping only groups that wrap (nearly) the full 360
+    degrees — this excludes concave corner fillets (coves), which share the
+    concavity but only sweep ~90 degrees. Optionally filter by diameter (mm).
 
     Returns one entry per distinct hole: ``{"diameter", "axis", "axis_point",
     "faces"}``. This is the readout used to check requirements like
@@ -248,6 +252,7 @@ def find_cylindrical_holes(
             )
             if same_dir and close:
                 group["faces"].append(entry["name"])
+                group["_angle"] += entry["angular_extent"]
                 break
         else:
             groups.append(
@@ -256,12 +261,17 @@ def find_cylindrical_holes(
                     "axis": axis,
                     "axis_point": point,
                     "_foot": foot,
+                    "_angle": entry["angular_extent"],
                     "faces": [entry["name"]],
                 }
             )
+    holes = []
     for group in groups:
         group.pop("_foot")
-    return groups
+        angle = group.pop("_angle")
+        if angle >= 1.75 * math.pi:  # full bore, not a partial cove
+            holes.append(group)
+    return holes
 
 
 def summary(shape, material: str = "aluminum") -> dict[str, Any]:
