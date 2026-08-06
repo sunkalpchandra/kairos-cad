@@ -176,6 +176,20 @@ def find_edges(
 # ------------------------------------------------------------------ faces
 
 
+def _cylinder_is_concave(face, surface) -> bool:
+    """True when the cylindrical face's material lies outside the axis
+    (a hole/bore), False for convex surfaces (bosses, fillets)."""
+    u0, u1, v0, v1 = face.ParameterRange
+    point = face.valueAt((u0 + u1) / 2.0, (v0 + v1) / 2.0)
+    normal = face.normalAt((u0 + u1) / 2.0, (v0 + v1) / 2.0)
+    axis = surface.Axis
+    center = surface.Center
+    to_point = point - center
+    along = to_point * axis / axis.Length**2
+    radial = to_point - axis * along
+    return (normal * radial) < 0
+
+
 def list_faces(shape) -> list[dict[str, Any]]:
     """Inventory of faces as dicts with FreeCAD subelement names 'FaceN'."""
     s = _require_shape(shape)
@@ -193,6 +207,7 @@ def list_faces(shape) -> list[dict[str, Any]]:
             center = surface.Center
             entry["axis"] = (axis.x, axis.y, axis.z)
             entry["axis_point"] = (center.x, center.y, center.z)
+            entry["concave"] = _cylinder_is_concave(face, surface)
         elif entry["surface"] == "Plane":
             normal = surface.Axis
             entry["normal"] = (normal.x, normal.y, normal.z)
@@ -212,7 +227,7 @@ def find_cylindrical_holes(
     """
     groups: list[dict[str, Any]] = []
     for entry in list_faces(shape):
-        if entry["surface"] != "Cylinder":
+        if entry["surface"] != "Cylinder" or not entry.get("concave"):
             continue
         d = 2.0 * entry["radius"]
         if diameter is not None and abs(d - diameter) > tol:
