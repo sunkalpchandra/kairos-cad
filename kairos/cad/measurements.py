@@ -161,7 +161,7 @@ def find_edges(
             if norm == 0:
                 raise MeasurementError("zero direction vector")
             want = tuple(c / norm for c in direction)
-            dot = abs(sum(a * b for a, b in zip(d, want)))
+            dot = abs(sum(a * b for a, b in zip(d, want, strict=True)))
             if abs(dot - 1.0) > tol:
                 continue
         if near is not None:
@@ -242,12 +242,12 @@ def find_cylindrical_holes(
         axis = tuple(c / norm for c in axis)
         # Project the axis point onto the plane orthogonal to the axis so
         # faces on the same infinite axis line group together.
-        along = sum(p * a for p, a in zip(point, axis))
-        foot = tuple(p - along * a for p, a in zip(point, axis))
+        along = sum(p * a for p, a in zip(point, axis, strict=True))
+        foot = tuple(p - along * a for p, a in zip(point, axis, strict=True))
         for group in groups:
-            same_dir = abs(sum(a * b for a, b in zip(axis, group["axis"]))) > 1 - 1e-4
+            same_dir = abs(sum(a * b for a, b in zip(axis, group["axis"], strict=True))) > 1 - 1e-4
             close = (
-                sum((f - g) ** 2 for f, g in zip(foot, group["_foot"])) < tol**2
+                sum((f - g) ** 2 for f, g in zip(foot, group["_foot"], strict=True)) < tol**2
                 and abs(d - group["diameter"]) <= tol
             )
             if same_dir and close:

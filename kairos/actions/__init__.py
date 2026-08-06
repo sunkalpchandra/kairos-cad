@@ -6,10 +6,10 @@ dispatched onto the ``CADEngine``; arbitrary code execution is impossible by
 construction.
 """
 
-from kairos.actions.schema import Action, ActionResult, Operation
-from kairos.actions.parameters import ActionValidationError, validate_action
 from kairos.actions.executor import ActionExecutor
 from kairos.actions.masking import StateFlags, legal_operations
+from kairos.actions.parameters import ActionValidationError, validate_action
+from kairos.actions.schema import Action, ActionResult, Operation
 
 __all__ = [
     "Action",

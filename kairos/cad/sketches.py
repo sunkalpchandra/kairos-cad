@@ -155,10 +155,10 @@ def add_polygon(sketch, points: list[tuple[float, float]], closed: bool = True) 
     sketcher = load_module("Sketcher")
     if len(points) < (3 if closed else 2):
         raise SketchError(f"polygon needs at least {3 if closed else 2} points")
-    segments = list(zip(points, points[1:] + ([points[0]] if closed else [])))
+    segments = list(zip(points, points[1:] + ([points[0]] if closed else []), strict=False))
     indices = [add_line(sketch, x1, y1, x2, y2) for (x1, y1), (x2, y2) in segments]
     try:
-        for a, b in zip(indices, indices[1:]):
+        for a, b in zip(indices, indices[1:], strict=False):
             sketch.addConstraint(sketcher.Constraint("Coincident", a, 2, b, 1))
         if closed:
             sketch.addConstraint(

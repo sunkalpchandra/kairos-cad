@@ -7,7 +7,8 @@ while the document remains consistent (feature builders roll back internally).
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from kairos.actions.parameters import ActionValidationError, validate_action
 from kairos.actions.schema import Action, ActionResult, Operation

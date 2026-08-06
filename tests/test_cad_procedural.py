@@ -7,7 +7,7 @@ import pytest
 
 from kairos.actions.executor import ActionExecutor
 from kairos.data import procedural
-from kairos.data.generator import GenerationStats, generate_design, generate_dataset
+from kairos.data.generator import GenerationStats, generate_dataset, generate_design
 
 pytestmark = pytest.mark.cad
 

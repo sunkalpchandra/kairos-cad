@@ -63,7 +63,9 @@ def test_mass_material_lookup(plate):
     aluminum = measurements.mass(shape, "aluminum")
     steel = measurements.mass(shape, "steel")
     assert steel / aluminum == pytest.approx(7.85 / 2.70, rel=1e-9)
-    with pytest.raises(Exception):
+    from kairos.cad.errors import MeasurementError
+
+    with pytest.raises(MeasurementError):
         measurements.mass(shape, "unobtainium")
 
 
