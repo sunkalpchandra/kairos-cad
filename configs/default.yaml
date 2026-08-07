@@ -57,3 +57,27 @@ behavioral_cloning:
   class_weighting: inverse_sqrt
   device: auto  # auto picks Metal on Apple silicon, then CUDA, then CPU
   out_dir: runs/bc
+
+# Phase 5: PPO fine-tuning of the BC policy against the live CAD environment.
+# Every rollout step is a FreeCAD recompute, so iterations are small and the
+# numbers below are chosen for wall-clock, not sample efficiency.
+ppo:
+  iterations: 30
+  steps_per_iteration: 256
+  max_episode_steps: 40
+  eval_every: 5
+  eval_episodes: 8
+  learning_rate: 0.0001
+  clip_range: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.01
+  # KL against the frozen BC policy. Without it PPO drifts off the
+  # demonstration manifold chasing shaping reward and never recovers, because
+  # random exploration does not rediscover a valid multi-step build.
+  bc_kl_coef: 0.05
+  target_kl: 0.05
+  epochs_per_update: 4
+  minibatch_size: 32
+  gamma: 0.99
+  gae_lambda: 0.95
+  out_dir: runs/ppo
