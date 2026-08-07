@@ -71,15 +71,28 @@ def main() -> int:
     if unknown:
         print(f"error: unknown optimization keys: {sorted(unknown)}", file=sys.stderr)
         return 2
+    # `or` would silently replace an explicit 0 with the config default.
     args.family = args.family or section.get("family", "plate")
     args.min_thickness = (
         args.min_thickness if args.min_thickness is not None
         else float(section.get("min_thickness", 4.0))
     )
-    args.samples = args.samples or int(section.get("samples", 60))
-    args.iterations = args.iterations or int(section.get("iterations", 20))
-    args.population = args.population or int(section.get("population", 128))
-    args.degree = args.degree or int(section.get("surrogate_degree", 3))
+    args.samples = (
+        args.samples if args.samples is not None
+        else int(section.get("samples", 60))
+    )
+    args.iterations = (
+        args.iterations if args.iterations is not None
+        else int(section.get("iterations", 20))
+    )
+    args.population = (
+        args.population if args.population is not None
+        else int(section.get("population", 128))
+    )
+    args.degree = (
+        args.degree if args.degree is not None
+        else int(section.get("surrogate_degree", 3))
+    )
     args.seed = args.seed if args.seed is not None else 0
     args.out = args.out or Path(section.get("out_dir", "runs/optimize"))
 
