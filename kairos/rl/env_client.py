@@ -87,6 +87,12 @@ class RemoteCADEnv:
         self.timeout = float(timeout)
         self.auto_restart = auto_restart
         self.material = material
+        # Default to the project config so the `reward:` and `environment:`
+        # sections actually reach the server. Without this a reward-weight
+        # ablation is a silent no-op.
+        if config is None:
+            default = Path(__file__).resolve().parent.parent.parent / "configs" / "default.yaml"
+            config = default if default.exists() else None
         self.config = str(config) if config else None
 
         self.restarts = 0
