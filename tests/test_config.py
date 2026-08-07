@@ -40,3 +40,33 @@ def test_non_mapping_config_rejected(tmp_path):
     path.write_text("- just\n- a\n- list\n")
     with pytest.raises(ValueError, match="mapping"):
         load_config(path)
+
+
+def test_model_and_bc_sections_reach_the_training_dataclasses():
+    """The YAML must actually drive training, not sit there decoratively."""
+    pytest.importorskip("torch", reason="requires the 'learn' extra")
+    from kairos.training.bc_train import configs_from
+
+    model, train, out_dir = configs_from(load_config())
+    assert model.embed_dim == 128
+    assert isinstance(model.vision_widths, tuple)  # YAML lists must become tuples
+    assert train.epochs > 0 and 0.0 < train.val_fraction < 1.0
+    assert out_dir
+
+
+def test_unknown_learning_keys_are_rejected():
+    pytest.importorskip("torch", reason="requires the 'learn' extra")
+    from kairos.training.bc_train import configs_from
+
+    with pytest.raises(ValueError, match="unknown model config keys"):
+        configs_from({"model": {"embed_dim": 8, "typo_here": 1}})
+    with pytest.raises(ValueError, match="unknown behavioral_cloning keys"):
+        configs_from({"behavioral_cloning": {"epochs": 1, "lr": 0.1}})
+
+
+def test_top_level_seed_flows_into_training():
+    pytest.importorskip("torch", reason="requires the 'learn' extra")
+    from kairos.training.bc_train import configs_from
+
+    _, train, _ = configs_from({"seed": 42})
+    assert train.seed == 42
