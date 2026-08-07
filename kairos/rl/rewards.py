@@ -79,7 +79,7 @@ class RewardTracker:
         self._had_solid = False
         self._was_valid = False
         self._mass_baseline: float | None = None
-        self._prev_mass: float | None = None
+        self._best_mass: float | None = None
         self.last_report: ConstraintReport | None = None
 
     # ------------------------------------------------------------------ api
@@ -139,17 +139,19 @@ class RewardTracker:
         # ------------------------------------------------- objective progress
         if self.spec.has_objective("minimize_mass") and has_solid:
             mass = summary.get("mass_g")
-            if mass is not None and report.all_measured_satisfied and report.satisfied:
+            if mass is not None and report.all_measured_satisfied:
                 if self._mass_baseline is None:
                     # First constraint-satisfying design sets the scale.
                     self._mass_baseline = mass
-                elif self._prev_mass is not None and self._prev_mass > mass:
-                    improvement = (self._prev_mass - mass) / max(self._mass_baseline, 1e-9)
+                    self._best_mass = mass
+                elif self._best_mass is not None and mass < self._best_mass:
+                    # Paid against the best mass so far, never the previous
+                    # step's: the episode total then telescopes to
+                    # (baseline - lightest)/baseline, so padding material back
+                    # on and removing it again earns nothing the second time.
+                    improvement = (self._best_mass - mass) / max(self._mass_baseline, 1e-9)
                     breakdown.add("mass_progress", w.mass_progress * improvement)
-                self._prev_mass = mass
-            elif not (report.all_measured_satisfied and report.satisfied):
-                # Constraints regressed: freeze progress accounting.
-                self._prev_mass = None
+                    self._best_mass = mass
 
         # ------------------------------------------------------- complexity
         if result.operation in FEATURE_OPS:
@@ -157,9 +159,12 @@ class RewardTracker:
 
         # ------------------------------------------------------ termination
         if result.operation is Operation.FINISH_DESIGN:
-            success = (
-                has_solid and is_valid and report.all_measured_satisfied and report.satisfied
-            )
+            # ``all_measured_satisfied`` already encodes the right rule for an
+            # empty spec (trivially satisfied) and for one whose constraints are
+            # all unmeasured (no credit). Also demanding a non-empty
+            # ``satisfied`` list would make every zero-constraint requirement —
+            # e.g. the u_bracket and spacer families — unwinnable.
+            success = has_solid and is_valid and report.all_measured_satisfied
             breakdown.add(
                 "finish", w.finish_success if success else w.finish_failure
             )

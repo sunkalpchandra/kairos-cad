@@ -93,6 +93,44 @@ def test_mass_progress_only_while_constraints_satisfied():
     assert "mass_progress" not in r.components
 
 
+def test_mass_oscillation_cannot_farm_reward():
+    """Padding material back on and removing it again must pay nothing.
+
+    mass_progress is measured against the lightest constraint-satisfying design
+    so far, so the episode total telescopes to (baseline - lightest)/baseline
+    however many pad/pocket cycles the policy inserts.
+    """
+    tracker = RewardTracker(SPEC)
+    holes = _holes(2)
+    tracker.step(_ok(Operation.POCKET), _obs(has_solid=True, mass=100.0, holes=holes))
+    earned = 0.0
+    for _ in range(3):
+        up = tracker.step(_ok(Operation.PAD), _obs(has_solid=True, mass=150.0, holes=holes))
+        down = tracker.step(_ok(Operation.POCKET), _obs(has_solid=True, mass=90.0, holes=holes))
+        earned += up.components.get("mass_progress", 0.0)
+        earned += down.components.get("mass_progress", 0.0)
+    assert earned == pytest.approx((100 - 90) / 100)  # paid once, not per cycle
+
+
+def test_finish_succeeds_for_a_spec_with_no_measurable_constraints():
+    """u_bracket/spacer requirements parse to zero constraints; a valid solid
+    must still be able to finish successfully rather than be unwinnable."""
+    spec = parse_requirement("Design a cylindrical spacer 30 mm tall. Minimize mass.")
+    assert not spec.constraints
+    tracker = RewardTracker(spec)
+    r = tracker.step(_ok(Operation.FINISH_DESIGN), _obs(has_solid=True, mass=40.0))
+    assert r.components["finish"] == pytest.approx(5.0)
+
+
+def test_finish_fails_when_every_constraint_is_unmeasured():
+    """No credit for requirements KAIROS cannot check."""
+    spec = parse_requirement("Bracket with minimum wall thickness 3 mm.")
+    assert spec.constraints and not any(c.kind == "hole_count" for c in spec.constraints)
+    tracker = RewardTracker(spec)
+    r = tracker.step(_ok(Operation.FINISH_DESIGN), _obs(has_solid=True, mass=40.0))
+    assert r.components["finish"] == pytest.approx(-1.0)
+
+
 def test_finish_success_and_failure():
     good = RewardTracker(SPEC)
     obs_ok = _obs(has_solid=True, mass=50.0, holes=_holes(2))
