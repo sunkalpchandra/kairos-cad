@@ -145,3 +145,21 @@ def test_gradients_are_clipped():
         if v.dtype.is_floating_point
     )
     assert moved < 0.05  # a huge reward cannot produce a huge step
+
+
+def test_dropout_is_off_during_the_update():
+    """Stored log-probs come from the eval-mode policy; re-scoring must match.
+
+    With dropout active the ratio compares two different functions and reads as
+    a large spurious KL from the very first minibatch.
+    """
+    config = VLAConfig(**{**TINY.to_dict(), "dropout": 0.5})
+    model = ActorCritic(KairosVLA(config))
+    trainer = PPOTrainer(model, PPOConfig(epochs_per_update=1, minibatch_size=32, target_kl=None))
+    buffer = _rollout(model, n=16, reward=1.0)
+
+    # A single epoch at lr=0 must leave the policy exactly where it was, so any
+    # measured KL is dropout noise rather than a real update.
+    trainer.optimizer = torch.optim.AdamW(model.parameters(), lr=0.0)
+    metrics = trainer.update(buffer)
+    assert abs(metrics.approx_kl) < 1e-5
