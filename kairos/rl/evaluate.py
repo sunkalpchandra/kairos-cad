@@ -19,6 +19,7 @@ from typing import Any
 import numpy as np
 import torch
 
+from kairos.rl.action_space import NUM_OPERATIONS
 from kairos.rl.buffer import RolloutBuffer
 from kairos.rl.collect import RolloutCollector, summarize_episodes
 
@@ -47,7 +48,9 @@ class RandomPolicy:
         mask = inputs.get("operation_mask")
         rows = inputs["numeric"].shape[0]
         if mask is None:
-            operation = torch.randint(0, 38, (rows,), generator=self.generator)
+            operation = torch.randint(
+                0, NUM_OPERATIONS, (rows,), generator=self.generator
+            )
         else:
             probabilities = mask.float()
             # An all-illegal row would divide by zero; fall back to uniform.
