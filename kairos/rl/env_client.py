@@ -77,6 +77,8 @@ class RemoteCADEnv:
         repo_root: str | Path | None = None,
         timeout: float = 120.0,
         auto_restart: bool = True,
+        material: str = "aluminum",
+        config: str | Path | None = None,
     ) -> None:
         self.requirement = requirement
         self.max_steps = int(max_steps)
@@ -84,6 +86,8 @@ class RemoteCADEnv:
         self.repo_root = str(repo_root or Path(__file__).resolve().parent.parent.parent)
         self.timeout = float(timeout)
         self.auto_restart = auto_restart
+        self.material = material
+        self.config = str(config) if config else None
 
         self.restarts = 0
         self.timeouts = 0
@@ -100,7 +104,14 @@ class RemoteCADEnv:
         )
         try:
             self._process = subprocess.Popen(
-                [self.python, "-u", "-m", "kairos.rl.env_server"],
+                [
+                    self.python, "-u", "-m", "kairos.rl.env_server",
+                    # Without these the server silently builds a default
+                    # environment and the client's max_steps is a no-op.
+                    "--max-steps", str(self.max_steps),
+                    "--material", self.material,
+                    *(["--config", self.config] if self.config else []),
+                ],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
@@ -194,7 +205,10 @@ class RemoteCADEnv:
         try:
             self._send(payload)
             return decode_message(self._read_line())
-        except (RemoteEnvError, TimeoutError, OSError, ValueError) as err:
+        except (RemoteEnvError, ProtocolError, TimeoutError, OSError, ValueError) as err:
+            # ProtocolError included deliberately: a malformed line or a
+            # server-side error_response leaves the stream desynced, which
+            # is exactly the case a restart exists for.
             if not (allow_restart and self.auto_restart):
                 raise
             try:
@@ -223,7 +237,7 @@ class RemoteCADEnv:
             payload = raise_for_error(
                 self._request(step_request(operation, list(np.asarray(params).ravel()), target))
             )
-        except RemoteEnvError as err:
+        except (RemoteEnvError, ProtocolError) as err:
             # The subprocess died or hung and has been restarted; the episode
             # is over, but training continues.
             return None, 0.0, False, True, {"ok": False, "message": str(err), "crashed": True}

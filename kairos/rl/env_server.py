@@ -179,12 +179,28 @@ class EnvironmentServer:
         self.stdout.flush()
 
 
-def main() -> int:  # pragma: no cover - process entry point
+def main(argv: list[str] | None = None) -> int:  # pragma: no cover - entry point
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--max-steps", type=int, default=40)
+    parser.add_argument("--material", default="aluminum")
+    parser.add_argument("--config", default=None, help="YAML supplying reward weights")
+    args = parser.parse_args(argv)
+
+    env_kwargs = {"max_steps": args.max_steps, "material": args.material}
+    if args.config:
+        # The reward weights live on this side of the bridge, so the config
+        # has to be read here or the `reward:` section is inert.
+        from kairos.config import load_config, reward_weights_from
+
+        env_kwargs["reward_weights"] = reward_weights_from(load_config(args.config))
+
     # FreeCAD writes banners to stdout on import; anything landing there would
     # be parsed as a response. Hand the real stdout to the protocol only.
     real_stdout = sys.stdout
     sys.stdout = sys.stderr
-    server = EnvironmentServer(stdin=sys.stdin, stdout=real_stdout)
+    server = EnvironmentServer(stdin=sys.stdin, stdout=real_stdout, **env_kwargs)
     return server.serve()
 
 
