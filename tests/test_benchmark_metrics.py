@@ -109,6 +109,9 @@ def test_leaderboard_sorts_by_progress_not_success():
 
 
 def test_outcome_reads_an_rl_episode_summary():
+    # EpisodeSummary lives on the torch side; the metrics module itself
+    # stays pure so it can score results under FreeCAD's interpreter too.
+    pytest.importorskip("torch", reason="EpisodeSummary needs the learn extra")
     from kairos.rl.collect import EpisodeSummary
 
     episode = EpisodeSummary(
@@ -124,6 +127,7 @@ def test_outcome_reads_an_rl_episode_summary():
 
 def test_outcome_does_not_guess_fields_the_collector_lacks():
     """Unrecorded milestones stay False rather than being inferred."""
+    pytest.importorskip("torch", reason="EpisodeSummary needs the learn extra")
     from kairos.rl.collect import EpisodeSummary
 
     outcome = outcome_from_episode(EpisodeSummary(requirement="x", steps=3))
