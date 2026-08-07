@@ -185,6 +185,9 @@ class BCTrainer:
             weight_decay=self.config.weight_decay,
         )
         self.history: list[EpochMetrics] = []
+        self.best_accuracy = -1.0
+        self.best_epoch = -1
+        self._best_state: dict | None = None
         self.class_weights: torch.Tensor | None = None
 
     def compute_class_weights(self, labels: np.ndarray) -> torch.Tensor | None:
@@ -318,8 +321,20 @@ class BCTrainer:
                 },
             )
             self.history.append(metrics)
+            # Keep the best epoch's weights. Reporting the best accuracy
+            # while saving the final epoch attributes a number to a
+            # checkpoint that never produced it.
+            if metrics.operation_accuracy > self.best_accuracy:
+                self.best_accuracy = metrics.operation_accuracy
+                self.best_epoch = epoch
+                self._best_state = {
+                    k: v.detach().cpu().clone() for k, v in self.model.state_dict().items()
+                }
             if on_epoch is not None:
                 on_epoch(metrics)
+
+        if self._best_state is not None:
+            self.model.load_state_dict(self._best_state)
         return self.history
 
     # ---------------------------------------------------------- persistence
