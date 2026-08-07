@@ -134,6 +134,26 @@ on that noisy estimate. `eval_episodes` is now defaulted higher for this
 reason, and the reported intervals (`[0.07, 0.50]` for a 0.286 point estimate)
 show how much room remains.
 
+### Baseline: does BC initialization actually matter?
+
+Also tested rather than asserted — 12 iterations with `--from-scratch`,
+everything else identical:
+
+| iteration | 1 | 4 | 7 | 10 | 12 |
+| --- | --- | --- | --- | --- | --- |
+| mean reward | −0.19 | −0.26 | −0.29 | **−0.50** | −0.30 |
+| episode length | 7.7 | 4.3 | 3.9 | **1.9** | 3.4 |
+
+Held-out success stayed at **0.000** throughout, and the failure is more
+interesting than a flat line: reward gets *worse* while episodes get *shorter*.
+The policy is not slowly learning to build — it is learning to quit. With no
+route to the sparse finish reward, the fastest way to stop losing points to
+per-action costs is to terminate immediately, so it converges on ~2-step
+episodes that do nothing.
+
+That is the degenerate optimum BC initialization exists to avoid, and unlike
+the anchor claim, this one held up.
+
 ### What this does not show
 
 - **28.6% is not a solved task.** Roughly seven in ten held-out requirements
@@ -157,8 +177,8 @@ make train-ppo            # PPO against the live environment
 make eval-ppo             # BC vs PPO vs random, closed loop
 ```
 
-`--from-scratch` skips BC initialization; it is a baseline for showing why
-initialization matters, not a way to train a usable policy.
+`--from-scratch` skips BC initialization and `--resume` continues an
+interrupted run from `last.pt`, keeping its history and best-so-far.
 
 ## Still out of scope
 
