@@ -59,6 +59,8 @@ def evaluate(
     truths: list[np.ndarray] = []
     top3_hits: list[np.ndarray] = []
     parameter_errors: list[np.ndarray] = []
+    parameter_error_sum = parameter_slot_count = 0.0
+    own_error_sum = own_slot_count = 0.0
 
     for rows_batch in loader:
         batch = rows_batch.to(device)
@@ -72,10 +74,23 @@ def evaluate(
         top3_hits.append(hits.cpu().numpy())
         slots = slot_mask[batch.operation]
         absolute = (outputs["parameters"] - batch.parameters).abs() * slots
-        # Operations with no parameters (FINISH_DESIGN) contribute no error.
+        # Micro-average over slots, matching how the trainer computes it.
+        # Averaging per row instead would enter every zero-slot operation
+        # (FINISH_DESIGN) as an exact 0.0 sample and drag the mean down.
+        parameter_error_sum += float(absolute.sum())
+        parameter_slot_count += float(slots.sum())
         parameter_errors.append(
             (absolute.sum(dim=-1) / slots.sum(dim=-1).clamp(min=1.0)).cpu().numpy()
         )
+
+        # The parameter head above was conditioned on the EXPERT's operation.
+        # That is right for the training loss and wrong as a measure of the
+        # deployed policy, which must condition on its own choice; reporting
+        # only the teacher-forced number understates real error.
+        own = model(**{**batch.model_inputs(), "operation": logits.argmax(dim=-1)})
+        own_slots = slot_mask[logits.argmax(dim=-1)]
+        own_error_sum += float(((own["parameters"] - batch.parameters).abs() * own_slots).sum())
+        own_slot_count += float(own_slots.sum())
 
     predicted = np.concatenate(predictions)
     actual = np.concatenate(truths)
@@ -118,7 +133,11 @@ def evaluate(
         "operation_accuracy": round(float((predicted == actual).mean()), 4),
         "operation_top3": round(float(top3.mean()), 4),
         "majority_baseline": round(float(majority), 4),
-        "parameter_mae": round(float(errors.mean()), 4),
+        # Micro-averaged, so this is directly comparable to the training loss.
+        "parameter_mae": round(parameter_error_sum / max(parameter_slot_count, 1.0), 4),
+        "parameter_mae_self_conditioned": round(
+            own_error_sum / max(own_slot_count, 1.0), 4
+        ),
         "per_operation": per_operation,
         "per_family": per_family,
     }
@@ -133,7 +152,9 @@ def format_report(report: dict[str, Any]) -> str:
         f"operation accuracy: {report['operation_accuracy']:.3f} "
         f"(top-3 {report['operation_top3']:.3f}, "
         f"majority baseline {report['majority_baseline']:.3f})",
-        f"parameter MAE: {report['parameter_mae']:.4f}",
+        f"parameter MAE: {report['parameter_mae']:.4f} teacher-forced, "
+        f"{report.get('parameter_mae_self_conditioned', float('nan')):.4f} "
+        "conditioned on the policy's own operation",
         "",
         f"{'operation':>18}  {'support':>7}  {'recall':>7}  {'precision':>9}",
     ]

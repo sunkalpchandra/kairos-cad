@@ -25,6 +25,7 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
         data = yaml.safe_load(handle)
     if not isinstance(data, dict):
         raise ValueError(f"config {config_path} did not parse to a mapping")
+    validate_sections(data)
     return data
 
 
@@ -38,9 +39,32 @@ def reward_weights_from(config: dict[str, Any]) -> RewardWeights:
     return RewardWeights(**{k: float(v) for k, v in section.items()})
 
 
+KNOWN_SECTIONS = frozenset(
+    {"seed", "environment", "reward", "dataset", "model", "behavioral_cloning", "ppo"}
+)
+_ENVIRONMENT_KEYS = frozenset({"requirement", "max_steps", "material"})
+
+
+def validate_sections(config: dict[str, Any]) -> None:
+    """Reject unknown top-level sections.
+
+    A typo like ``rewrad:`` otherwise leaves the run silently on default
+    weights — an ablation that changes nothing and reports success.
+    """
+    unknown = set(config) - KNOWN_SECTIONS
+    if unknown:
+        raise ValueError(
+            f"unknown config sections: {sorted(unknown)}; "
+            f"known sections are {sorted(KNOWN_SECTIONS)}"
+        )
+
+
 def environment_kwargs_from(config: dict[str, Any]) -> dict[str, Any]:
     """Build KairosCADEnv constructor kwargs from the ``environment`` section."""
     section = config.get("environment", {}) or {}
+    unknown = set(section) - _ENVIRONMENT_KEYS
+    if unknown:
+        raise ValueError(f"unknown environment keys: {sorted(unknown)}")
     kwargs: dict[str, Any] = {}
     if "requirement" in section:
         kwargs["requirement"] = str(section["requirement"]).strip()
