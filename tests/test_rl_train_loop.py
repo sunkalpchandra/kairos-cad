@@ -146,3 +146,34 @@ def test_on_iteration_callback_fires(tmp_path):
     seen = []
     loop.run(on_iteration=seen.append)
     assert [r.iteration for r in seen] == [1, 2]
+
+
+def test_resume_restores_history_and_best(tmp_path):
+    """A multi-hour run that cannot restart is one crash from worthless."""
+    loop, _ = _loop(tmp_path)
+    loop.run()
+    first_best = loop.best_success_rate
+    assert len(loop.history) == 2
+
+    resumed, _ = _loop(tmp_path)
+    last_iteration = resumed.resume_from(tmp_path / "run")
+    assert last_iteration == 2
+    assert len(resumed.history) == 2
+    assert resumed.best_success_rate == pytest.approx(first_best)
+
+
+def test_resumed_iterations_continue_the_numbering(tmp_path):
+    loop, _ = _loop(tmp_path)
+    loop.run()
+
+    resumed, _ = _loop(tmp_path)
+    start = resumed.resume_from(tmp_path / "run")
+    resumed.config.iterations = 2
+    history = resumed.run(start_iteration=start)
+    assert [r.iteration for r in history] == [1, 2, 3, 4]
+
+
+def test_resume_from_an_empty_directory_starts_at_zero(tmp_path):
+    loop, _ = _loop(tmp_path)
+    assert loop.resume_from(tmp_path / "nothing_here") == 0
+    assert loop.history == []
