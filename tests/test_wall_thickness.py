@@ -139,3 +139,53 @@ def test_measurement_is_off_by_default():
         assert "min_wall_thickness_mm" in observe(engine, wall_thickness=True)["summary"]
     finally:
         engine.close()
+
+
+@pytest.mark.cad
+def test_terminal_step_of_a_trajectory_measures_thickness():
+    """min_wall_thickness must be a real check in recorded data, not 'unmeasured'."""
+    from kairos.actions.executor import ActionExecutor
+    from kairos.cad.engine import CADEngine
+    from kairos.data.families import get_family
+    from kairos.data.trajectories import TrajectoryRecorder
+
+    family = get_family("l_bracket")
+    params = family.params_cls()
+    engine = CADEngine("wt_trajectory")
+    try:
+        executor = ActionExecutor(engine)
+        recorder = TrajectoryRecorder(executor, family.requirements(params)["text"])
+        family.build(executor, params)
+        results = recorder.to_dict()["final_metrics"]["constraints"]["results"]
+        wall = [r for r in results if r["constraint"]["kind"] == "min_wall_thickness"]
+        assert wall, "the l_bracket requirement declares a wall thickness"
+        assert wall[0]["status"] == "satisfied", wall[0]
+    finally:
+        engine.close()
+
+
+@pytest.mark.cad
+def test_only_the_terminal_step_pays_for_the_measurement():
+    """Ray casting every step would dominate the cost of generating a design."""
+    from kairos.actions.executor import ActionExecutor
+    from kairos.cad.engine import CADEngine
+    from kairos.data.families import get_family
+    from kairos.data.trajectories import TrajectoryRecorder
+
+    family = get_family("plate")
+    params = family.params_cls()
+    engine = CADEngine("wt_cost")
+    try:
+        executor = ActionExecutor(engine)
+        recorder = TrajectoryRecorder(executor, family.requirements(params)["text"])
+        family.build(executor, params)
+        measured = [
+            "min_wall_thickness_mm" in (step.get("summary") or {})
+            for step in recorder.steps
+        ]
+        assert measured[-1] is True or not any(measured[:-1]), (
+            "intermediate steps must not carry the expensive measurement"
+        )
+        assert sum(measured) <= 1
+    finally:
+        engine.close()
