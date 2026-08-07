@@ -36,7 +36,7 @@ _MAX_BENT_FILL = 0.95
 #: the floor therefore means the real wall is below it too — a definitive
 #: failure, not a near-miss. Slack here would pass parts that are provably
 #: too thin; it was letting 6.983 mm clear a 7.0 mm floor.
-_THICKNESS_TOL = 1e-6
+_THICKNESS_TOL = 1e-6  # mirrors wall_thickness.THICKNESS_TOLERANCE_MM
 
 
 @dataclass

@@ -210,7 +210,13 @@ def verify_result(
     mass, thickness, valid = build_and_measure(result.parameters)
     result.verified_mass_g = mass
     result.verified_thickness_mm = thickness
+    # One shared tolerance: three modules previously used three values for
+    # the same check (1e-6, 0.05 and a hardcoded 0.05).
+    from kairos.evaluation.wall_thickness import THICKNESS_TOLERANCE_MM
+
     result.verified_feasible = bool(
-        valid and thickness is not None and thickness >= min_thickness_mm - 0.05
+        valid
+        and thickness is not None
+        and thickness >= min_thickness_mm - THICKNESS_TOLERANCE_MM
     )
     return result

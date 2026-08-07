@@ -27,6 +27,10 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+#: The single manufacturing tolerance for a thickness check, mm. Near zero
+#: because the measurement over-estimates: see kairos/evaluation/constraints.
+THICKNESS_TOLERANCE_MM = 1e-6
+
 #: Rays whose intersection is shorter than this are treated as grazing hits at
 #: a face boundary rather than real material, in mm.
 _MIN_CREDIBLE = 1e-3
