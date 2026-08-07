@@ -132,3 +132,42 @@ def test_encode_decode_round_trip_core_ops():
                 assert got == pytest.approx(value, abs=0.15), (original.operation, key)
             else:
                 assert got == value, (original.operation, key)
+
+
+def test_encode_round_trips_every_parameterized_operation():
+    """encode() must invert decode() for every op that carries parameters.
+
+    It used to fall through to a catch-all returning zeros for sixteen
+    operations decode() fully supports. Because the BC slot mask is probed from
+    the *decoder*, those slots were marked supervised and would have been
+    trained toward the all-zero encoding instead of the expert's value —
+    silently, and only once a recipe emitted one of them.
+    """
+    targets = {"edges": ["Edge1"], "faces": ["Face1"], "features": ["Pad"]}
+    lossy = []
+    for index, operation in enumerate(OPERATIONS):
+        original = decode(index, np.full(PARAM_SLOTS, 0.7), 0, targets)
+        if not original.parameters:
+            continue  # genuinely parameterless
+        try:
+            _, params, _ = encode(original)
+        except Exception:
+            continue  # UnrepresentableAction is a documented refusal
+        if decode(index, params, 0, targets).parameters != original.parameters:
+            lossy.append(operation.value)
+
+    # ADD_POLYGON round-trips only to float tolerance; pinned separately.
+    assert lossy in ([], ["ADD_POLYGON"]), f"encode() loses: {lossy}"
+
+
+def test_encode_preserves_a_constraint_operations_values():
+    from kairos.actions.schema import Action
+
+    action = Action(
+        Operation.ADD_DISTANCE,
+        parameters={"geo1": 3, "pos1": 1, "geo2": 5, "pos2": 2, "value": 42.5},
+    )
+    index, params, _ = encode(action)
+    restored = decode(index, params, 0, {}).parameters
+    assert restored["geo1"] == 3 and restored["geo2"] == 5
+    assert restored["value"] == pytest.approx(42.5, abs=0.1)

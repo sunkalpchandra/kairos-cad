@@ -291,6 +291,48 @@ def encode(action: Action) -> tuple[int, np.ndarray, int]:
         p[2] = _inv(radius, 1, 100)
         p[3] = _inv(sides + 0.5, 3, 8.999)
         p[4] = _inv(rotation, 0, 360)
+    elif op is Operation.ADD_ARC:
+        p[0] = _inv(prm["cx"], -100, 100)
+        p[1] = _inv(prm["cy"], -100, 100)
+        p[2] = _inv(prm["radius"], 0.5, 25)
+        p[3] = _inv(prm.get("start_deg", 0.0), 0, 360)
+        p[4] = _inv(prm.get("end_deg", 360.0), 0, 360)
+    elif op is Operation.DELETE_GEOMETRY:
+        p[0] = _inv(prm["index"], 0, 11.999)
+    elif op is Operation.MOVE_GEOMETRY:
+        p[0] = _inv(prm["index"], 0, 11.999)
+        p[1] = _inv(prm.get("dx", 0.0), -20, 20)
+        p[2] = _inv(prm.get("dy", 0.0), -20, 20)
+    elif op in (Operation.ADD_HORIZONTAL, Operation.ADD_VERTICAL):
+        p[0] = _inv(prm["geo"], 0, 11.999)
+    elif op in (
+        Operation.ADD_PARALLEL, Operation.ADD_PERPENDICULAR,
+        Operation.ADD_TANGENT, Operation.ADD_EQUAL,
+    ):
+        p[0] = _inv(prm["geo1"], 0, 11.999)
+        p[1] = _inv(prm["geo2"], 0, 11.999)
+    elif op is Operation.ADD_DISTANCE:
+        p[0] = _inv(prm["geo1"], 0, 11.999)
+        p[1] = _inv(prm.get("pos1", 0), 0, 3.999)
+        p[2] = _inv(prm["geo2"], 0, 11.999)
+        p[3] = _inv(prm.get("pos2", 0), 0, 3.999)
+        p[4] = _inv(prm["value"], 0.5, 150)
+    elif op in (Operation.ADD_RADIUS, Operation.ADD_DIAMETER):
+        p[0] = _inv(prm["geo"], 0, 11.999)
+        p[1] = _inv(prm["value"], 0.5, 50)
+    elif op is Operation.ADD_COINCIDENT:
+        p[0] = _inv(prm["geo1"], 0, 11.999)
+        p[1] = _inv(prm.get("pos1", 1) - 1, 0, 2.999)
+        p[2] = _inv(prm["geo2"], 0, 11.999)
+        p[3] = _inv(prm.get("pos2", 1) - 1, 0, 2.999)
+    elif op is Operation.ADD_SYMMETRY:
+        p[0] = _inv(prm["geo1"], 0, 11.999)
+        p[1] = _inv(prm.get("pos1", 1) - 1, 0, 2.999)
+        p[2] = _inv(prm["geo2"], 0, 11.999)
+        p[3] = _inv(prm.get("pos2", 1) - 1, 0, 2.999)
+        p[4] = _inv(prm["axis_geo"], 0, 11.999)
+    elif op is Operation.RENDER_VIEW:
+        p[0] = _choice_inv(prm.get("view", "iso"), _VIEWS)
     elif op is Operation.PAD:
         p[0] = _inv(prm["length"], 1, 100)
         p[1] = 1.0 if prm.get("reversed") else 0.0
@@ -319,6 +361,11 @@ def encode(action: Action) -> tuple[int, np.ndarray, int]:
         p[0] = _choice_inv(prm.get("axis", "X"), _AXES)
         p[1] = _inv(prm.get("length", 50.0), 5, 150)
         p[2] = _inv(prm["count"] - 2, 0, 6.999)
-    # Remaining ops carry no continuous parameters worth inverting in v0.
+    # Every remaining operation genuinely carries no continuous parameters.
+    # This used to be a catch-all that silently returned zeros for sixteen
+    # operations decode() fully supports, and _slots_used_by_operation()
+    # probes the *decoder*, so BC would have trained those slots toward the
+    # all-zero encoding rather than the expert's value. Latent only because
+    # no family emits them yet.
 
     return OPERATIONS.index(op), p, 0
