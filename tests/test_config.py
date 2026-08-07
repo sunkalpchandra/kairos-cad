@@ -70,3 +70,27 @@ def test_top_level_seed_flows_into_training():
 
     _, train, _ = configs_from({"seed": 42})
     assert train.seed == 42
+
+
+def test_unknown_top_level_sections_are_rejected():
+    """A typo like 'rewrad:' silently left a run on default weights."""
+    from kairos.config import validate_sections
+
+    validate_sections(load_config())  # the real config must pass
+    with pytest.raises(ValueError, match="unknown config sections"):
+        validate_sections({"rewrad": {"valid_sketch": 9.0}})
+
+
+def test_unknown_environment_keys_are_rejected():
+    from kairos.config import environment_kwargs_from
+
+    with pytest.raises(ValueError, match="unknown environment keys"):
+        environment_kwargs_from({"environment": {"max_stpes": 5}})
+
+
+def test_optimization_section_is_known_and_complete():
+    config = load_config()
+    section = config["optimization"]
+    assert section["surrogate_degree"] == 3  # a quadratic gets thickness wrong
+    assert section["min_thickness"] > 0
+    assert section["samples"] >= 8  # the surrogate needs at least this many
