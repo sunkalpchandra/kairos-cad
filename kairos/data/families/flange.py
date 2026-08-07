@@ -66,6 +66,12 @@ class FlangeParams:
         chord = 2.0 * self.bolt_circle_radius * math.sin(math.pi / self.n_bolts)
         if chord <= self.bolt_diameter + 2.0:
             return False
+        # The bore must stay distinguishable from the bolt holes: when the two
+        # diameters land within measurement tolerance of each other, "6 mm
+        # holes" no longer identifies which feature a requirement means, and
+        # hole checks cannot tell the bore from the bolt circle.
+        if abs(2.0 * self.bore_radius - self.bolt_diameter) <= 0.5:
+            return False
         return True
 
 

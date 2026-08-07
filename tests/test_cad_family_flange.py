@@ -76,3 +76,6 @@ def test_flange_infeasible_rejections():
     assert not flange.FlangeParams(bore_radius=10.5).is_feasible()
     # Bolt count out of range.
     assert not flange.FlangeParams(n_bolts=2).is_feasible()
+    # Bore and bolt holes indistinguishable: "6 mm holes" would name both, and
+    # the generator's own hole-count validation rejects the built solid.
+    assert not flange.FlangeParams(bore_radius=2.6, bolt_diameter=5.0).is_feasible()
