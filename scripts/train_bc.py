@@ -87,6 +87,12 @@ def main() -> int:
         f"-> {len(train_set)} train / {len(val_set)} val (split by design)"
     )
 
+    # Seed BEFORE constructing the model: fit() seeds too, but by then the
+    # weights have already been drawn from an unseeded global RNG, so two
+    # runs recording the same seed diverged from step one.
+    import torch
+
+    torch.manual_seed(train_config.seed)
     model = KairosVLA(model_config)
     trainer = BCTrainer(model, train_config)
     print(
@@ -110,6 +116,7 @@ def main() -> int:
         out / "report.json",
         {
             "dataset_root": str(args.root),
+            "limit": args.limit,
             "dataset": stats.to_dict(),
             "steps": {"total": len(dataset), "train": len(train_set), "val": len(val_set)},
             "model": {

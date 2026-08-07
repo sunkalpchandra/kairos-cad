@@ -45,7 +45,14 @@ def main() -> int:
     val_fraction = float(train_config.get("val_fraction", 0.15))
     seed = int(train_config.get("seed", 0))
 
-    arrays, stats = build_examples(args.root)
+    # build_examples(limit=...) changes design_index for every row, so a run
+    # trained with --limit must be evaluated with the same one or the
+    # "held-out" set silently includes designs it trained on.
+    limit = None
+    run_report = args.checkpoint.parent / "report.json"
+    if run_report.exists():
+        limit = json.loads(run_report.read_text()).get("limit")
+    arrays, stats = build_examples(args.root, limit=limit)
     dataset = TrajectoryDataset(arrays)
     train_set, val_set = split_by_design(dataset, val_fraction, seed)
     subset = {"val": val_set, "train": train_set, "all": dataset}[args.split]

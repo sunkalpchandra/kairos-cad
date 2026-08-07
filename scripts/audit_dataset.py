@@ -95,11 +95,32 @@ def main() -> int:
 
     if args.fix:
         for name in broken:
-            shutil.rmtree(designs_dir / name)
-        for path in backups + orphan_trajectories:
-            path.unlink()
-        print(f"fixed: removed {len(broken)} dirs, {len(backups)} backups, "
-              f"{len(orphan_trajectories)} orphan trajectories")
+            shutil.rmtree(designs_dir / name, ignore_errors=True)
+
+        # Removing a broken design also removes any backup inside it, and
+        # orphans its trajectory. Both lists were computed before the deletion,
+        # so re-derive after: unlinking a path inside a deleted directory used
+        # to raise FileNotFoundError and abort before the summary printed, and
+        # the freshly orphaned trajectories were reported as zero and left on
+        # disk, needing a second --fix to notice them.
+        removed_backups = 0
+        for path in backups:
+            if path.exists():
+                path.unlink()
+                removed_backups += 1
+
+        removed_orphans = 0
+        if trajectories_dir.is_dir():
+            for path in trajectories_dir.glob("trajectory_*.json"):
+                design = designs_dir / path.stem.replace("trajectory_", "design_")
+                if not design.is_dir():
+                    path.unlink()
+                    removed_orphans += 1
+
+        print(
+            f"fixed: removed {len(broken)} dirs, {removed_backups} backups, "
+            f"{removed_orphans} orphan trajectories"
+        )
     return 0 if not broken or args.fix else 2
 
 

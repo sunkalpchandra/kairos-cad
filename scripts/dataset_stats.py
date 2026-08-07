@@ -38,6 +38,7 @@ def collect(root: Path) -> dict:
     constraint_kinds: Counter[tuple[str, str]] = Counter()
     totals: dict = {
         "designs": 0,
+        "unconstrained": 0,
         "rewards": [],
         "steps": [],
         "invalid": 0,
@@ -60,6 +61,10 @@ def collect(root: Path) -> dict:
         steps = int(metrics.get("steps", len(traj.get("actions", []))))
         invalid = int(metrics.get("invalid_actions", 0))
         satisfied = bool(constraints.get("all_measured_satisfied"))
+        measured = [
+            r for r in constraints.get("results", []) if r.get("status") != "unmeasured"
+        ]
+        totals["unconstrained"] += int(not measured)
         mass = summary.get("mass_g")
 
         for bucket in (entry, totals):
@@ -101,6 +106,8 @@ def render(stats: dict, root: Path) -> str:
         f"- **{totals['designs']} designs**, {sum(stats['operations'].values())} recorded actions",
         f"- **{100.0 * totals['all_satisfied'] / n:.1f}%** satisfy every measurable constraint "
         "in their own requirement",
+        f"- **{totals['unconstrained']}** designs have no measurable constraint at all "
+        "(nothing was checked for them, so they are not evidence of anything)",
         f"- **{totals['invalid']}** invalid actions across all trajectories",
         "",
         "| metric | mean | median | min | max |",

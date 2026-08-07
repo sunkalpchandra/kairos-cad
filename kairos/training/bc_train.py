@@ -361,7 +361,10 @@ def load_checkpoint(path: str | Path, device: torch.device | str = "cpu") -> Kai
     payload = torch.load(Path(path), map_location=device, weights_only=False)
     model = KairosVLA(VLAConfig.from_dict(payload["model_config"]))
     model.load_state_dict(payload["model_state"])
-    return model.to(device)
+    # eval(), not the nn.Module default of train(): a loaded checkpoint is
+    # for inference, and dropout would silently change the emitted CAD
+    # dimensions from one call to the next.
+    return model.to(device).eval()
 
 
 def write_report(path: str | Path, payload: dict[str, Any]) -> Path:

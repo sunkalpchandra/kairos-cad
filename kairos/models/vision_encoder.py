@@ -32,7 +32,13 @@ class _ConvBlock(nn.Module):
             nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=2, padding=1, bias=False),
             # GroupNorm, not BatchNorm: BC batches are small and the RL rollout
             # runs single-sample, where batch statistics are meaningless.
-            nn.GroupNorm(num_groups=min(8, out_channels), num_channels=out_channels),
+            # Largest divisor of out_channels that is <= 8: a fixed 8 would
+            # raise for any width not divisible by it (12, 20, ...).
+            nn.GroupNorm(
+                num_groups=next(g for g in range(min(8, out_channels), 0, -1)
+                                if out_channels % g == 0),
+                num_channels=out_channels,
+            ),
             nn.GELU(),
         )
 
