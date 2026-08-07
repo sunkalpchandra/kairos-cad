@@ -99,6 +99,29 @@ class EpochMetrics:
         return data
 
 
+def configs_from(config: dict[str, Any]) -> tuple[VLAConfig, TrainConfig, str]:
+    """Build ``(VLAConfig, TrainConfig, out_dir)`` from a loaded YAML config.
+
+    Validation lives here rather than in :mod:`kairos.config` so the dataclass
+    fields stay the single source of truth — and so ``kairos.config`` never has
+    to import torch.
+    """
+    model_section = dict(config.get("model", {}) or {})
+    bc_section = dict(config.get("behavioral_cloning", {}) or {})
+    out_dir = str(bc_section.pop("out_dir", "runs/bc"))
+
+    unknown_model = set(model_section) - set(VLAConfig.__dataclass_fields__)
+    if unknown_model:
+        raise ValueError(f"unknown model config keys: {sorted(unknown_model)}")
+    unknown_train = set(bc_section) - set(TrainConfig.__dataclass_fields__)
+    if unknown_train:
+        raise ValueError(f"unknown behavioral_cloning keys: {sorted(unknown_train)}")
+
+    if "seed" in config and "seed" not in bc_section:
+        bc_section["seed"] = config["seed"]
+    return VLAConfig.from_dict(model_section), TrainConfig(**bc_section), out_dir
+
+
 def resolve_device(name: str = "auto") -> torch.device:
     """Pick a device, preferring Apple's Metal backend when available."""
     if name != "auto":
