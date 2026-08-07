@@ -64,6 +64,37 @@ def load_requirements(
     return requirements
 
 
+def three_way_pools(
+    root: str | Path = "dataset",
+    splits_path: str | Path | None = None,
+    seed: int = 0,
+) -> tuple[list[str], list[str], list[str]]:
+    """Return ``(train, dev, test)`` requirement pools from a frozen split.
+
+    Prefer this over :func:`requirement_pools`. Checkpoint selection must read
+    ``dev`` and the benchmark must read ``test``; selecting on the set you then
+    report is model selection on the evaluation set, which inflates the number
+    just as surely as training on it.
+    """
+    from kairos.benchmark.splits import (
+        SplitSet,
+        build_splits,
+        load_requirements_by_design,
+        requirements_for,
+    )
+
+    designs = load_requirements_by_design(root)
+    if not designs:
+        pool = list(FALLBACK_REQUIREMENTS)
+        return pool, pool, pool
+
+    if splits_path is not None and Path(splits_path).exists():
+        splits = SplitSet.load(splits_path)
+    else:
+        splits = build_splits(designs, seed=seed)
+    return tuple(requirements_for(splits, name, designs) for name in ("train", "dev", "test"))
+
+
 def requirement_pools(
     root: str | Path = "dataset",
     limit: int | None = None,
@@ -76,6 +107,11 @@ def requirement_pools(
     Falls back to :data:`FALLBACK_REQUIREMENTS` when no dataset is present, in
     which case both pools are the same small set and evaluation numbers should
     be read as in-distribution.
+
+    .. deprecated::
+        Two-way only, and derived at call time — calling it twice with
+        different ``limit`` values draws a different boundary, which is how a
+        contaminated comparison shipped. Use :func:`three_way_pools`.
     """
     requirements = load_requirements(root, limit=limit, families=families)
     if not requirements:
