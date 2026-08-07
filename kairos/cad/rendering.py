@@ -161,6 +161,78 @@ def write_png(image: np.ndarray, path: str | Path) -> Path:
     return path
 
 
+def read_png(path: str | Path) -> np.ndarray:
+    """Read an 8-bit RGB PNG back into an ``[H, W, 3]`` uint8 array.
+
+    The inverse of :func:`write_png`, kept dependency-free for the same reason:
+    the training stack must be able to load rendered views without pulling an
+    image library into FreeCAD's interpreter. All five PNG row filters are
+    reconstructed, so re-encoded files load too — not just our own output.
+    """
+    data = Path(path).read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"{path} is not a PNG")
+
+    pos = 8
+    header: tuple[int, ...] | None = None
+    compressed = bytearray()
+    while pos < len(data):
+        (length,) = struct.unpack(">I", data[pos : pos + 4])
+        tag = data[pos + 4 : pos + 8]
+        payload = data[pos + 8 : pos + 8 + length]
+        pos += 12 + length  # length + tag + payload + crc
+        if tag == b"IHDR":
+            header = struct.unpack(">IIBBBBB", payload)
+        elif tag == b"IDAT":
+            compressed += payload
+        elif tag == b"IEND":
+            break
+
+    if header is None:
+        raise ValueError(f"{path} has no IHDR chunk")
+    width, height, depth, color_type = header[0], header[1], header[2], header[3]
+    if depth != 8 or color_type != 2:
+        raise ValueError(f"{path}: only 8-bit RGB PNGs are supported (got {depth}/{color_type})")
+
+    raw = zlib.decompress(bytes(compressed))
+    stride = width * 3
+    out = np.zeros((height, stride), dtype=np.uint8)
+    prior = np.zeros(stride, dtype=np.uint8)
+
+    for row in range(height):
+        start = row * (stride + 1)
+        filter_type = raw[start]
+        line = np.frombuffer(raw[start + 1 : start + 1 + stride], dtype=np.uint8).astype(np.int16)
+        if filter_type == 0:
+            recon = line
+        elif filter_type == 1:  # Sub
+            recon = line.copy()
+            for i in range(3, stride):
+                recon[i] = (recon[i] + recon[i - 3]) & 0xFF
+        elif filter_type == 2:  # Up
+            recon = (line + prior) & 0xFF
+        elif filter_type == 3:  # Average
+            recon = line.copy()
+            for i in range(stride):
+                left = recon[i - 3] if i >= 3 else 0
+                recon[i] = (recon[i] + ((left + int(prior[i])) >> 1)) & 0xFF
+        elif filter_type == 4:  # Paeth
+            recon = line.copy()
+            for i in range(stride):
+                left = int(recon[i - 3]) if i >= 3 else 0
+                up = int(prior[i])
+                up_left = int(prior[i - 3]) if i >= 3 else 0
+                p = left + up - up_left
+                pa, pb, pc = abs(p - left), abs(p - up), abs(p - up_left)
+                pred = left if (pa <= pb and pa <= pc) else (up if pb <= pc else up_left)
+                recon[i] = (recon[i] + pred) & 0xFF
+        else:
+            raise ValueError(f"{path}: unknown PNG row filter {filter_type}")
+        out[row] = prior = recon.astype(np.uint8)
+
+    return out.reshape(height, width, 3)
+
+
 def render_views(
     shape,
     out_dir: str | Path,
