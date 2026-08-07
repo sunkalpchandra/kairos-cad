@@ -30,3 +30,29 @@ dataset:
   shards: 8
   out_dir: dataset/designs
   families: null  # null = all registered families
+
+# Phase 4: multimodal VLA and behavioral cloning. Requires the 'learn' extra.
+model:
+  embed_dim: 128
+  language_depth: 2
+  language_heads: 4
+  max_text_length: 64
+  vision_widths: [16, 32, 64, 128]
+  fusion_depth: 2
+  fusion_heads: 4
+  operation_embed_dim: 32
+  hidden_dim: 128
+  dropout: 0.1
+
+behavioral_cloning:
+  epochs: 40
+  batch_size: 128
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+  parameter_loss_weight: 1.0
+  # Held out by design, never by step: steps within one design are far too
+  # correlated for a step-level split to measure generalization.
+  val_fraction: 0.15
+  grad_clip: 1.0
+  device: auto  # auto picks Metal on Apple silicon, then CUDA, then CPU
+  out_dir: runs/bc
