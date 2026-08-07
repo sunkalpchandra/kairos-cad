@@ -6,6 +6,7 @@ the CAD stack. The one test that needs real geometry is marked `cad`.
 """
 
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -16,6 +17,26 @@ from kairos.rl.env_client import (
     resolve_freecad_python,
 )
 from kairos.rl.protocol import ProtocolError
+
+
+def _running_under_freecad() -> bool:
+    """True when the test runner *is* the FreeCAD interpreter.
+
+    Two tests below assert the behavior when the spawned interpreter cannot
+    import FreeCAD. They spawn ``sys.executable``, so under `make test-cad`
+    that assumption inverts and the assertions are meaningless rather than
+    failing for a real reason.
+    """
+    try:
+        return Path(sys.executable).resolve() == Path(resolve_freecad_python()).resolve()
+    except FileNotFoundError:
+        return False
+
+
+needs_a_freecad_free_interpreter = pytest.mark.skipif(
+    _running_under_freecad(),
+    reason="this interpreter can import FreeCAD, so the no-FreeCAD path cannot be tested",
+)
 
 
 def _client(**kwargs):
@@ -55,6 +76,7 @@ def test_bad_interpreter_fails_loudly_at_construction():
         RemoteCADEnv(python="/nonexistent/python")
 
 
+@needs_a_freecad_free_interpreter
 def test_server_error_surfaces_on_reset():
     """Without FreeCAD the server reports a failed reset rather than hanging."""
     env = _client(auto_restart=False)
@@ -96,6 +118,7 @@ def test_a_hung_server_times_out_and_restarts(monkeypatch):
         env.close()
 
 
+@needs_a_freecad_free_interpreter
 def test_probe_reports_unavailable_without_raising():
     available, message = probe_environment(python=sys.executable)
     assert available is False  # no FreeCAD in this interpreter
