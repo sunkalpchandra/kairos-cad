@@ -253,3 +253,11 @@ def test_result_serializes_with_its_derived_numbers():
     import json
 
     json.dumps(payload)  # must stay serializable
+
+
+def test_package_exports_are_all_importable():
+    import kairos.optimization as package
+
+    assert package.__all__
+    for name in package.__all__:
+        assert hasattr(package, name), f"{name} is exported but missing"
