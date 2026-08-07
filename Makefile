@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc demo clean
+.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -43,6 +43,12 @@ dataset-report:
 ## Behavioral cloning: fit the VLA policy to the expert trajectories.
 train-bc:
 	$(PYTHON) scripts/train_bc.py --root dataset --out runs/bc
+
+## Held-out evaluation and expert-vs-policy replay for a trained checkpoint.
+eval-bc:
+	$(PYTHON) scripts/evaluate_bc.py --checkpoint runs/bc/checkpoint.pt \
+		--out runs/bc/evaluation.json
+	$(PYTHON) scripts/replay_policy.py --sample 12 --out runs/bc/replay.json
 
 ## End-to-end demo: requirement → spec → build → rewards → exports (spec §50).
 demo:
