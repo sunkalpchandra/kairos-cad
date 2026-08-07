@@ -74,7 +74,6 @@ class TrainConfig:
     seed: int = 0
     device: str = "auto"
     grad_clip: float = 1.0
-    warmup_fraction: float = 0.05
     #: "none" or "inverse_sqrt". The expert action mix is heavily skewed (a
     #: quarter of steps are ADD_CIRCLE, while FILLET is under 1%), and an
     #: unweighted objective simply never predicts the rare operations.
