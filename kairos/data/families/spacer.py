@@ -137,7 +137,12 @@ def _requirements(p: SpacerParams) -> dict:
     )
     text = (
         f"Design a cylindrical spacer of outer diameter {2 * p.outer_radius:.0f} mm and "
-        f"height {p.height:.0f} mm with a {2 * p.inner_radius:.0f} mm diameter "
+        # One decimal, not zero: the bore radius is sampled continuously, and
+        # rounding the stated diameter to a whole number puts the requirement
+        # up to 0.5 mm away from the geometry the recipe actually builds —
+        # five times the 0.1 mm diameter tolerance, so the family would fail
+        # its own requirement once the parser reads this number.
+        f"height {p.height:.0f} mm with a {2 * p.inner_radius:.1f} mm diameter "
         f"through-bore{chamfer_text}. Minimize mass."
     )
     return {

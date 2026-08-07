@@ -29,36 +29,60 @@ _STACKED_FEATURE_RE = re.compile(
 )
 
 
+#: "<n> [up to two adjectives] holes" — the adjectives matter because real
+#: requirements say "6 bolt holes", "2 base mounting holes", "4 corner
+#: through-holes". Intervening words must be alphabetic so a number belonging
+#: to a different clause ("2 ribs 8 mm wide ... holes") cannot be captured.
+_HOLE_GROUP_RE = re.compile(
+    r"(?<![A-Za-z0-9])(\d+)\s+(?:[A-Za-z][\w-]*\s+){0,2}?(?:through[- ]?)?holes?\b",
+    re.I,
+)
+
+#: A bore is a hole the geometry reports like any other, so it counts toward
+#: the total: a flange's "12 mm central bore" plus "6 bolt holes" is 7 holes.
+_BORE_RE = re.compile(r"\b(?:central|through)[- ]?bores?\b", re.I)
+
+
 def _find_hole_spec(text: str) -> tuple[int | None, float | None]:
-    """Extract (hole_count, hole_diameter_mm) from the text."""
+    """Extract (total hole count, nominal hole diameter in mm) from the text.
+
+    Counts are **summed across every group the text names**. Requirements
+    routinely split them ("2 base mounting holes and 2 cross-wall holes"), and
+    reading only the first group under-counts the part — which then reads as a
+    satisfied constraint against geometry that has twice as many holes.
+    """
     count: int | None = None
     diameter: float | None = None
 
-    # "4 x M5 holes", "4 M5 mounting holes", "four M5 holes"
-    m = re.search(r"(\d+)\s*[x×]?\s*(M\d+)\s+(?:mounting\s+)?holes?", text, re.I)
-    if m:
-        count = int(m.group(1))
-        diameter = _METRIC_THREADS.get(m.group(2).upper())
+    # "4 x M5 holes", "4 M5 mounting holes" — thread designations carry the
+    # diameter, so they are matched before the generic count pattern.
+    threaded = re.search(r"(\d+)\s*[x×]?\s*(M\d+)\s+(?:mounting\s+)?holes?", text, re.I)
+    if threaded:
+        count = int(threaded.group(1))
+        diameter = _METRIC_THREADS.get(threaded.group(2).upper())
+        return count, diameter
+
+    groups = [int(m.group(1)) for m in _HOLE_GROUP_RE.finditer(text)]
+    bores = len(_BORE_RE.findall(text))
+    if groups or bores:
+        count = sum(groups) + bores
+
+    for pattern in (
+        rf"holes?\s+of\s+{_NUM}\s*mm",  # "holes of 5 mm diameter"
+        rf"all\s+{_NUM}\s*mm\s+diameter",  # "..., all 5 mm diameter"
+        rf"{_NUM}\s*mm\s+diameter\s+(?:through[- ]?|central\s+)?bore",  # spacer
+        rf"{_NUM}\s*mm\s+(?:diameter\s+)?holes?",  # "5 mm diameter holes"
+        rf"hole\s+diameter\s*[:=]?\s*{_NUM}\s*mm",  # "hole diameter: 5 mm"
+    ):
+        match = re.search(pattern, text, re.I)
+        if match:
+            diameter = float(match.group(1))
+            break
     else:
-        # "8 mounting holes", "3 through-holes". The lookbehind keeps the
-        # digit of a thread designation ("M4 mounting holes") from being read
-        # as a count — that number is a diameter, not a quantity.
-        m = re.search(r"(?<![A-Za-z0-9])(\d+)\s+(?:mounting\s+|through[- ]?)?holes?", text, re.I)
-        if m:
-            count = int(m.group(1))
-        # "holes of 5 mm diameter", "5 mm diameter holes", "hole diameter: 5 mm"
-        m = re.search(rf"holes?\s+of\s+{_NUM}\s*mm", text, re.I)
-        if not m:
-            m = re.search(rf"{_NUM}\s*mm\s+(?:diameter\s+)?holes?", text, re.I)
-        if not m:
-            m = re.search(rf"hole\s+diameter\s*[:=]?\s*{_NUM}\s*mm", text, re.I)
-        if m:
-            diameter = float(m.group(1))
-        else:
-            # standalone metric thread mention, e.g. "M5 clearance"
-            m = re.search(r"\b(M\d+)\b", text)
-            if m:
-                diameter = _METRIC_THREADS.get(m.group(1).upper())
+        # standalone metric thread mention, e.g. "M5 clearance"
+        match = re.search(r"\b(M\d+)\b", text)
+        if match:
+            diameter = _METRIC_THREADS.get(match.group(1).upper())
     return count, diameter
 
 
@@ -74,13 +98,18 @@ def parse_requirement(text: str) -> EngineeringSpec:
 
     # "minimum wall thickness: 3 mm", "3 mm minimum wall thickness",
     # "wall thickness >= 3mm", "minimum 3 mm wall thickness"
-    m = re.search(rf"(?:minimum|min\.?)\s+wall\s+thickness\s*[:=>]*\s*{_NUM}\s*mm", text, re.I)
+    m = re.search(
+        rf"(?:minimum|min\.?)\s+wall\s+thickness\s*(?:of\s+)?[:=>]*\s*{_NUM}\s*mm", text, re.I
+    )
     if not m:
         m = re.search(rf"{_NUM}\s*mm\s+(?:minimum|min\.?)\s+wall\s+thickness", text, re.I)
     if not m:
         m = re.search(rf"(?:minimum|min\.?)\s+{_NUM}\s*mm\s+wall(?:\s+thickness)?", text, re.I)
     if not m:
-        m = re.search(rf"wall\s+thickness\s*[:=]\s*{_NUM}\s*mm", text, re.I)
+        # Plain "wall thickness 6.2 mm" — the separator is optional. Six
+        # families phrase it exactly this way, so requiring ':' or '=' meant
+        # the constraint was declared 940 times and extracted zero times.
+        m = re.search(rf"wall\s+thickness\s*[:=>]*\s*{_NUM}\s*mm", text, re.I)
     if m:
         spec.constraints.append(Constraint("min_wall_thickness", float(m.group(1))))
 
