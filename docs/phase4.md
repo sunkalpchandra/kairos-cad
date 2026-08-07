@@ -94,6 +94,17 @@ in training and step 4 in validation and report memorization as generalization.
 
 ## Results
 
+> **⚠️ The numbers below are stale as of the Phase 1–5 audit (2026-08-07)
+> and must be re-measured.** The audit found that the requirement parser
+> extracted no constraints at all from 266 of 1,080 designs (which then
+> reported 100% satisfaction having checked nothing), that `mounting_angle`
+> was satisfied by any box, that BC saved its last epoch while reporting its
+> best, and that the PPO comparison was measured on requirements PPO had
+> trained on. Those defects are fixed in the code; the dataset, the BC run
+> and the PPO run all predate the fixes and have not yet been regenerated.
+> See the Audit section of README.md.
+
+
 1.14M parameters, 40 epochs on the 1,080-design dataset (Apple M-series GPU
 via Metal, ~10 s/epoch), 9,723 training steps and 1,757 held-out steps from
 162 unseen designs. Both runs are in `runs/`:

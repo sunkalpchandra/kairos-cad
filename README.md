@@ -118,6 +118,37 @@ The learning stack and the CAD stack run in **different interpreters** — torch
 is not installable under FreeCAD's Python — so the environment is served out of
 FreeCAD's process over a JSON bridge. See [docs/phase5.md](docs/phase5.md).
 
+
+## Audit status (2026-08-07)
+
+A five-way audit of Phases 1–5 found defects that invalidate the published
+numbers. **The code is fixed; the artifacts are not yet regenerated**, so every
+result table in `docs/` is currently stale and flagged as such.
+
+What was wrong, in order of severity:
+
+- **The requirement parser read nothing from 266 of 1,080 designs.** Its count
+  pattern missed "6 bolt holes", "2 base mounting holes and 2 cross-wall
+  holes", and "through-bore" entirely, and `min_wall_thickness` — declared 940
+  times — was never extracted. Those designs then reported
+  `satisfaction_rate: 1.0` having verified nothing, so the dataset's "100%
+  satisfy every measurable constraint" headline covered a quarter of designs
+  where nothing was measured.
+- **`mounting_angle` was satisfied by any prismatic solid**, and it is the only
+  shape constraint 283 designs carry.
+- **Behavioral cloning saved its last epoch while reporting its best**, so the
+  shipped checkpoint scores 0.955 where the log claims 0.961.
+- **The PPO comparison was measured on requirements PPO trained on** — 3 of 6
+  "held-out" requirements leaked, because training and evaluation derived
+  different splits from different pool sizes.
+- **PPO's GAE treated collector-cut episodes as mid-episode steps**, chaining
+  advantage across episode boundaries on 9% of episodes.
+- **The bridge ignored `max_steps`**, so the client's episode cap was a no-op
+  and the policy was fed the wrong step fraction.
+
+To reproduce corrected results: regenerate the dataset (`scripts/generate_dataset.sh`),
+then `make train-bc`, `make train-ppo`, `make eval-ppo`.
+
 ## Requirements
 
 - Python ≥ 3.10

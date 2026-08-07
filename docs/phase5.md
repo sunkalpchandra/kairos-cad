@@ -74,6 +74,17 @@ Exploration must come from the action distribution, never from network noise.
 
 ## Results
 
+> **⚠️ The numbers below are stale as of the Phase 1–5 audit (2026-08-07)
+> and must be re-measured.** The audit found that the requirement parser
+> extracted no constraints at all from 266 of 1,080 designs (which then
+> reported 100% satisfaction having checked nothing), that `mounting_angle`
+> was satisfied by any box, that BC saved its last epoch while reporting its
+> best, and that the PPO comparison was measured on requirements PPO had
+> trained on. Those defects are fixed in the code; the dataset, the BC run
+> and the PPO run all predate the fixes and have not yet been regenerated.
+> See the Audit section of README.md.
+
+
 25 iterations × 200 steps against live FreeCAD, initialized from the Phase 4 BC
 checkpoint, 40-requirement pool split into train and held-out.
 
