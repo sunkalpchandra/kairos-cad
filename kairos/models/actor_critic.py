@@ -94,7 +94,24 @@ class ActorCritic(nn.Module):
     def act(
         self, inputs: dict[str, torch.Tensor], deterministic: bool = False
     ) -> dict[str, torch.Tensor]:
-        """Sample one action per row, with its log-probability and value."""
+        """Sample one action per row, with its log-probability and value.
+
+        Dropout is forced off here regardless of the module's mode. Exploration
+        must come from the action distribution, not from network noise: PPO's
+        ratio compares the stored log-probability against a later re-scoring,
+        and if dropout perturbed either one the ratio would measure noise
+        instead of how far the policy moved.
+        """
+        was_training = self.training
+        self.eval()
+        try:
+            return self._act(inputs, deterministic)
+        finally:
+            self.train(was_training)
+
+    def _act(
+        self, inputs: dict[str, torch.Tensor], deterministic: bool
+    ) -> dict[str, torch.Tensor]:
         distribution, value = self.distribution(inputs)
         operation = (
             distribution.operation.probs.argmax(dim=-1)
