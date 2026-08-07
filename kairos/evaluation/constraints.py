@@ -110,38 +110,39 @@ def _holes_matching(observation: dict, diameter: float | None, tol: float) -> li
 
 
 def _check_hole_count(c: Constraint, observation: dict, spec: EngineeringSpec) -> ConstraintResult:
-    diameter = spec.hole_diameter
-    tol = _DIAMETER_TOL
-    diameter_c = spec.get("hole_diameter")
-    if diameter_c is not None and diameter_c.tolerance is not None:
-        tol = diameter_c.tolerance
-    found = len(_holes_matching(observation, diameter, tol))
+    """Check the part's total hole count against the requirement.
+
+    Counts **every** hole, not only those matching the nominal diameter. A
+    requirement's stated total spans groups of different sizes — a flange's
+    "12 mm central bore, and 6 bolt holes of 5 mm diameter" is seven holes —
+    so filtering by the nominal diameter would find six and report a correct
+    part as violated. Whether the named diameter is actually present is
+    :func:`_check_hole_diameter`'s job.
+    """
+    found = len(observation.get("holes", []))
     ok = found == int(c.value)
-    which = f"d={diameter}mm " if diameter is not None else ""
     return ConstraintResult(
         c,
         "satisfied" if ok else "violated",
         measured=found,
-        detail=f"{found} {which}holes, need {c.value}",
+        detail=f"{found} holes, need {c.value}",
     )
 
 
 def _check_hole_diameter(c: Constraint, observation: dict, spec: EngineeringSpec) -> ConstraintResult:
     """Check that the holes the requirement names exist at the stated diameter.
 
-    A part may legitimately carry other bores the requirement does not mention
-    (a flange's central bore alongside its bolt holes), so extra diameters are
-    not violations. How many holes must match is pinned by the spec's
-    ``hole_count`` when it has one, and is otherwise "at least one"; a part with
-    the wrong *total* number of holes is caught by ``hole_count`` itself.
+    A part legitimately carries holes at other diameters — a flange's central
+    bore sits alongside its bolt holes — so extra sizes are not violations, and
+    the requirement's total cannot be used as the number that must match: it
+    spans those groups. This check therefore asks only that the named diameter
+    is present; ``hole_count`` pins the total independently.
     """
     tol = c.tolerance if c.tolerance is not None else _DIAMETER_TOL
     matching = _holes_matching(observation, float(c.value), tol)
     holes = observation.get("holes", [])
-    count_c = spec.get("hole_count")
-    needed = int(count_c.value) if count_c is not None else 1
-    ok = len(matching) >= needed
-    detail = f"{len(matching)}/{len(holes)} holes at d={c.value}±{tol}mm, need ≥{needed}"
+    ok = len(matching) >= 1
+    detail = f"{len(matching)}/{len(holes)} holes at d={c.value}±{tol}mm"
     return ConstraintResult(
         c,
         "satisfied" if ok else "violated",

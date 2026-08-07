@@ -22,22 +22,37 @@ def _hole(d, at=(0, 0, 0), axis=(0, 0, 1)):
 
 
 def test_hole_count_uses_spec_diameter():
+    """hole_count is a TOTAL: a requirement's stated count spans size groups.
+
+    A flange's "12 mm central bore, and 6 bolt holes of 5 mm" is seven holes,
+    so filtering by the nominal diameter would find six and call a correct part
+    violated. Here the part has three holes where two were asked for.
+    """
     spec = parse_requirement("Bracket with 2 x M5 holes")
     obs = _obs(holes=[_hole(5.0), _hole(5.0), _hole(8.0)], bbox=(10, 10, 10))
     report = check_constraints(obs, spec)
     by_kind = {r.constraint.kind: r for r in report.results}
-    assert by_kind["hole_count"].status == "satisfied"  # the 8mm hole is ignored
+    assert by_kind["hole_count"].status == "violated"  # 3 holes, 2 requested
     # An unmentioned extra bore is not a diameter violation: parts legitimately
     # carry bores the requirement never named (a flange's central bore beside
     # its bolt holes). Wrong *totals* are hole_count's job, checked above.
     assert by_kind["hole_diameter"].status == "satisfied"
 
 
-def test_hole_diameter_needs_as_many_holes_as_the_count_requires():
+def test_hole_diameter_only_requires_the_named_size_to_be_present():
+    """The total is hole_count's job; this asks whether d=5 exists at all."""
     spec = parse_requirement("Bracket with 4 x M5 holes")
     obs = _obs(holes=[_hole(5.0), _hole(5.0), _hole(8.0), _hole(8.0)], bbox=(10, 10, 10))
     by_kind = {r.constraint.kind: r for r in check_constraints(obs, spec).results}
-    assert by_kind["hole_diameter"].status == "violated"  # only 2 of the 4 are M5
+    assert by_kind["hole_diameter"].status == "satisfied"
+    assert by_kind["hole_count"].status == "satisfied"  # 4 holes total
+
+
+def test_hole_diameter_violated_when_the_named_size_is_absent():
+    spec = parse_requirement("Bracket with 4 x M5 holes")
+    obs = _obs(holes=[_hole(8.0)] * 4, bbox=(10, 10, 10))
+    by_kind = {r.constraint.kind: r for r in check_constraints(obs, spec).results}
+    assert by_kind["hole_diameter"].status == "violated"
 
 
 def test_hole_count_violation():
