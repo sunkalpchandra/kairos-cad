@@ -22,6 +22,13 @@ dev = [
     "pytest-timeout>=2.1",
     "ruff>=0.4",
 ]
+# Phase 4 learning stack. Deliberately optional: the CAD, dataset, and RL
+# environment layers must stay importable under FreeCAD's bundled interpreter,
+# which has no torch. Everything under kairos/models and kairos/training
+# requires this extra; nothing else may import it.
+learn = [
+    "torch>=2.2",
+]
 
 [tool.setuptools.packages.find]
 include = ["kairos*"]

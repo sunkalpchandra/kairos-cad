@@ -2,6 +2,9 @@
 # FreeCAD itself is NOT pip-installable — see docs/freecad-setup.md.
 numpy>=1.24
 
+# Phase 4 learning stack (optional — not importable under FreeCAD's python).
+torch>=2.2
+
 # Development / testing
 pytest>=7.4
 pytest-timeout>=2.1
