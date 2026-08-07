@@ -94,29 +94,59 @@ in training and step 4 in validation and report memorization as generalization.
 
 ## Results
 
-1.14M parameters, 40 epochs on the 1,080-design dataset (Apple M-series GPU via
-Metal, ~10 s/epoch), 9,723 training steps and 1,757 held-out steps from 162
-unseen designs:
+1.14M parameters, 40 epochs on the 1,080-design dataset (Apple M-series GPU
+via Metal, ~10 s/epoch), 9,723 training steps and 1,757 held-out steps from
+162 unseen designs. Both runs are in `runs/`:
 
-| metric | value |
-| --- | --- |
-| operation accuracy (held-out) | **0.955** |
-| top-3 operation accuracy | 1.000 |
-| majority-class baseline | 0.277 |
-| parameter MAE (used slots) | 0.026 |
-
-Per-family accuracy runs from 0.879 (`u_bracket`) to 1.000 (`corner_bracket`,
-`flange`, `plate`, `spacer`), so the policy is not carried by one easy family.
-
-The breakdown also exposes a real failure: **`FILLET` recall is 0.000** on its
-14 held-out steps — under 1% of the expert action mix, and an unweighted
-objective simply never predicts it. `POCKET` recall (0.809) is the next
-weakest, confused with `PAD`. Optional inverse-sqrt class weighting
-(`class_weighting: inverse_sqrt`) addresses the skew; see `runs/` for both runs.
+| metric | unweighted | inverse-sqrt weighted |
+| --- | --- | --- |
+| operation accuracy (held-out) | 0.955 | **0.960** |
+| top-3 operation accuracy | 1.000 | 1.000 |
+| majority-class baseline | 0.277 | 0.277 |
+| parameter MAE (used slots) | 0.026 | **0.023** |
 
 Reporting the majority baseline alongside accuracy is deliberate: a quarter of
-all steps are `ADD_CIRCLE`, so "95.5%" needs the 27.7% floor next to it to mean
-anything.
+all steps are `ADD_CIRCLE`, so "96%" needs the 27.7% floor next to it to mean
+anything. Per-family accuracy runs from 0.868 (`u_bracket`) to 1.000
+(`corner_bracket`, `flange`, `plate`, `spacer`), so no single easy family is
+carrying the number.
+
+### Class weighting fixed a real failure
+
+The per-operation breakdown is what made the problem visible. The unweighted
+run **never once predicted `FILLET`** — recall 0.000 across its 14 held-out
+steps — because fillets are under 1% of the expert action mix. Aggregate
+accuracy hid it completely: 95.5% looks healthy while an entire operation is
+dead.
+
+Inverse-sqrt class weighting (`class_weighting: inverse_sqrt`) recovered it,
+and the two operations that were being confused with their neighbours as well:
+
+| operation | support | unweighted recall | weighted recall |
+| --- | --- | --- | --- |
+| `FILLET` | 14 | 0.000 | **1.000** |
+| `POCKET` | 231 | 0.809 | **0.935** |
+| `ADD_CIRCLE` | 486 | 0.990 | 0.940 |
+| `FINISH_DESIGN` | 162 | 1.000 | 0.932 |
+
+The last two rows are the cost: weighting trades a little recall on the common
+operations for the rare ones. It is a good trade here — overall accuracy and
+parameter error both improved — but `FILLET` precision is only 0.560, so the
+policy now over-predicts fillets. Weighting rebalanced the skew rather than
+eliminating it.
+
+### Replay against recorded designs
+
+`scripts/replay_policy.py` walks a recorded design's states and lines the
+policy's choices up against the expert's. On a plate it reproduces the whole
+12-step build exactly; across 12 randomly sampled designs it agrees on 121 of
+139 steps (0.871).
+
+This is **teacher forced** — each step is scored from the expert's recorded
+state, not from what the policy's own previous action would have produced — so
+it measures per-step agreement, not the compounding error a closed-loop rollout
+would expose. The gap between 0.96 next-action accuracy and whatever
+closed-loop success turns out to be is exactly what Phase 5 has to close.
 
 ## Still out of scope here
 

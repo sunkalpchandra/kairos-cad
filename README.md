@@ -71,7 +71,7 @@ Development proceeds in phases (see `docs/`):
 - [x] **Phase 3 — CAD representation**: geometry graph, observation
       snapshots, numerical/feature encoders, rendered views.
 - [x] **Phase 4 — Multimodal VLA + behavioral cloning**: language/vision/state
-      encoders, attention fusion, hierarchical action heads; 0.955 held-out
+      encoders, attention fusion, hierarchical action heads; 0.960 held-out
       next-action accuracy against a 0.277 majority baseline
       ([docs/phase4.md](docs/phase4.md)).
 - [~] Phase 5 — RL: Gymnasium env, shaped reward, action masking done; PPO
@@ -85,7 +85,7 @@ Development proceeds in phases (see `docs/`):
 
 A 1.14M-parameter vision-language-action model maps a requirement plus the
 current geometry to the next structured action. Behavioral cloning on the
-expert trajectories reaches **0.955** held-out next-action accuracy (majority
+expert trajectories reaches **0.960** held-out next-action accuracy (majority
 baseline 0.277), held out by *design* rather than by step — see
 [docs/phase4.md](docs/phase4.md).
 
