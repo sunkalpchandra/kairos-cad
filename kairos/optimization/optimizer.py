@@ -102,6 +102,15 @@ def penalized_objective(
     Soft rather than a hard reject: discarding infeasible candidates outright
     leaves no gradient in the region just outside the boundary.
     """
+    if not math.isfinite(mass_g) or not math.isfinite(thickness_mm) or mass_g <= 0.0:
+        # A non-physical prediction means the surrogate is extrapolating out of
+        # the region it was fitted on. Observed on a real plate run: it
+        # predicted -85 g, and because the penalty is multiplicative, scaling a
+        # negative objective by a violation made it *better* — the search drove
+        # straight into the nonsense and returned an unmanufacturable part.
+        # Refusing the candidate outright is the only safe reading.
+        return math.inf
+
     shortfall = max(0.0, min_thickness_mm - thickness_mm)
     return float(mass_g * (1.0 + penalty_per_mm * shortfall))
 
@@ -161,6 +170,10 @@ def optimize_design(
             spread = np.minimum(spread * 1.5, (upper - lower) / 2.0)
             continue
 
+        scored = [s for s in scored if math.isfinite(s[0])]
+        if not scored:
+            spread = np.minimum(spread * 1.5, (upper - lower) / 2.0)
+            continue
         scored.sort(key=lambda item: item[0])
         if scored[0][0] < best_score:
             best_score, best_row, best_prediction = scored[0]

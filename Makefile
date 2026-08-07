@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo demo clean
+.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -58,6 +58,13 @@ train-ppo:
 ## Closed-loop comparison: BC vs PPO vs a legal-random baseline.
 eval-ppo:
 	$(PYTHON) scripts/evaluate_ppo.py --episodes 12
+
+## Phase 6: fit a surrogate, search for the lightest manufacturable design,
+## then build the winner and report the VERIFIED numbers.
+optimize:
+	@test -n "$(FREECAD_PY)" || (echo "FreeCAD python not found" && exit 1)
+	PYTHONPATH=$(CURDIR) $(FREECAD_PY) scripts/optimize_design.py \
+		--family plate --min-thickness 5.0 --out runs/optimize
 
 ## End-to-end demo: requirement → spec → build → rewards → exports (spec §50).
 demo:

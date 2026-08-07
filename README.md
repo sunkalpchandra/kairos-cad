@@ -78,7 +78,10 @@ Development proceeds in phases (see `docs/`):
       action masking, PPO with a BC anchor over a FreeCAD↔torch bridge.
       Closed-loop success is 0.000 for every policy tested
       ([docs/phase5.md](docs/phase5.md)).
-- [ ] Phase 6 — Engineering optimization + learned surrogate
+- [x] **Phase 6 — Engineering optimization + learned surrogate**: minimum wall
+      thickness is now *measured* (ray casting), and a surrogate-driven search
+      found a 54% lighter plate that a verification build confirms is
+      manufacturable ([docs/phase6.md](docs/phase6.md)).
 - [ ] Phase 7 — KAIROS-CAD benchmark, baselines, ablations
 - [ ] Phase 8 — Interactive Three.js dashboard
 - [ ] Phase 9 — Paper (NeurIPS 2026 format)
