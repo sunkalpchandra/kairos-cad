@@ -1,0 +1,12 @@
+{
+  "suite_version": "kairos-cad-v1",
+  "dataset_root": "dataset",
+  "designs": 1080,
+  "seed": 0,
+  "fractions": [
+    0.7,
+    0.15,
+    0.15
+  ],
+  "splits_sha256": "46a9b00cf2edc6b46fa8e3e720266b03f3b18d71dc60846dc46a780358bdaf03"
+}
