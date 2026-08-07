@@ -44,6 +44,22 @@ software rasterizer (no GUI, no external renderer):
 | --- | --- |
 | ![L-bracket](docs/assets/sample_lbracket_iso.png) | ![Plate](docs/assets/sample_plate_iso.png) |
 
+## Dataset
+
+1,080 validated designs across 8 procedural families, each with a rendered
+solid, a STEP/STL export, and a reward-annotated expert trajectory checked
+against its own natural-language requirement. See
+[docs/dataset.md](docs/dataset.md) for the full breakdown.
+
+```bash
+scripts/generate_dataset.sh dataset 135   # 8 shards, fixed seeds, then audits
+python3 scripts/audit_dataset.py --root dataset --fix
+python3 scripts/dataset_stats.py --root dataset --out docs/dataset.md
+```
+
+The shard seeds are recorded in `dataset/manifest.json`, and the run resumes
+rather than restarting if it is interrupted.
+
 ## Project status
 
 Development proceeds in phases (see `docs/`):

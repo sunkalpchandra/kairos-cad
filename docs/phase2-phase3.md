@@ -68,7 +68,16 @@ reward signal the RL agent will see.
 - `kairos/evaluation/constraints.py` — checkers resolve each constraint to
   satisfied / violated / **unmeasured**. Unmeasured kinds (min wall
   thickness until Phase 6, symmetry) are excluded from satisfaction rates
-  and can never earn reward credit.
+  and can never earn reward credit. `hole_diameter` checks the holes the
+  requirement names, not every bore in the part: a flange legitimately
+  carries a central bore alongside its bolt holes, and wrong *totals* are
+  `hole_count`'s job.
+
+Two parser rules exist because the alternative is inventing requirements the
+part is meant to violate: a bare `A x B x C mm` triple is only read as the
+part envelope when the text does not stack ribs or walls onto it (otherwise
+it sizes a sub-component), and the digit in a thread designation (`M4`) is a
+diameter, never a quantity.
 
 ## Reward and environment (`kairos/rl/`)
 
@@ -76,11 +85,20 @@ reward signal the RL agent will see.
   (§16–17): one-shot shaping bonuses, per-constraint bonuses, validity
   regression penalty, complexity/action costs, and a mass-progress term
   that only activates while all measured constraints hold (no farming mass
-  reduction by skipping requirements).
+  reduction by skipping requirements). Mass progress is **potential-based**:
+  it pays against the lightest constraint-satisfying design so far, so an
+  episode's total telescopes to the real improvement and a pad-then-pocket
+  cycle earns nothing the second time. A requirement that parses to zero
+  constraints is winnable — success is `all_measured_satisfied`, which
+  already distinguishes "nothing to check" from "nothing checkable".
 - `action_space.py` — codec between policy outputs
   (operation index + [0,1]⁶ params + target index) and validated structured
   actions; documented denormalization ranges; `encode` inverts expert
-  actions for BC.
+  actions for BC. `ADD_POLYGON` decodes to a regular 3–8-gon; irregular
+  expert profiles (the L and U recipes) are not representable in the fixed
+  slots, so `encode` raises `UnrepresentableAction` rather than emit a
+  target that decodes into a different shape — BC expands those into
+  `ADD_LINE` sequences.
 - `environment.py` — `KairosCADEnv` (Gymnasium): Dict observation
   (numeric vector + legality mask), Dict action, per-step info carrying the
   action result, reward breakdown, and constraint report.

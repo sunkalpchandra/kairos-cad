@@ -20,20 +20,31 @@ SEEDS=(1001 1002 1003 1004 1005 1006 1007 1008)
 cd "$REPO"
 mkdir -p "$ROOT/designs"
 
-running=0
+# Waves of CONCURRENCY shards: macOS ships bash 3.2, which has no `wait -n`.
+# Shards whose designs are already on disk are skipped, so an interrupted run
+# (a full disk, a reboot) resumes instead of regenerating everything.
+pids=""
 for i in "${!SEEDS[@]}"; do
   seed="${SEEDS[$i]}"
   start_id=$(( i * 10000 ))
+  have=$(find "$ROOT/designs" -maxdepth 1 -type d -name 'design_*' \
+    -exec basename {} \; 2>/dev/null \
+    | awk -F_ -v lo="$start_id" -v hi="$(( start_id + 10000 ))" \
+        '$2 + 0 >= lo && $2 + 0 < hi' | wc -l | tr -d ' ')
+  if (( have >= PER_SHARD )); then
+    echo "shard $((i + 1))/${#SEEDS[@]}: already has $have designs, skipping"
+    continue
+  fi
   echo "shard $((i + 1))/${#SEEDS[@]}: seed=$seed start_id=$start_id count=$PER_SHARD"
   PYTHONPATH="$REPO" "$PY" scripts/generate_brackets.py \
     --count "$PER_SHARD" --out "$ROOT/designs" --seed "$seed" --start-id "$start_id" &
-  running=$(( running + 1 ))
-  if (( running >= CONCURRENCY )); then
-    wait -n
-    running=$(( running - 1 ))
+  pids="$pids $!"
+  if (( $(echo $pids | wc -w) >= CONCURRENCY )); then
+    for pid in $pids; do wait "$pid"; done
+    pids=""
   fi
 done
-wait
+for pid in $pids; do wait "$pid"; done
 
 python3 - "$ROOT" "$PER_SHARD" "${SEEDS[@]}" <<'PY'
 import json, sys
