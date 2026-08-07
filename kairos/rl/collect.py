@@ -117,12 +117,25 @@ class RolloutCollector:
             else 64
         )
 
-    def collect(self, buffer, n_steps: int, deterministic: bool = False) -> list[EpisodeSummary]:
-        """Fill ``buffer`` with about ``n_steps`` transitions."""
+    def collect(
+        self,
+        buffer,
+        n_steps: int,
+        deterministic: bool = False,
+        max_episodes: int | None = None,
+    ) -> list[EpisodeSummary]:
+        """Fill ``buffer`` until ``n_steps`` transitions or ``max_episodes``.
+
+        Training wants a step budget (a fixed amount of experience per update);
+        evaluation wants an episode count (N complete attempts). Whichever
+        limit is reached first ends collection.
+        """
         collected: list[EpisodeSummary] = []
         steps_taken = 0
 
         while steps_taken < n_steps:
+            if max_episodes is not None and len(collected) >= max_episodes:
+                break
             summary = self._run_episode(buffer, n_steps - steps_taken, deterministic)
             steps_taken += summary.steps
             collected.append(summary)
