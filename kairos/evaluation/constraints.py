@@ -27,6 +27,9 @@ _DIAMETER_TOL = 0.1
 _DIM_TOL = 1.0
 #: Angle tolerance, degrees.
 _ANGLE_TOL = 1.0
+#: A part that bends through an angle leaves its bounding box mostly empty.
+#: An L-bracket fills roughly half; a plate or block fills all of it.
+_MAX_BENT_FILL = 0.95
 
 
 @dataclass
@@ -193,6 +196,26 @@ def _check_mounting_angle(c: Constraint, observation: dict, spec: EngineeringSpe
     faces = [f for f in observation.get("faces", []) if f.get("surface") == "Plane"]
     if len(faces) < 2:
         return ConstraintResult(c, "violated", detail="fewer than two planar faces")
+
+    # Every prismatic solid has face pairs at 90 degrees, so a face-angle
+    # test alone is satisfied by a plain plate. A part that genuinely bends
+    # through the angle does not fill its bounding box; a box does.
+    summary = observation.get("summary", {})
+    bbox = summary.get("bounding_box") or {}
+    volume = float(summary.get("volume_mm3") or 0.0)
+    envelope = (
+        float(bbox.get("x_len", 0.0))
+        * float(bbox.get("y_len", 0.0))
+        * float(bbox.get("z_len", 0.0))
+    )
+    fill = volume / envelope if envelope > 0 else 1.0
+    if float(c.value) % 180.0 != 0.0 and fill > _MAX_BENT_FILL:
+        return ConstraintResult(
+            c,
+            "violated",
+            measured=round(fill, 3),
+            detail=f"solid fills {fill:.0%} of its bounding box: not a bent part",
+        )
     faces = sorted(faces, key=lambda f: -f["area"])[:6]
     target = float(c.value)
     tol = c.tolerance if c.tolerance is not None else _ANGLE_TOL
