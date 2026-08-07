@@ -83,3 +83,38 @@ def test_held_out_fraction_is_respected(tmp_path, fraction):
     _dataset(tmp_path, [f"r{i}" for i in range(10)])
     _, held_out = requirement_pools(tmp_path, held_out_fraction=fraction)
     assert len(held_out) == max(1, round(10 * fraction))
+
+
+def test_three_way_pools_are_mutually_disjoint(tmp_path):
+    """dev exists so checkpoint selection never touches the reported set."""
+    from kairos.rl.requirements import three_way_pools
+
+    _dataset(tmp_path, [f"Design a plate {i} x 40 x 5 mm" for i in range(60)])
+    train, dev, test = three_way_pools(tmp_path, seed=0)
+    assert train and dev and test
+    assert set(train).isdisjoint(dev)
+    assert set(train).isdisjoint(test)
+    assert set(dev).isdisjoint(test)
+
+
+def test_three_way_pools_fall_back_without_a_dataset(tmp_path):
+    from kairos.rl.requirements import FALLBACK_REQUIREMENTS, three_way_pools
+
+    train, dev, test = three_way_pools(tmp_path)
+    assert train == dev == test == list(FALLBACK_REQUIREMENTS)
+
+
+def test_three_way_pools_read_a_frozen_split(tmp_path):
+    """A recorded split must win over re-deriving one."""
+    from kairos.benchmark import build_splits, load_requirements_by_design
+    from kairos.rl.requirements import three_way_pools
+
+    _dataset(tmp_path, [f"Design a plate {i} x 40 x 5 mm" for i in range(40)])
+    designs = load_requirements_by_design(tmp_path)
+    frozen = build_splits(designs, seed=11)
+    path = frozen.save(tmp_path / "splits.json")
+
+    _, _, test = three_way_pools(tmp_path, splits_path=path)
+    _, _, rederived = three_way_pools(tmp_path, seed=0)
+    assert sorted(test) != sorted(rederived), "seed 11 and seed 0 should differ"
+    assert len(test) == len(frozen["test"].design_ids)
