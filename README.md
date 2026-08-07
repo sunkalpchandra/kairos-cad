@@ -74,8 +74,10 @@ Development proceeds in phases (see `docs/`):
       encoders, attention fusion, hierarchical action heads; 0.960 held-out
       next-action accuracy against a 0.277 majority baseline
       ([docs/phase4.md](docs/phase4.md)).
-- [~] Phase 5 — RL: Gymnasium env, shaped reward, action masking done; PPO
-      training pending
+- [x] **Phase 5 — Reinforcement learning**: Gymnasium env, shaped reward,
+      action masking, PPO with a BC anchor over a FreeCAD↔torch bridge.
+      Closed-loop success 0.000 (BC) → **0.286** (PPO)
+      ([docs/phase5.md](docs/phase5.md)).
 - [ ] Phase 6 — Engineering optimization + learned surrogate
 - [ ] Phase 7 — KAIROS-CAD benchmark, baselines, ablations
 - [ ] Phase 8 — Interactive Three.js dashboard
@@ -94,6 +96,27 @@ make setup-learn   # optional torch extra; not installable under FreeCAD's pytho
 make train-bc
 python3 scripts/evaluate_bc.py --checkpoint runs/bc/checkpoint.pt
 ```
+
+That number is *teacher forced*: the policy is scored one step at a time from
+the expert's state, so its errors never compound. Asked to drive a build on its
+own it completes **0%** of held-out designs, with 42% of its actions invalid.
+PPO fine-tuning against the live CAD environment takes closed-loop success to
+**28.6%** and invalid actions to zero:
+
+| policy | closed-loop success | invalid actions |
+| --- | --- | --- |
+| behavioral cloning | 0.000 | 0.422 |
+| PPO | **0.286** | **0.000** |
+| legal-random baseline | 0.000 | 0.265 |
+
+```bash
+make train-ppo     # PPO against live FreeCAD, over the interpreter bridge
+make eval-ppo      # BC vs PPO vs random, closed loop
+```
+
+The learning stack and the CAD stack run in **different interpreters** — torch
+is not installable under FreeCAD's Python — so the environment is served out of
+FreeCAD's process over a JSON bridge. See [docs/phase5.md](docs/phase5.md).
 
 ## Requirements
 
