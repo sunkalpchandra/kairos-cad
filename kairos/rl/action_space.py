@@ -11,6 +11,7 @@ Slot ranges are frozen here; policies and BC datasets must agree on them.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -48,6 +49,44 @@ def _choice(x: float, options: tuple) -> object:
 def _choice_inv(value: object, options: tuple) -> float:
     index = options.index(value)
     return (index + 0.5) / len(options)
+
+
+class UnrepresentableAction(ValueError):
+    """An expert Action the codec's fixed parameter slots cannot express."""
+
+
+def _fit_regular_polygon(points: list) -> tuple[float, float, float, int, float]:
+    """Recover (cx, cy, radius, sides, rotation_deg) from a regular polygon.
+
+    Raises ``UnrepresentableAction`` for irregular profiles — BC pipelines must
+    expand those into ADD_LINE actions rather than train toward a target the
+    codec would decode into a different shape.
+    """
+    n = len(points)
+    if not 3 <= n <= 8:
+        raise UnrepresentableAction(
+            f"ADD_POLYGON with {n} vertices is outside the codec's 3-8 regular "
+            "n-gon range; expand it into ADD_LINE actions"
+        )
+    cx = sum(pt[0] for pt in points) / n
+    cy = sum(pt[1] for pt in points) / n
+    radii = [math.hypot(pt[0] - cx, pt[1] - cy) for pt in points]
+    angles = [math.atan2(pt[1] - cy, pt[0] - cx) for pt in points]
+    radius = sum(radii) / n
+    step = 2 * math.pi / n
+    regular = radius > 0 and all(abs(r - radius) <= 1e-3 * radius for r in radii)
+    if regular:
+        for i, angle in enumerate(angles):
+            drift = (angle - angles[0] - i * step + math.pi) % (2 * math.pi) - math.pi
+            if abs(drift) > 1e-3:
+                regular = False
+                break
+    if not regular:
+        raise UnrepresentableAction(
+            "ADD_POLYGON is only representable as a regular n-gon; expand this "
+            "irregular profile into ADD_LINE actions"
+        )
+    return cx, cy, radius, n, math.degrees(angles[0]) % 360.0
 
 
 @dataclass(frozen=True)
@@ -127,8 +166,23 @@ def decode(
             "start_deg": round(_lin(p[3], 0, 360), 2), "end_deg": round(_lin(p[4], 0, 360), 2),
         }
     elif op is Operation.ADD_POLYGON:
-        # v0: policies build polygons via ADD_LINE; expert data may still use it.
-        parameters = {"points": []}
+        # A regular n-gon: the codec's continuous slots cannot express an
+        # arbitrary vertex list, and emitting an empty one made this op a
+        # guaranteed executor failure. Irregular profiles (the L and U family
+        # recipes) are built from ADD_LINE instead.
+        cx, cy = _lin(p[0], -100, 100), _lin(p[1], -100, 100)
+        radius = _lin(p[2], 1, 100)
+        sides = int(_lin(p[3], 3, 8.999))
+        rotation = math.radians(_lin(p[4], 0, 360))
+        parameters = {
+            "points": [
+                [
+                    round(cx + radius * math.cos(rotation + 2 * math.pi * i / sides), 3),
+                    round(cy + radius * math.sin(rotation + 2 * math.pi * i / sides), 3),
+                ]
+                for i in range(sides)
+            ]
+        }
     elif op is Operation.DELETE_GEOMETRY:
         parameters = {"index": int(_lin(p[0], 0, 11.999))}
     elif op is Operation.MOVE_GEOMETRY:
@@ -238,6 +292,13 @@ def encode(action: Action) -> tuple[int, np.ndarray, int]:
         p[0] = _inv(prm["cx"], -100, 100)
         p[1] = _inv(prm["cy"], -100, 100)
         p[2] = _inv(prm["radius"], 0.5, 25)
+    elif op is Operation.ADD_POLYGON:
+        cx, cy, radius, sides, rotation = _fit_regular_polygon(prm.get("points") or [])
+        p[0] = _inv(cx, -100, 100)
+        p[1] = _inv(cy, -100, 100)
+        p[2] = _inv(radius, 1, 100)
+        p[3] = _inv(sides + 0.5, 3, 8.999)
+        p[4] = _inv(rotation, 0, 360)
     elif op is Operation.PAD:
         p[0] = _inv(prm["length"], 1, 100)
         p[1] = 1.0 if prm.get("reversed") else 0.0

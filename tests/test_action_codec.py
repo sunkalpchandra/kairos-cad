@@ -22,8 +22,7 @@ TARGETS = {
 
 def test_every_operation_decodes_to_valid_action():
     """Random policy outputs must always produce schema-valid actions
-    (except ADD_POLYGON, whose empty v0 point list validates but is unusable —
-    and target-requiring ops when a target pool exists)."""
+    (target-requiring ops are given a populated pool)."""
     rng = np.random.default_rng(0)
     for op_index in range(NUM_OPERATIONS):
         for _ in range(5):
@@ -31,6 +30,42 @@ def test_every_operation_decodes_to_valid_action():
             action = decode(op_index, params, int(rng.integers(0, 64)), TARGETS)
             assert action.operation is OPERATIONS[op_index]
             validate_action(action)  # must not raise
+
+
+def test_polygon_decodes_to_a_buildable_ngon():
+    """ADD_POLYGON must never decode to an empty point list — that made a
+    masked-legal operation a guaranteed executor failure."""
+    rng = np.random.default_rng(1)
+    idx = OPERATIONS.index(Operation.ADD_POLYGON)
+    for _ in range(20):
+        action = decode(idx, rng.random(PARAM_SLOTS), 0, {})
+        points = action.parameters["points"]
+        assert 3 <= len(points) <= 8
+        assert len({tuple(pt) for pt in points}) == len(points)  # no duplicates
+        validate_action(action)
+
+
+def test_polygon_round_trips_and_rejects_irregular_profiles():
+    from kairos.actions.schema import Action
+    from kairos.rl.action_space import UnrepresentableAction
+
+    hexagon = decode(
+        OPERATIONS.index(Operation.ADD_POLYGON), np.array([0.6, 0.4, 0.3, 0.7, 0.2, 0.0]), 0, {}
+    )
+    op_index, params, _ = encode(hexagon)
+    round_tripped = decode(op_index, params, 0, {}).parameters["points"]
+    assert [c for pt in round_tripped for c in pt] == pytest.approx(
+        [c for pt in hexagon.parameters["points"] for c in pt], abs=1e-2
+    )
+
+    # The L/U family profiles are irregular: encoding must say so loudly
+    # instead of emitting a target that decodes into a different shape.
+    l_profile = Action(
+        Operation.ADD_POLYGON,
+        parameters={"points": [[0, 0], [80, 0], [80, 6], [6, 6], [6, 60], [0, 60]]},
+    )
+    with pytest.raises(UnrepresentableAction):
+        encode(l_profile)
 
 
 def test_missing_target_pool_yields_penalizable_action():
