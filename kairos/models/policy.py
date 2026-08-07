@@ -90,8 +90,12 @@ class PolicyHeads(nn.Module):
 
         conditioned = torch.cat([fused, self.operation_embedding(operation)], dim=-1)
         # Sigmoid because the codec's slots are normalized to [0, 1]; emitting
-        # unbounded values would silently clip at decode time.
-        parameters = torch.sigmoid(self.parameter_head(conditioned))
+        # unbounded values would silently clip at decode time. The pre-squash
+        # value is returned too: PPO needs it as a Gaussian mean, and squashing
+        # then inverting would lose precision at the boundaries where BC-fitted
+        # parameters cluster.
+        parameter_mean = self.parameter_head(conditioned)
+        parameters = torch.sigmoid(parameter_mean)
 
         target_logits = self.target_head(conditioned)
         if target_mask is not None:
@@ -100,6 +104,7 @@ class PolicyHeads(nn.Module):
         return {
             "operation_logits": operation_logits,
             "parameters": parameters,
+            "parameter_mean": parameter_mean,
             "target_logits": target_logits,
         }
 
