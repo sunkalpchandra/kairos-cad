@@ -49,14 +49,39 @@ def _build_and_measure(family, params_cls, values, wall_thickness=True):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--family", default="plate")
-    parser.add_argument("--min-thickness", type=float, default=4.0)
-    parser.add_argument("--samples", type=int, default=60, help="FreeCAD builds for fitting")
-    parser.add_argument("--iterations", type=int, default=20)
-    parser.add_argument("--population", type=int, default=128)
-    parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--out", type=Path, default=Path("runs/optimize"))
+    parser.add_argument("--config", type=Path, default=None)
+    parser.add_argument("--family", default=None)
+    parser.add_argument("--min-thickness", type=float, default=None)
+    parser.add_argument("--samples", type=int, default=None, help="FreeCAD builds for fitting")
+    parser.add_argument("--iterations", type=int, default=None)
+    parser.add_argument("--population", type=int, default=None)
+    parser.add_argument("--degree", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args()
+
+    from kairos.config import load_config
+
+    # The config is the default; explicit flags win. Without this the
+    # optimization: section would be decorative.
+    section = dict(load_config(args.config).get("optimization", {}) or {})
+    known = {"family", "min_thickness", "samples", "iterations", "population",
+             "surrogate_degree", "out_dir"}
+    unknown = set(section) - known
+    if unknown:
+        print(f"error: unknown optimization keys: {sorted(unknown)}", file=sys.stderr)
+        return 2
+    args.family = args.family or section.get("family", "plate")
+    args.min_thickness = (
+        args.min_thickness if args.min_thickness is not None
+        else float(section.get("min_thickness", 4.0))
+    )
+    args.samples = args.samples or int(section.get("samples", 60))
+    args.iterations = args.iterations or int(section.get("iterations", 20))
+    args.population = args.population or int(section.get("population", 128))
+    args.degree = args.degree or int(section.get("surrogate_degree", 3))
+    args.seed = args.seed if args.seed is not None else 0
+    args.out = args.out or Path(section.get("out_dir", "runs/optimize"))
 
     from kairos.data.families import family_names, get_family
     from kairos.optimization import (
@@ -98,7 +123,7 @@ def main() -> int:
         return 1
 
     # --- fit and search -----------------------------------------------
-    model, metrics = train_surrogate(data, seed=args.seed)
+    model, metrics = train_surrogate(data, degree=args.degree, seed=args.seed)
     print(
         f"surrogate: mass R2 {metrics.mass_r2:.4f} (MAE {metrics.mass_mae:.2f} g), "
         f"thickness R2 {metrics.thickness_r2:.4f} (MAE {metrics.thickness_mae:.3f} mm), "
