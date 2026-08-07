@@ -6,8 +6,10 @@ torch = pytest.importorskip("torch", reason="requires the 'learn' extra")
 
 from kairos.models.vision_encoder import VIEWS, VisionEncoder  # noqa: E402
 
+N_VIEWS = len(VIEWS)
 
-def _views(batch=2, n_views=len(VIEWS), size=64, seed=0):
+
+def _views(batch=2, n_views=N_VIEWS, size=64, seed=0):
     generator = torch.Generator().manual_seed(seed)
     return torch.rand(batch, n_views, 3, size, size, generator=generator)
 
