@@ -21,7 +21,8 @@ htmlcov/
 
 # Generated data (regenerate with `make generate-data`)
 dataset/
-dataset_v*/          # regeneration staging dirs
+# Regeneration staging dirs (gitignore has no inline comments).
+dataset_v*/
 dataset_superseded/
 outputs/
 # Training checkpoints and metrics: regenerable via `make train-bc`.
