@@ -209,7 +209,8 @@ class RolloutCollector:
                 summary.has_solid = bool(next_observation.get("has_solid", False))
                 summary.mass_g = float(next_observation.get("mass_g", 0.0))
 
-            if terminated or truncated or crashed:
+            ended = terminated or truncated or crashed
+            if ended:
                 summary.terminated = bool(terminated)
                 summary.truncated = bool(truncated or crashed)
                 summary.crashed = crashed
@@ -223,7 +224,22 @@ class RolloutCollector:
                 )
                 break
         else:
+            # The loop ran out of budget rather than the environment ending the
+            # episode, so the last transition is still flagged mid-episode.
+            # Left that way, GAE chains its advantage into the next episode.
             summary.truncated = True
+            bootstrap = 0.0
+            if observation is not None:
+                with torch.no_grad():
+                    bootstrap = float(
+                        self.model.distribution(
+                            build_inputs(
+                                requirement, observation, device=self.device,
+                                max_text_length=self.max_text_length,
+                            )
+                        )[1][0]
+                    )
+            buffer.mark_last_truncated(bootstrap)
 
         return summary
 

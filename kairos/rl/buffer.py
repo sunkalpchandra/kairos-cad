@@ -91,6 +91,25 @@ class RolloutBuffer:
         if truncated and not terminated:
             self._bootstrap[len(self.transitions) - 1] = float(bootstrap_value or 0.0)
 
+    def mark_last_truncated(self, bootstrap_value: float = 0.0) -> bool:
+        """Flag the most recent transition as a truncated episode ending.
+
+        The collector can stop an episode for reasons the environment never
+        reports — its own per-episode cap, or the rollout step budget running
+        out. Those transitions arrive flagged as ordinary mid-episode steps, so
+        GAE would chain the advantage into the *next* episode (or invent a
+        terminal at the end of the buffer). Marking them here is what keeps the
+        boundary real. Returns False if there is nothing to mark.
+        """
+        if not self.transitions:
+            return False
+        last = self.transitions[-1]
+        if last.terminated or last.truncated:
+            return False  # the environment already ended it
+        last.truncated = True
+        self._bootstrap[len(self.transitions) - 1] = float(bootstrap_value)
+        return True
+
     # ---------------------------------------------------------- advantages
 
     def compute_advantages(self) -> tuple[torch.Tensor, torch.Tensor]:
