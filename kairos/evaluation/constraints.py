@@ -30,6 +30,8 @@ _ANGLE_TOL = 1.0
 #: A part that bends through an angle leaves its bounding box mostly empty.
 #: An L-bracket fills roughly half; a plate or block fills all of it.
 _MAX_BENT_FILL = 0.95
+#: Wall-thickness sampling tolerance, mm.
+_THICKNESS_TOL = 0.05
 
 
 @dataclass
@@ -148,6 +150,33 @@ def _check_hole_diameter(c: Constraint, observation: dict, spec: EngineeringSpec
         "satisfied" if ok else "violated",
         measured=sorted(round(h["diameter"], 3) for h in holes),
         detail=detail,
+    )
+
+
+def _check_min_wall_thickness(
+    c: Constraint, observation: dict, spec: EngineeringSpec
+) -> ConstraintResult:
+    """Check the thinnest wall against the requirement's manufacturing floor.
+
+    The measurement is expensive (ray casting against the solid), so it is not
+    part of every observation: whoever built the observation puts it in
+    ``summary["min_wall_thickness_mm"]``. Absent, the constraint stays
+    ``unmeasured`` — never satisfied by default.
+    """
+    measured = (observation.get("summary") or {}).get("min_wall_thickness_mm")
+    if measured is None:
+        return ConstraintResult(
+            c, "unmeasured", detail="no wall-thickness measurement in this observation"
+        )
+    required = float(c.value)
+    # Ray sampling can only over-estimate thickness, so a near-miss is treated
+    # as a pass within the sampling tolerance rather than a false rejection.
+    ok = float(measured) >= required - _THICKNESS_TOL
+    return ConstraintResult(
+        c,
+        "satisfied" if ok else "violated",
+        measured=round(float(measured), 3),
+        detail=f"thinnest wall {float(measured):.3f} mm, need >= {required} mm",
     )
 
 
@@ -356,8 +385,10 @@ def check_constraints(
             result = _check_mass_reduction(constraint, observation, spec, context)
         elif kind == "hole_positions_preserved":
             result = _check_hole_positions_preserved(constraint, observation, spec, context)
+        elif kind == "min_wall_thickness":
+            result = _check_min_wall_thickness(constraint, observation, spec)
         else:
-            # min_wall_thickness (Phase 6), symmetry, and unknown kinds.
+            # symmetry and unknown kinds.
             result = ConstraintResult(
                 constraint, "unmeasured", detail=f"no checker for {kind!r} yet"
             )

@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 
-def observe(engine) -> dict[str, Any]:
+def observe(engine, wall_thickness: bool = False) -> dict[str, Any]:
     """Snapshot the engine into a JSON-ready observation dict.
 
     Keys:
@@ -19,8 +19,26 @@ def observe(engine) -> dict[str, Any]:
         faces: face inventory (surface type, area, normals, cylinder data)
         sketch: active sketch status or None
         edge_count: number of solid edges (0 when no solid)
+
+    ``wall_thickness=True`` adds ``summary["min_wall_thickness_mm"]``. It is
+    off by default because the measurement ray-casts against the solid and
+    costs far more than the rest of an observation; callers that need the
+    manufacturing check (dataset generation, an episode's final state) opt in.
     """
     summary = engine.summary()
+    if wall_thickness and summary.get("has_solid"):
+        from kairos.evaluation.wall_thickness import measure_min_wall_thickness
+
+        try:
+            shape = engine.document.tip_shape()
+            measurement = measure_min_wall_thickness(shape)
+            if measurement.measured:
+                summary["min_wall_thickness_mm"] = measurement.min_thickness_mm
+                summary["wall_thickness_rays"] = measurement.rays_hit
+        except Exception:
+            # A failed measurement must leave the key absent, so the
+            # constraint reads `unmeasured` rather than silently passing.
+            pass
     observation: dict[str, Any] = {
         "summary": summary,
         "holes": [],
