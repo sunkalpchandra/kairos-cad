@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize demo clean
+.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -65,6 +65,10 @@ optimize:
 	@test -n "$(FREECAD_PY)" || (echo "FreeCAD python not found" && exit 1)
 	PYTHONPATH=$(CURDIR) $(FREECAD_PY) scripts/optimize_design.py \
 		--family plate --min-thickness 5.0 --out runs/optimize
+
+## Phase 7: freeze the benchmark split. Commit the result; it must not move.
+benchmark-suite:
+	$(PYTHON) scripts/benchmark_build.py --root dataset --out benchmark/kairos-cad-v1
 
 ## End-to-end demo: requirement → spec → build → rewards → exports (spec §50).
 demo:
