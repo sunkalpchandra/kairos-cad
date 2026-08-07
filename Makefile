@@ -57,7 +57,7 @@ train-ppo:
 
 ## Closed-loop comparison: BC vs PPO vs a legal-random baseline.
 eval-ppo:
-	$(PYTHON) scripts/evaluate_ppo.py --episodes 12
+	$(PYTHON) scripts/evaluate_ppo.py --episodes 14
 
 ## Phase 6: fit a surrogate, search for the lightest manufacturable design,
 ## then build the winner and report the VERIFIED numbers.
