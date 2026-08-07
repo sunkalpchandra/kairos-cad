@@ -40,6 +40,11 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--freecad-python", default=None)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="continue from last.pt in --out, keeping its history and best-so-far",
+    )
     args = parser.parse_args()
 
     try:
@@ -89,7 +94,13 @@ def main() -> int:
     loop_config.out_dir = str(out_dir)
 
     # ------------------------------------------------------------ the policy
-    if args.from_scratch:
+    resume_checkpoint = out_dir / "last.pt"
+    if args.resume and resume_checkpoint.exists():
+        from kairos.models.actor_critic import load_actor_critic
+
+        model = load_actor_critic(resume_checkpoint, device=args.device)
+        print(f"policy: resumed from {resume_checkpoint}")
+    elif args.from_scratch:
         model_section = dict(config.get("model", {}) or {})
         model = ActorCritic(KairosVLA(VLAConfig.from_dict(model_section)))
         print("policy: randomly initialized (--from-scratch)")
@@ -127,6 +138,12 @@ def main() -> int:
         device=args.device, seed=loop_config.seed,
     )
     loop = PPOTrainingLoop(trainer, collector, loop_config, eval_requirements=held_out_pool)
+    start_iteration = loop.resume_from(out_dir) if args.resume else 0
+    if start_iteration:
+        print(
+            f"resuming after iteration {start_iteration} "
+            f"(best so far {loop.best_success_rate:.3f})"
+        )
 
     def report(record) -> None:
         rollout, update = record.rollout, record.update
@@ -150,7 +167,7 @@ def main() -> int:
         f"{loop_config.steps_per_iteration} steps"
     )
     try:
-        loop.run(on_iteration=report)
+        loop.run(on_iteration=report, start_iteration=start_iteration)
     except KeyboardInterrupt:
         print("\ninterrupted; keeping the checkpoints written so far", file=sys.stderr)
     finally:
