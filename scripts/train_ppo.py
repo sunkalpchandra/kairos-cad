@@ -175,6 +175,11 @@ def main() -> int:
 
     report_payload = loop.report()
     report_payload["bc_checkpoint"] = None if args.from_scratch else str(args.bc)
+    # Persist the exact pools so evaluation cannot re-derive a different
+    # split: requirement_pools() permutes by pool size, so a different
+    # --requirements value silently moves requirements across the boundary.
+    report_payload["train_requirements"] = train_pool
+    report_payload["held_out_requirements"] = held_out_pool
     report_payload["environment"] = {
         "restarts": getattr(env, "restarts", 0),
         "timeouts": getattr(env, "timeouts", 0),

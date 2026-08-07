@@ -63,8 +63,34 @@ def main() -> int:
         print("error: nothing to evaluate", file=sys.stderr)
         return 1
 
-    _, held_out = requirement_pools(args.root, limit=args.requirements, seed=args.seed)
-    print(f"held-out requirements: {len(held_out)}")
+    # Re-deriving the split here is how the published comparison ended up
+    # measuring PPO on requirements it had trained on: train_ppo defaulted
+    # to a 64-requirement pool and this script to 40, and requirement_pools
+    # permutes over the pool, so the boundary moved. Use the run's own
+    # recorded pool whenever it exists.
+    report_path = args.ppo.parent / "report.json"
+    held_out: list[str] = []
+    trained_on: set[str] = set()
+    if report_path.exists():
+        payload = json.loads(report_path.read_text())
+        held_out = list(payload.get("held_out_requirements") or [])
+        trained_on = set(payload.get("train_requirements") or [])
+    if held_out:
+        print(f"held-out requirements: {len(held_out)} (from {report_path})")
+    else:
+        _, held_out = requirement_pools(args.root, limit=args.requirements, seed=args.seed)
+        print(
+            f"held-out requirements: {len(held_out)} (re-derived; "
+            f"{report_path} has no recorded pool, so overlap is unverified)"
+        )
+    leaked = [r for r in held_out if r in trained_on]
+    if leaked:
+        print(
+            f"error: {len(leaked)} of {len(held_out)} evaluation requirements were "
+            "trained on; refusing to report a contaminated comparison.",
+            file=sys.stderr,
+        )
+        return 1
 
     try:
         env = RemoteCADEnv(max_steps=args.max_episode_steps)
