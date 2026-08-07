@@ -128,7 +128,13 @@ class PPOTrainer:
         predicted_values: list[np.ndarray] = []
         actual_returns: list[np.ndarray] = []
 
-        self.model.train()
+        # eval(), not train(): dropout must stay off during the update. The
+        # stored log-probs were computed by the deterministic (eval) policy, so
+        # re-scoring under dropout compares two different functions and the PPO
+        # ratio stops meaning "how much did the policy change" — it reads as a
+        # large spurious KL from step one. Only dropout differs between modes
+        # here; the norm layers are LayerNorm/GroupNorm, which do not.
+        self.model.eval()
         for epoch in range(c.epochs_per_update):
             metrics.epochs_run = epoch + 1
             epoch_kl: list[float] = []
