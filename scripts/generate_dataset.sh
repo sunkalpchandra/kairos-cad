@@ -46,13 +46,19 @@ for i in "${!SEEDS[@]}"; do
 done
 for pid in $pids; do wait "$pid"; done
 
-python3 - "$ROOT" "$PER_SHARD" "${SEEDS[@]}" <<'PY'
-import json, sys
+COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+
+COMMIT="$COMMIT" python3 - "$ROOT" "$PER_SHARD" "${SEEDS[@]}" <<'PY'
+import json, os, sys
 from pathlib import Path
 
 root, per_shard, *seeds = sys.argv[1], int(sys.argv[2]), *map(int, sys.argv[3:])
 manifest = {
     "generator": "scripts/generate_brackets.py",
+    # Seeds alone do not pin the dataset: the families' feasibility rules and
+    # the reward/constraint semantics recorded in each trajectory live in the
+    # code, so reproducing a run means checking out this commit too.
+    "commit": os.environ.get("COMMIT", "unknown"),
     "per_shard": per_shard,
     "shards": [
         {"seed": s, "start_id": i * 10000, "count": per_shard} for i, s in enumerate(seeds)
