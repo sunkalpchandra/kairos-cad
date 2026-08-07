@@ -117,7 +117,6 @@ class PPOTrainer:
 
     def update(self, buffer) -> UpdateMetrics:
         """Run the configured epochs of PPO over one rollout buffer."""
-        c = self.config
         metrics = UpdateMetrics()
         if len(buffer) == 0:
             return metrics
@@ -134,7 +133,19 @@ class PPOTrainer:
         # ratio stops meaning "how much did the policy change" — it reads as a
         # large spurious KL from step one. Only dropout differs between modes
         # here; the norm layers are LayerNorm/GroupNorm, which do not.
+        was_training = self.model.training
         self.model.eval()
+        try:
+            metrics = self._run_epochs(buffer, metrics, collected,
+                                       predicted_values, actual_returns)
+        finally:
+            # Restore the caller's mode: eval() is what the update needs,
+            # not a permanent state change to someone else's model.
+            self.model.train(was_training)
+        return self._finalize(metrics, collected, predicted_values, actual_returns)
+
+    def _run_epochs(self, buffer, metrics, collected, predicted_values, actual_returns):
+        c = self.config
         for epoch in range(c.epochs_per_update):
             metrics.epochs_run = epoch + 1
             epoch_kl: list[float] = []
@@ -208,7 +219,9 @@ class PPOTrainer:
                 # would be optimizing against a stale advantage estimate.
                 metrics.stopped_early = True
                 break
+        return metrics
 
+    def _finalize(self, metrics, collected, predicted_values, actual_returns):
         metrics.policy_loss = float(np.mean(collected["policy"])) if collected["policy"] else 0.0
         metrics.value_loss = float(np.mean(collected["value"])) if collected["value"] else 0.0
         metrics.entropy = float(np.mean(collected["entropy"])) if collected["entropy"] else 0.0

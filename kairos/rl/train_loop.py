@@ -150,7 +150,12 @@ class PPOTrainingLoop:
 
             record = IterationRecord(
                 iteration=iteration,
-                rollout={**summarize_episodes(episodes), **buffer.statistics()},
+                # buffer.statistics() also defines "episodes" (terminal transitions),
+                # which would silently overwrite the episodes actually run.
+                rollout={
+                    **{f"buffer_{k}": v for k, v in buffer.statistics().items()},
+                    **summarize_episodes(episodes),
+                },
                 update=update.to_dict(),
             )
 
