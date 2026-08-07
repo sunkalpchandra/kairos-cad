@@ -104,12 +104,43 @@ class PPOTrainingLoop:
 
     # -------------------------------------------------------------- training
 
-    def run(self, on_iteration=None) -> list[IterationRecord]:
+    def resume_from(self, out_dir: str | Path) -> int:
+        """Restore history and best-so-far from a previous run's directory.
+
+        Weights are loaded separately (by the caller, from ``last.pt``); this
+        recovers the bookkeeping so a resumed run does not overwrite a better
+        earlier checkpoint with a worse new one, and does not renumber its
+        iterations from 1.
+        """
+        history_path = Path(out_dir) / "history.json"
+        if not history_path.exists():
+            return 0
+        records = json.loads(history_path.read_text())
+        self.history = [
+            IterationRecord(
+                iteration=r["iteration"],
+                seconds=r.get("seconds", 0.0),
+                rollout=r.get("rollout", {}),
+                update=r.get("update", {}),
+                evaluation=r.get("evaluation"),
+            )
+            for r in records
+        ]
+        for record in self.history:
+            if record.evaluation:
+                success = float(record.evaluation.get("success_rate", 0.0))
+                if success > self.best_success_rate:
+                    self.best_success_rate = success
+                    self.best_iteration = record.iteration
+        return self.history[-1].iteration if self.history else 0
+
+    def run(self, on_iteration=None, start_iteration: int = 0) -> list[IterationRecord]:
         """Train for ``config.iterations``, returning the per-iteration log."""
         out_dir = Path(self.config.out_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        for iteration in range(1, self.config.iterations + 1):
+        first = start_iteration + 1
+        for iteration in range(first, first + self.config.iterations):
             started = time.perf_counter()
             buffer = RolloutBuffer(
                 gamma=self.trainer.config.gamma, gae_lambda=self.trainer.config.gae_lambda
