@@ -22,6 +22,8 @@ htmlcov/
 # Generated data (regenerate with `make generate-data`)
 dataset/
 outputs/
+# Training checkpoints and metrics: regenerable via `make train-bc`.
+runs/
 mlruns/
 wandb/
 
