@@ -57,8 +57,8 @@ The dataset builder is where the honest limits live.
   regular n-gon, while six families sketch irregular profiles. Those steps are
   dropped and counted rather than fitted to the nearest hexagon, which would
   train the policy toward a shape the expert never drew. Coverage on the
-  1,080-design dataset is **92.2%** (12,454 steps seen, 11,480 kept, 974
-  dropped).
+  1,080-design dataset is **92.2%** (12,461 steps seen, 11,488 kept,
+  973 dropped).
 - **Targets are not supervised.** `encode` cannot recover a target *index*
   without the live edge/face list, which trajectories do not record.
   Supervising the recorded `0` would teach "always pick the first edge", so the
@@ -70,7 +70,7 @@ The dataset builder is where the honest limits live.
 
 Legality masks are rebuilt from the frozen numeric vector rather than a live
 engine. On the full dataset the expert's own action is legal under that
-reconstruction in **11,480 of 11,480 steps**, which is what makes the
+reconstruction in **11,488 of 11,488 steps**, which is what makes the
 reconstruction trustworthy.
 
 ## Training
