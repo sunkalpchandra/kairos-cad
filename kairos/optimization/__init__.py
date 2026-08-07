@@ -14,7 +14,10 @@ from kairos.optimization.optimizer import (
 from kairos.optimization.surrogate import (
     RidgeSurrogate,
     Sample,
+    Standardizer,
     SurrogateData,
+    SurrogateMetrics,
+    r_squared,
     train_surrogate,
 )
 
@@ -23,9 +26,12 @@ __all__ = [
     "OptimizationResult",
     "RidgeSurrogate",
     "Sample",
+    "Standardizer",
     "SurrogateData",
+    "SurrogateMetrics",
     "optimize_design",
     "penalized_objective",
+    "r_squared",
     "train_surrogate",
     "verify_result",
 ]
