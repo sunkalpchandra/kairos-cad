@@ -7,7 +7,7 @@
 #
 #   scripts/generate_dataset.sh [root] [per_shard]
 #
-# Requires the FreeCAD bundled interpreter (see CLAUDE.md).
+# Requires the FreeCAD bundled interpreter (see docs/freecad-setup.md).
 set -euo pipefail
 
 ROOT="${1:-dataset}"
