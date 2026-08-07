@@ -105,6 +105,17 @@ class EpochMetrics:
         return data
 
 
+def _labels_of(subset) -> np.ndarray:
+    """Operation labels of a split, read straight from the backing array.
+
+    Indexing the Dataset row by row would build every tensor column for all
+    ~10k rows just to read one integer each.
+    """
+    if isinstance(subset, Subset):
+        return np.asarray(subset.dataset.arrays["operation"])[np.asarray(subset.indices)]
+    return np.asarray(subset.arrays["operation"])
+
+
 def configs_from(config: dict[str, Any]) -> tuple[VLAConfig, TrainConfig, str]:
     """Build ``(VLAConfig, TrainConfig, out_dir)`` from a loaded YAML config.
 
@@ -278,10 +289,7 @@ class BCTrainer:
         # Weights come from the training split only — deriving them from the
         # whole dataset would leak validation label frequencies into training.
         if c.class_weighting != "none":
-            labels = np.asarray(
-                [int(train_set[i]["operation"]) for i in range(len(train_set))]
-            )
-            self.class_weights = self.compute_class_weights(labels)
+            self.class_weights = self.compute_class_weights(_labels_of(train_set))
         train_loader = DataLoader(
             train_set, batch_size=c.batch_size, shuffle=True, collate_fn=collate
         )
