@@ -185,3 +185,47 @@ def test_summary_reports_rates_over_scored_episodes():
 def test_collector_requires_at_least_one_requirement():
     with pytest.raises(ValueError, match="at least one requirement"):
         RolloutCollector(ScriptedEnv(), _model(), [])
+
+
+def test_an_episode_cut_by_the_step_cap_is_marked_truncated():
+    """Otherwise GAE chains the advantage into the next episode.
+
+    The environment never reports truncation here — the collector's own
+    per-episode cap ends it — so the last transition would stay flagged as an
+    ordinary mid-episode step.
+    """
+    buffer = RolloutBuffer()
+    collector = RolloutCollector(
+        ScriptedEnv(episode_length=99), _model(), REQUIREMENTS, max_episode_steps=3
+    )
+    collector.collect(buffer, n_steps=6)
+
+    assert len(buffer) == 6
+    endings = [(t.terminated, t.truncated) for t in buffer.transitions]
+    assert endings[2] == (False, True), "episode 1 was cut by the cap"
+    assert endings[5] == (False, True), "episode 2 was cut by the cap"
+    assert set(buffer._bootstrap) == {2, 5}
+
+
+def test_a_budget_cut_episode_is_also_marked():
+    buffer = RolloutBuffer()
+    collector = RolloutCollector(
+        ScriptedEnv(episode_length=99), _model(), REQUIREMENTS, max_episode_steps=10
+    )
+    collector.collect(buffer, n_steps=4)
+    assert buffer.transitions[-1].truncated is True
+
+
+def test_advantage_does_not_leak_across_a_cap_cut_boundary():
+    """The concrete failure the flag prevents."""
+    buffer = RolloutBuffer(gamma=0.99, gae_lambda=0.95)
+    collector = RolloutCollector(
+        ScriptedEnv(episode_length=99), _model(), REQUIREMENTS, max_episode_steps=2
+    )
+    collector.collect(buffer, n_steps=4)
+    advantages, _ = buffer.compute_advantages()
+    # Step 1 ends episode 1: its advantage must use its own bootstrap only,
+    # never episode 2's rewards.
+    t = buffer.transitions[1]
+    expected = t.reward + 0.99 * buffer._bootstrap[1] - float(t.value)
+    assert float(advantages[1]) == pytest.approx(expected, abs=1e-5)

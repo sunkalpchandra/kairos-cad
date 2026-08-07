@@ -157,3 +157,30 @@ def test_bridged_environment_builds_real_geometry():
         assert env.restarts == 0
     finally:
         env.close()
+
+
+def test_a_desynced_stream_restarts_instead_of_escaping():
+    """A malformed line is a ProtocolError, which is not a RemoteEnvError --
+    it used to propagate straight out of the rollout loop."""
+    env = _client()
+    try:
+        original = env._read_line
+        env._read_line = lambda timeout=None: "this is not json\n"
+        obs, _, _, truncated, info = env.step(0, [0.5] * 6)
+        env._read_line = original
+        assert obs is None and truncated is True
+        assert info["crashed"] is True
+        assert env.restarts >= 1
+    finally:
+        env.close()
+
+
+def test_max_steps_reaches_the_server():
+    """The client's cap was stored and never sent; the server used its own."""
+    env = RemoteCADEnv(python=sys.executable, max_steps=7, timeout=30.0)
+    try:
+        command = env._process.args
+        assert "--max-steps" in command
+        assert command[command.index("--max-steps") + 1] == "7"
+    finally:
+        env.close()

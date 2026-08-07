@@ -163,3 +163,16 @@ def test_dropout_is_off_during_the_update():
     trainer.optimizer = torch.optim.AdamW(model.parameters(), lr=0.0)
     metrics = trainer.update(buffer)
     assert abs(metrics.approx_kl) < 1e-5
+
+
+def test_update_restores_the_callers_training_mode():
+    """eval() is what the update needs, not a permanent change to the model."""
+    model = ActorCritic(KairosVLA(TINY))
+    trainer = PPOTrainer(model, PPOConfig(epochs_per_update=1, minibatch_size=8))
+    model.train()
+    trainer.update(_rollout(model, n=8))
+    assert model.training is True
+
+    model.eval()
+    trainer.update(_rollout(model, n=8))
+    assert model.training is False
