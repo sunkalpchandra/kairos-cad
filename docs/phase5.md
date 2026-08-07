@@ -44,11 +44,13 @@ Startup to first observation is ~1.2 s, and a 25-iteration run completed with
 Standard clipped-surrogate PPO over an actor-critic sharing the VLA trunk, plus
 the pieces this domain forces:
 
-- **A KL anchor to the frozen BC policy.** A valid build is a long, precisely
-  ordered action sequence and the finish reward is sparse. A policy that drifts
-  off the demonstration manifold chasing shaping reward cannot recover, because
-  random exploration does not rediscover a 12-step valid build. `bc_kl_coef`
-  weights KL(current ‖ BC); setting it to 0 gives the unanchored baseline.
+- **A KL anchor to the frozen BC policy.** The reasoning: a valid build is a
+  long, precisely ordered action sequence with a sparse finish reward, so a
+  policy that drifts off the demonstration manifold chasing shaping reward
+  should not recover — random exploration does not rediscover a 12-step valid
+  build. `bc_kl_coef` weights KL(current ‖ BC); 0 disables it. The ablation
+  below tests this and only partly supports it: the anchor does not improve
+  success rate, but it does keep invalid actions at zero.
 - **Termination and truncation are distinguished.** `FINISH_DESIGN` has no
   future, so its next value is 0; a step-budget cutoff bootstraps from the
   critic. Conflating them would stamp a fabricated terminal penalty on every
@@ -102,6 +104,36 @@ The random baseline is legal-random, not noise, and it still never finishes and
 produces a solid in only 14% of episodes. That is the floor these numbers sit
 above.
 
+### Ablation: does the BC anchor earn its place?
+
+Run twice, identically, changing only `bc_kl_coef` (0.05 vs 0.0), then scored
+under the same 14-episode held-out protocol:
+
+| run | success | solid | mean reward | invalid actions |
+| --- | --- | --- | --- | --- |
+| anchored (`bc_kl_coef=0.05`) | 0.286 | **1.000** | **+1.88** | **0.000** |
+| unanchored (`bc_kl_coef=0.0`) | 0.286 | 0.786 | −0.37 | 0.295 |
+
+**The anchor did not change the success rate.** Both reach 0.286, so the
+claim that it is "what makes RL viable here" is not supported by this
+experiment — it is a hypothesis the data declined to confirm.
+
+What it does buy is stability in everything around the headline number: the
+anchored policy produces a valid solid in every episode and emits no invalid
+actions at all, while the unanchored one degrades to 79% solids and a 30%
+invalid-action rate, with mean reward going negative. That is consistent with
+the drift story, just far weaker than "necessary".
+
+There is a second lesson here, and it is about measurement rather than
+algorithms. During training the unanchored run reported a held-out success rate
+of **0.500** — apparently twice the anchored run — on the 6-episode evaluation
+the loop runs every 5 iterations. At 14 episodes it scored 0.286, identical to
+the anchored run. Six episodes over six requirements simply cannot separate
+those hypotheses, and the best-checkpoint selection inside the loop is picking
+on that noisy estimate. `eval_episodes` is now defaulted higher for this
+reason, and the reported intervals (`[0.07, 0.50]` for a 0.286 point estimate)
+show how much room remains.
+
 ### What this does not show
 
 - **28.6% is not a solved task.** Roughly seven in ten held-out requirements
@@ -109,9 +141,9 @@ above.
 - **The held-out pool is 6 requirements over 14 episodes.** That is enough to
   separate 0.286 from 0.000, not enough for a tight confidence interval;
   `bootstrap_interval` is provided for exactly this reason.
-- **The BC-KL anchor grew to ~1.8 over the run.** The policy is drifting from
-  the demonstrations even with the anchor — the coefficient is doing something,
-  but it is not pinned, and an anchored/unanchored ablation is not yet run.
+- **The BC-KL anchor grew to ~1.8 over the run.** The policy drifts from the
+  demonstrations even with the anchor: the coefficient shapes behavior but
+  does not pin it, which the ablation above bears out.
 - **Constraint satisfaction sat at 0.40 for both policies.** PPO learned to
   finish more often, not to satisfy more constraints; the gain is in
   completing valid builds, not in better engineering.
@@ -130,7 +162,8 @@ initialization matters, not a way to train a usable policy.
 
 ## Still out of scope
 
-- Anchored vs unanchored ablation, and a sweep over `bc_kl_coef`.
+- A `bc_kl_coef` sweep and multiple seeds. The single-seed ablation above is
+  suggestive, not conclusive.
 - Parallel environments. Rollouts are serial because FreeCAD recomputes are,
   and several bridged servers would multiply throughput straightforwardly.
 - Target-head supervision (Phase 4 could not supervise it; PPO trains it only
