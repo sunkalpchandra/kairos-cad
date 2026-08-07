@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite demo clean
+.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -69,6 +69,11 @@ optimize:
 ## Phase 7: freeze the benchmark split. Commit the result; it must not move.
 benchmark-suite:
 	$(PYTHON) scripts/benchmark_build.py --root dataset --out benchmark/kairos-cad-v1
+
+## Run the benchmark. PRESET=smoke|core|full.
+benchmark:
+	$(PYTHON) scripts/run_benchmark.py --preset $(or $(PRESET),smoke) \
+		--suite benchmark/kairos-cad-v1 --out runs/benchmark
 
 ## End-to-end demo: requirement → spec → build → rewards → exports (spec §50).
 demo:
