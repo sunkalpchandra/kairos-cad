@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc demo clean
+.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -49,6 +49,15 @@ eval-bc:
 	$(PYTHON) scripts/evaluate_bc.py --checkpoint runs/bc/checkpoint.pt \
 		--out runs/bc/evaluation.json
 	$(PYTHON) scripts/replay_policy.py --sample 12 --out runs/bc/replay.json
+
+## PPO fine-tuning of the BC policy against the live CAD environment.
+## Runs under the torch interpreter; the environment is served out of FreeCAD's.
+train-ppo:
+	$(PYTHON) scripts/train_ppo.py --bc runs/bc/checkpoint.pt --out runs/ppo
+
+## Closed-loop comparison: BC vs PPO vs a legal-random baseline.
+eval-ppo:
+	$(PYTHON) scripts/evaluate_ppo.py --episodes 12
 
 ## End-to-end demo: requirement → spec → build → rewards → exports (spec §50).
 demo:
