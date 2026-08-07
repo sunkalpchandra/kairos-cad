@@ -54,5 +54,6 @@ behavioral_cloning:
   # correlated for a step-level split to measure generalization.
   val_fraction: 0.15
   grad_clip: 1.0
+  class_weighting: inverse_sqrt
   device: auto  # auto picks Metal on Apple silicon, then CUDA, then CPU
   out_dir: runs/bc
