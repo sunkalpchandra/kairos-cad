@@ -25,8 +25,6 @@ under old and new policies and so cancel in the PPO ratio.
 
 from __future__ import annotations
 
-import math
-
 import torch
 from torch import distributions as td
 
@@ -167,6 +165,3 @@ def explained_variance(predicted: torch.Tensor, actual: torch.Tensor) -> float:
     return float(1.0 - (actual - predicted).var() / variance)
 
 
-def log_prob_of_uniform(n: int) -> float:
-    """Log-probability of one choice under a uniform categorical of size n."""
-    return -math.log(max(n, 1))

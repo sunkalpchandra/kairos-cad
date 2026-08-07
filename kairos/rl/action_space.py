@@ -12,7 +12,6 @@ Slot ranges are frozen here; policies and BC datasets must agree on them.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 
 import numpy as np
 
@@ -87,13 +86,6 @@ def _fit_regular_polygon(points: list) -> tuple[float, float, float, int, float]
             "irregular profile into ADD_LINE actions"
         )
     return cx, cy, radius, n, math.degrees(angles[0]) % 360.0
-
-
-@dataclass(frozen=True)
-class DecodedTarget:
-    """What kind of target list an operation indexes into."""
-
-    kind: str | None  # 'edges' | 'faces' | 'features' | None
 
 
 TARGET_KIND: dict[Operation, str] = {
