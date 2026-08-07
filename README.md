@@ -70,7 +70,10 @@ Development proceeds in phases (see `docs/`):
       designs with reward-annotated expert trajectories.
 - [x] **Phase 3 — CAD representation**: geometry graph, observation
       snapshots, numerical/feature encoders, rendered views.
-- [ ] Phase 4 — Multimodal VLA + behavioral cloning
+- [x] **Phase 4 — Multimodal VLA + behavioral cloning**: language/vision/state
+      encoders, attention fusion, hierarchical action heads; 0.955 held-out
+      next-action accuracy against a 0.277 majority baseline
+      ([docs/phase4.md](docs/phase4.md)).
 - [~] Phase 5 — RL: Gymnasium env, shaped reward, action masking done; PPO
       training pending
 - [ ] Phase 6 — Engineering optimization + learned surrogate
@@ -78,10 +81,25 @@ Development proceeds in phases (see `docs/`):
 - [ ] Phase 8 — Interactive Three.js dashboard
 - [ ] Phase 9 — Paper (NeurIPS 2026 format)
 
+## Policy
+
+A 1.14M-parameter vision-language-action model maps a requirement plus the
+current geometry to the next structured action. Behavioral cloning on the
+expert trajectories reaches **0.955** held-out next-action accuracy (majority
+baseline 0.277), held out by *design* rather than by step — see
+[docs/phase4.md](docs/phase4.md).
+
+```bash
+make setup-learn   # optional torch extra; not installable under FreeCAD's python
+make train-bc
+python3 scripts/evaluate_bc.py --checkpoint runs/bc/checkpoint.pt
+```
+
 ## Requirements
 
 - Python ≥ 3.10
 - [FreeCAD](https://www.freecad.org/) ≥ 0.21 (1.x recommended)
+- Optional, for Phase 4 learning only: PyTorch ≥ 2.2 (`make setup-learn`)
 
 FreeCAD is **not** pip-installable. KAIROS locates an installed FreeCAD and
 imports its Python modules (see `kairos/cad/backend.py` and
