@@ -21,6 +21,8 @@ htmlcov/
 
 # Generated data (regenerate with `make generate-data`)
 dataset/
+dataset_v*/          # regeneration staging dirs
+dataset_superseded/
 outputs/
 # Training checkpoints and metrics: regenerable via `make train-bc`.
 runs/
