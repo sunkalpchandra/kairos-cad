@@ -77,6 +77,37 @@ def test_no_invented_values():
     assert spec.material is None
 
 
+def test_thread_designation_is_not_read_as_a_hole_count():
+    """"M4" states a diameter; the 4 must not become a quantity."""
+    spec = parse_requirement("Design a bracket with M4 mounting holes on the base.")
+    assert spec.hole_count is None
+    assert spec.hole_diameter == 4.0
+
+
+def test_sub_component_dimensions_are_not_the_part_envelope():
+    """A triple that sizes a sub-component the design then stacks material on
+    is left unextracted — the finished part is meant to be taller than it."""
+    reinforced = parse_requirement(
+        "Design a reinforced rectangular plate 100 x 60 x 6.0 mm stiffened by 2 "
+        "full-length ribs 8 mm wide and 8 mm tall, with 4 corner through-holes "
+        "of 6 mm diameter. Minimize mass."
+    )
+    assert reinforced.get("bounding_box_exact") is None
+
+    braced = parse_requirement(
+        "Design a support bracket with a 90 x 50 x 8.0 mm base plate and a 5.0 mm "
+        "thick vertical wall 50 mm tall, braced by a 20 mm triangular rib."
+    )
+    assert braced.get("bounding_box_exact") is None
+
+    # A plate really is its stated block, so that envelope still parses.
+    plain = parse_requirement(
+        "Design a rectangular mounting plate 100 x 60 x 6.0 mm with 12 "
+        "through-holes of 5 mm diameter in a 4x3 grid."
+    )
+    assert plain.get("bounding_box_exact").value == [100.0, 60.0, 6.0]
+
+
 def test_round_trip_serialization():
     spec = parse_requirement("Plate with 4 M5 holes, minimum wall thickness: 3 mm.")
     restored = EngineeringSpec.from_dict(spec.to_dict())

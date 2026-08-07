@@ -21,6 +21,13 @@ _METRIC_THREADS = {"M3": 3.0, "M4": 4.0, "M5": 5.0, "M6": 6.0, "M8": 8.0, "M10":
 
 _NUM = r"(\d+(?:\.\d+)?)"
 
+#: Features that add material on top of a stated block of dimensions, so a
+#: "A x B x C mm" triple in the same sentence sizes a sub-component rather than
+#: the finished part's envelope.
+_STACKED_FEATURE_RE = re.compile(
+    r"\b(ribs?|gussets?|bosses|boss|hubs?|walls?|stiffen\w*|braced|raised)\b", re.I
+)
+
 
 def _find_hole_spec(text: str) -> tuple[int | None, float | None]:
     """Extract (hole_count, hole_diameter_mm) from the text."""
@@ -33,8 +40,10 @@ def _find_hole_spec(text: str) -> tuple[int | None, float | None]:
         count = int(m.group(1))
         diameter = _METRIC_THREADS.get(m.group(2).upper())
     else:
-        # "8 mounting holes", "3 through-holes"
-        m = re.search(r"(\d+)\s+(?:mounting\s+|through[- ]?)?holes?", text, re.I)
+        # "8 mounting holes", "3 through-holes". The lookbehind keeps the
+        # digit of a thread designation ("M4 mounting holes") from being read
+        # as a count — that number is a diameter, not a quantity.
+        m = re.search(r"(?<![A-Za-z0-9])(\d+)\s+(?:mounting\s+|through[- ]?)?holes?", text, re.I)
         if m:
             count = int(m.group(1))
         # "holes of 5 mm diameter", "5 mm diameter holes", "hole diameter: 5 mm"
@@ -82,9 +91,13 @@ def parse_requirement(text: str) -> EngineeringSpec:
     if m:
         spec.constraints.append(Constraint("mounting_angle", float(m.group(1)), tolerance=0.5))
 
-    # "60 x 40 x 5 mm" exact envelope
+    # "60 x 40 x 5 mm" exact envelope — but only when the triple describes the
+    # whole part. When the text also stacks material on it ("... 100 x 60 x 6 mm
+    # plate stiffened by ribs 8 mm tall"), the triple sizes a sub-component and
+    # the real envelope is larger; emitting it as the part envelope would invent
+    # a requirement the part is meant to violate, so it is left unextracted.
     m = re.search(rf"{_NUM}\s*[x×]\s*{_NUM}\s*[x×]\s*{_NUM}\s*mm", text, re.I)
-    if m:
+    if m and not _STACKED_FEATURE_RE.search(text):
         dims = [float(m.group(i)) for i in (1, 2, 3)]
         spec.constraints.append(Constraint("bounding_box_exact", dims, tolerance=1.0))
 
