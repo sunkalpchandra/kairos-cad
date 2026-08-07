@@ -144,3 +144,39 @@ def test_empty_validation_set_does_not_crash():
     trainer = BCTrainer(KairosVLA(TINY), TrainConfig(epochs=1, batch_size=4, device="cpu"))
     history = trainer.fit(train, val)
     assert np.isnan(history[-1].val_loss)
+
+
+def test_class_weighting_is_off_by_default():
+    trainer = BCTrainer(KairosVLA(TINY), TrainConfig(device="cpu"))
+    assert trainer.compute_class_weights(np.array([0, 0, 0, 1])) is None
+
+
+def test_inverse_sqrt_weights_favour_rare_operations():
+    trainer = BCTrainer(
+        KairosVLA(TINY), TrainConfig(device="cpu", class_weighting="inverse_sqrt")
+    )
+    labels = np.array([0] * 100 + [1] * 4)  # one common, one rare
+    weights = trainer.compute_class_weights(labels)
+    assert weights[1] > weights[0]
+    assert float(weights[0]) == pytest.approx(float(weights[1]) * np.sqrt(4 / 100), rel=1e-5)
+    # Unobserved operations stay neutral rather than going infinite.
+    assert float(weights[5]) == pytest.approx(1.0)
+
+
+def test_unknown_class_weighting_is_rejected():
+    trainer = BCTrainer(KairosVLA(TINY), TrainConfig(device="cpu", class_weighting="bogus"))
+    with pytest.raises(ValueError, match="unknown class_weighting"):
+        trainer.compute_class_weights(np.array([0, 1]))
+
+
+def test_class_weights_come_from_the_training_split_only():
+    """Deriving them from all rows would leak validation label frequencies."""
+    dataset = TrajectoryDataset(_arrays(n_rows=64, n_designs=8, seed=2))
+    train, val = split_by_design(dataset, val_fraction=0.25, seed=2)
+    trainer = BCTrainer(
+        KairosVLA(TINY),
+        TrainConfig(epochs=1, batch_size=16, device="cpu", class_weighting="inverse_sqrt"),
+    )
+    trainer.fit(train, val)
+    train_labels = np.array([int(train[i]["operation"]) for i in range(len(train))])
+    assert torch.allclose(trainer.class_weights, trainer.compute_class_weights(train_labels))
