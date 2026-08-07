@@ -51,7 +51,9 @@ order:
 
 | policy | progress | success | valid | constraints | efficiency |
 | --- | --- | --- | --- | --- | --- |
-| `oracle-replay` | **0.594** | 0.500 | 0.924 | 0.656 | 1.000 |
+| `oracle-replay` (ceiling) | **0.594** | 0.500 | 0.924 | 0.656 | 1.000 |
+| `bc` | **0.445** | 0.281 | 0.957 | 0.453 | 0.620 |
+| `ppo` | 0.413 | 0.250 | 0.951 | 0.477 | 0.675 |
 | `scripted-spec` | 0.224 | 0.000 | 1.000 | 0.211 | 0.640 |
 | `immediate-finish` | 0.217 | 0.156 | 1.000 | 0.266 | 1.000 |
 | `legal-random` | 0.146 | 0.000 | 0.676 | 0.268 | 0.604 |
@@ -61,14 +63,27 @@ Milestone attainment shows where each dies:
 | policy | sketch | geometry | solid | valid | holes | constraints | finished |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `oracle-replay` | 1.00 | 1.00 | 0.78 | 0.78 | 0.75 | 0.59 | 0.50 |
+| `bc` | 1.00 | 1.00 | **1.00** | **1.00** | 0.84 | 0.31 | 0.28 |
+| `ppo` | 1.00 | 1.00 | **1.00** | **1.00** | 0.72 | 0.31 | 0.25 |
 | `scripted-spec` | 1.00 | 1.00 | **1.00** | **1.00** | 0.47 | 0.19 | 0.00 |
 | `immediate-finish` | 0.44 | 0.44 | 0.44 | 0.44 | 0.38 | 0.16 | 0.16 |
 | `legal-random` | 0.66 | 0.69 | 0.47 | 0.47 | 0.38 | 0.16 | 0.00 |
 
-The scripted baseline builds a valid solid **every single time** and then dies
-at holes — it places them, but rarely the right count in the right places. That
-is a far more actionable diagnosis than "success 0.000", which is all the
-Phase 5 metric could say about it.
+**BC and PPO succeed on 28% and 25% of tasks — not 0.000.** Phase 5 measured
+only full builds from an empty document and reported zero for everything. Given
+a partially built part to finish, both complete a quarter of the work. The
+capability was there; the Phase 5 task simply could not see it.
+
+Both also reach a valid solid on **every** task, beating the oracle's 0.78 —
+because the oracle's codec-degraded polygon builds sometimes fail outright
+while a learned policy reaches *some* valid solid regardless. They then die at
+the same rung the scripted baseline does: holes to constraints (0.84 → 0.31).
+Getting the right holes in the right places is the binding failure for every
+policy tested, which is a far more actionable diagnosis than "success 0.000".
+
+BC edges PPO (0.445 vs 0.413) while PPO holds slightly better constraint
+satisfaction (0.477 vs 0.453). At 32 tasks these are within noise of each
+other; the gap that is *not* noise is both against `scripted-spec` at 0.224.
 
 ## The finding that recontextualizes Phase 5
 
@@ -114,8 +129,6 @@ make benchmark PRESET=core      # run the baselines
 
 ## Still out of scope
 
-- **BC and PPO are not yet in the table.** They need a policy adapter that
-  encodes observations into tensors; the baselines run without one.
 - The `success(k)` curve over `COMPLETE` suffix lengths — the tasks exist and
   are scored, but the curve is not yet plotted or reported as a headline.
 - Ablations: requirement blanking (does the policy read the requirement at
