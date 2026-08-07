@@ -54,7 +54,7 @@ def main() -> int:
         from kairos.rl.collect import RolloutCollector
         from kairos.rl.env_client import RemoteCADEnv
         from kairos.rl.ppo import PPOConfig, PPOTrainer
-        from kairos.rl.requirements import requirement_pools
+        from kairos.rl.requirements import three_way_pools
         from kairos.rl.train_loop import LoopConfig, PPOTrainingLoop
     except ImportError as err:  # pragma: no cover - depends on the environment
         print(f"error: the learning stack needs torch ({err}).", file=sys.stderr)
@@ -117,10 +117,18 @@ def main() -> int:
     print(f"{model.parameter_count():,} trainable parameters on {args.device}")
 
     # ------------------------------------------------------- the environment
-    train_pool, held_out_pool = requirement_pools(
-        args.root, limit=args.requirements, seed=loop_config.seed
+    # dev, not test: the loop writes best.pt on whichever evaluation scores
+    # highest, so selecting on the benchmark set would be model selection on
+    # the set the result is quoted from.
+    train_pool, dev_pool, test_pool = three_way_pools(args.root, seed=loop_config.seed)
+    if args.requirements:
+        train_pool = train_pool[: args.requirements]
+        dev_pool = dev_pool[: max(4, args.requirements // 4)]
+    held_out_pool = dev_pool
+    print(
+        f"requirements: {len(train_pool)} train / {len(dev_pool)} dev "
+        f"(checkpoint selection) / {len(test_pool)} test (benchmark only, untouched)"
     )
-    print(f"requirements: {len(train_pool)} train / {len(held_out_pool)} held out")
 
     try:
         env = RemoteCADEnv(
@@ -179,6 +187,8 @@ def main() -> int:
     # split: requirement_pools() permutes by pool size, so a different
     # --requirements value silently moves requirements across the boundary.
     report_payload["train_requirements"] = train_pool
+    report_payload["dev_requirements"] = dev_pool
+    report_payload["test_requirements"] = test_pool
     report_payload["held_out_requirements"] = held_out_pool
     report_payload["environment"] = {
         "restarts": getattr(env, "restarts", 0),
