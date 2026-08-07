@@ -107,15 +107,22 @@ def build_examples(
         for key in (
             "token_ids", "token_values", "token_mask", "numeric", "history",
             "operation_mask", "operation", "parameters", "design_index",
+            "family_index",
         )
     }
     operation_index = {op: i for i, op in enumerate(OPERATIONS)}
+    families: list[str] = []
+    family_index: dict[str, int] = {}
 
     for design_index, path in enumerate(paths):
         trajectory = json.loads(path.read_text())
         stats.trajectories += 1
 
         requirement = trajectory["requirement"]
+        family = trajectory.get("family", "unknown")
+        if family not in family_index:
+            family_index[family] = len(families)
+            families.append(family)
         spec = parse_requirement(requirement)
         ids, values, mask = tk.encode(requirement, max_length=max_text_length)
         states = trajectory["states"]
@@ -169,12 +176,14 @@ def build_examples(
             columns["operation"].append(operation_index[operation])
             columns["parameters"].append(parameters)
             columns["design_index"].append(design_index)
+            columns["family_index"].append(family_index[family])
             stats.steps_kept += 1
 
     dtypes = {
         "token_ids": np.int64, "token_values": np.float32, "token_mask": np.int64,
         "numeric": np.float32, "history": np.int64, "operation_mask": np.int64,
         "operation": np.int64, "parameters": np.float32, "design_index": np.int64,
+        "family_index": np.int64,
     }
     arrays = {
         key: np.asarray(value, dtype=dtypes[key])
@@ -182,6 +191,8 @@ def build_examples(
         else np.zeros((0,), dtype=dtypes[key])
         for key, value in columns.items()
     }
+    # Names travel with the ids so a report can say "u_bracket", not "family 6".
+    arrays["families"] = np.asarray(families, dtype=object)
     return arrays, stats
 
 
@@ -245,6 +256,16 @@ class TrajectoryDataset(Dataset):
     def design_index(self) -> np.ndarray:
         """Which design each row came from (for leak-free train/val splits)."""
         return self.arrays["design_index"]
+
+    @property
+    def family_index(self) -> np.ndarray:
+        """Which family each row came from (for per-family reporting)."""
+        return self.arrays["family_index"]
+
+    @property
+    def families(self) -> list[str]:
+        """Family names, indexed by :attr:`family_index`."""
+        return list(self.arrays.get("families", np.asarray([], dtype=object)))
 
 
 def collate(rows: list[dict[str, torch.Tensor]]) -> BCBatch:
