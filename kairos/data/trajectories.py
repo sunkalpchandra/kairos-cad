@@ -49,7 +49,12 @@ class TrajectoryRecorder:
     # ------------------------------------------------------------ recording
 
     def _on_action(self, action: Action, result: ActionResult) -> None:
-        observation = observe(self.executor.engine)
+        # Wall thickness is ray-cast against the solid, far too costly to run
+        # every step — but the terminal step is the one whose constraint
+        # report decides success, so it is measured exactly there. Without
+        # this, min_wall_thickness stays 'unmeasured' on every design that
+        # declares one, which is the state Phase 6 exists to end.
+        observation = observe(self.executor.engine, wall_thickness=bool(result.done))
         breakdown = self.tracker.step(result, observation)
         report = self.tracker.last_report or check_constraints(observation, self.spec)
         numeric = encode_numeric(
