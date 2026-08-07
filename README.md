@@ -82,7 +82,12 @@ Development proceeds in phases (see `docs/`):
       thickness is now *measured* (ray casting), and a surrogate-driven search
       found a 54% lighter plate that a verification build confirms is
       manufacturable ([docs/phase6.md](docs/phase6.md)).
-- [ ] Phase 7 — KAIROS-CAD benchmark, baselines, ablations
+- [~] **Phase 7 — KAIROS-CAD benchmark**: frozen three-way split, milestone
+      progress metrics that discriminate at zero success, and four baselines.
+      An oracle replaying the expert scores **0.431** on BUILD, so that — not
+      1.0 — is the ceiling any policy can reach through the action codec
+      ([docs/phase7.md](docs/phase7.md)). Ablations and learned-policy
+      adapters pending.
 - [ ] Phase 8 — Interactive Three.js dashboard
 - [ ] Phase 9 — Paper (NeurIPS 2026 format)
 
