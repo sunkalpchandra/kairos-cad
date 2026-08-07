@@ -60,8 +60,8 @@ trajectories replay through the same executor the agent will use.
 
 ## Verification
 
-- 83 tests under FreeCAD's interpreter (45 of them pure-python, runnable
-  anywhere) — `make test-all`.
+- 285 tests under FreeCAD's interpreter, and 364 under the system one
+  (there the CAD tests skip and the Phase 4-6 learning tests run) — `make test-all`.
 - Volume assertions are analytic (e.g. pad = w·h·l, fillet removes
   `(r² − πr²/4)·L`), not snapshots.
 - `make generate-data` writes only designs that pass kernel validation and
