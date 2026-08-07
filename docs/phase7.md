@@ -85,6 +85,38 @@ BC edges PPO (0.445 vs 0.413) while PPO holds slightly better constraint
 satisfaction (0.477 vs 0.453). At 32 tasks these are within noise of each
 other; the gap that is *not* noise is both against `scripted-spec` at 0.224.
 
+## The compounding-error curve
+
+The `COMPLETE(k)` tasks exist to measure one thing: how fast a policy degrades
+as it must supply more of its own actions. It does, cleanly:
+
+| policy | BUILD | k=1 | k=2 | k=4 | k=8 |
+| --- | --- | --- | --- | --- | --- |
+| `oracle-replay` | 0.38 | 0.83 | 0.60 | 0.33 | 0.50 |
+| `bc` | 0.00 | **0.83** | **0.60** | **0.33** | 0.00 |
+| `ppo` | 0.00 | 0.83 | 0.60 | 0.00 | 0.00 |
+| `immediate-finish` | 0.00 | 0.83 | 0.00 | 0.00 | 0.00 |
+| `scripted-spec` | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| `legal-random` | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+
+BC decays 0.83 → 0.60 → 0.33 → 0.00. **This is the number Phase 4's 0.983
+teacher-forced accuracy and Phase 5's 0.000 closed-loop success were the two
+endpoints of** — and it took a task type that hands the policy a partially built
+part to see the middle of it at all.
+
+BC matches the oracle exactly at k ≤ 4, which says the remaining gap on those
+tasks is the action codec, not the policy. PPO tracks BC to k=2 and then falls
+away faster, so its Phase 5 advantage (zero invalid actions) does not extend to
+multi-step planning.
+
+`immediate-finish` scoring 0.83 at k=1 is the control working: the expert's last
+action usually *is* FINISH_DESIGN, so a policy that only knows how to quit gets
+that one right. It collapses to 0.00 the moment k=2 asks for anything else.
+
+Per-family progress locates the difficulty: the oracle reaches 1.00 on `plate`,
+`reinforced_plate` and `support_bracket` and only 0.35–0.37 on `flange` and
+`corner_bracket` — the families whose profiles the codec cannot express.
+
 ## The finding that recontextualizes Phase 5
 
 **`oracle-replay` scores 0.431 on BUILD tasks, not 1.000.**
@@ -129,8 +161,6 @@ make benchmark PRESET=core      # run the baselines
 
 ## Still out of scope
 
-- The `success(k)` curve over `COMPLETE` suffix lengths — the tasks exist and
-  are scored, but the curve is not yet plotted or reported as a headline.
 - Ablations: requirement blanking (does the policy read the requirement at
   all?), masking on/off, and a `bc_kl_coef` sweep with multiple seeds.
 - Paired statistics. Every policy faces identical tasks, which makes paired
