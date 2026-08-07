@@ -27,7 +27,17 @@ def test_hole_count_uses_spec_diameter():
     report = check_constraints(obs, spec)
     by_kind = {r.constraint.kind: r for r in report.results}
     assert by_kind["hole_count"].status == "satisfied"  # the 8mm hole is ignored
-    assert by_kind["hole_diameter"].status == "violated"  # extra 8mm hole present
+    # An unmentioned extra bore is not a diameter violation: parts legitimately
+    # carry bores the requirement never named (a flange's central bore beside
+    # its bolt holes). Wrong *totals* are hole_count's job, checked above.
+    assert by_kind["hole_diameter"].status == "satisfied"
+
+
+def test_hole_diameter_needs_as_many_holes_as_the_count_requires():
+    spec = parse_requirement("Bracket with 4 x M5 holes")
+    obs = _obs(holes=[_hole(5.0), _hole(5.0), _hole(8.0), _hole(8.0)], bbox=(10, 10, 10))
+    by_kind = {r.constraint.kind: r for r in check_constraints(obs, spec).results}
+    assert by_kind["hole_diameter"].status == "violated"  # only 2 of the 4 are M5
 
 
 def test_hole_count_violation():

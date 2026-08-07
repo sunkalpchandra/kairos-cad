@@ -124,11 +124,21 @@ def _check_hole_count(c: Constraint, observation: dict, spec: EngineeringSpec) -
 
 
 def _check_hole_diameter(c: Constraint, observation: dict, spec: EngineeringSpec) -> ConstraintResult:
+    """Check that the holes the requirement names exist at the stated diameter.
+
+    A part may legitimately carry other bores the requirement does not mention
+    (a flange's central bore alongside its bolt holes), so extra diameters are
+    not violations. How many holes must match is pinned by the spec's
+    ``hole_count`` when it has one, and is otherwise "at least one"; a part with
+    the wrong *total* number of holes is caught by ``hole_count`` itself.
+    """
     tol = c.tolerance if c.tolerance is not None else _DIAMETER_TOL
     matching = _holes_matching(observation, float(c.value), tol)
     holes = observation.get("holes", [])
-    ok = bool(matching) and len(matching) == len(holes)
-    detail = f"{len(matching)}/{len(holes)} holes at d={c.value}±{tol}mm"
+    count_c = spec.get("hole_count")
+    needed = int(count_c.value) if count_c is not None else 1
+    ok = len(matching) >= needed
+    detail = f"{len(matching)}/{len(holes)} holes at d={c.value}±{tol}mm, need ≥{needed}"
     return ConstraintResult(
         c,
         "satisfied" if ok else "violated",
