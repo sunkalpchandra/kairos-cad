@@ -95,6 +95,7 @@ class PPOTrainingLoop:
             buffer,
             n_steps=episodes * self.config.max_episode_steps,
             deterministic=True,
+            max_episodes=episodes,
         )
         # `collect` stops on the step budget, which can leave a partial final
         # episode; score only the ones that actually ended.
