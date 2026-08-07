@@ -1,6 +1,8 @@
-# Runtime dependencies for Phase 1.
+# Runtime dependencies.
 # FreeCAD itself is NOT pip-installable — see docs/freecad-setup.md.
 numpy>=1.24
+gymnasium>=0.29   # kairos/rl/environment.py imports this unguarded
+pyyaml>=6.0       # kairos/config.py imports this unguarded
 
 # Phase 4 learning stack (optional — not importable under FreeCAD's python).
 torch>=2.2

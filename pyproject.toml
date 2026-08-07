@@ -35,6 +35,9 @@ include = ["kairos*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# A hung FreeCAD recompute or a wedged bridge subprocess would otherwise
+# block a run forever; fail the test instead.
+timeout = 600
 markers = [
     "cad: tests that require a working FreeCAD installation",
 ]
