@@ -24,11 +24,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-DEFAULT_REQUIREMENT = (
-    "Create an L-bracket with 4 M5 mounting holes, 3 mm minimum wall "
-    "thickness, 90 degree angle, symmetric hole placement, and minimum "
-    "possible mass."
-)
+# Imported, not copied: this string lived in three places and the copies
+# had drifted — the demo asked for symmetry, which has no checker, so the
+# headline demo reported an unmeasured constraint every run.
+from kairos.rl.environment import DEFAULT_REQUIREMENT
 
 
 def main() -> int:
