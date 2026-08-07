@@ -140,3 +140,30 @@ def test_bootstrap_of_a_constant_is_degenerate():
 def test_bootstrap_of_nothing_is_nan():
     low, high = bootstrap_interval([])
     assert np.isnan(low) and np.isnan(high)
+
+
+def test_evaluation_reports_a_confidence_interval():
+    """A dozen episodes cannot support a bare point estimate."""
+    result = evaluate_policy(
+        ScriptedEnv(), _model(), REQUIREMENTS, episodes=4, max_episode_steps=5
+    )
+    low, high = result["success_ci"]
+    assert low <= result["success_rate"] <= high
+
+
+def test_per_requirement_breakdown_covers_every_episode():
+    """One dominant requirement could otherwise carry the aggregate."""
+    result = evaluate_policy(
+        ScriptedEnv(), _model(), REQUIREMENTS, episodes=6, max_episode_steps=4
+    )
+    breakdown = result["per_requirement"]
+    assert breakdown
+    assert sum(row["episodes"] for row in breakdown.values()) == result["episodes"]
+    assert all(0.0 <= row["success_rate"] <= 1.0 for row in breakdown.values())
+
+
+def test_comparison_table_shows_the_interval():
+    results = compare_policies(
+        ScriptedEnv(), {"ppo": _model()}, REQUIREMENTS, episodes=2, max_episode_steps=4
+    )
+    assert "95% CI" in format_comparison(results)
