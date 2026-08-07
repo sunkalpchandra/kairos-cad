@@ -123,7 +123,10 @@ class KairosCADEnv(gym.Env):
             targets=self._current_targets(OPERATIONS[int(action["operation"]) % NUM_OPERATIONS]),
         )
         result = self._executor.execute(structured)
-        observation = observe(self.engine)
+        # Measure the manufacturing floor on the terminal step only: 27% of
+        # the requirement pool declares one, and without this a policy
+        # collects finish_success having never been checked against it.
+        observation = observe(self.engine, wall_thickness=bool(result.done))
         breakdown = self._tracker.step(result, observation)
         report = self._tracker.last_report or check_constraints(observation, self.spec)
 
