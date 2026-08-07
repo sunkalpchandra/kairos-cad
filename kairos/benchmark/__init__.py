@@ -13,10 +13,34 @@ from kairos.benchmark.metrics import (
     outcome_from_episode,
     score_policy,
 )
+from kairos.benchmark.splits import (
+    SPLIT_NAMES,
+    ContaminationError,
+    Split,
+    SplitSet,
+    assert_disjoint,
+    build_splits,
+    load_requirements_by_design,
+    requirements_for,
+    text_hash,
+)
+
+#: Frozen suite identity; every artifact records it.
+SUITE_VERSION = "kairos-cad-v1"
 
 __all__ = [
     "MAX_PROGRESS",
     "MILESTONES",
+    "SPLIT_NAMES",
+    "SUITE_VERSION",
+    "ContaminationError",
+    "Split",
+    "SplitSet",
+    "assert_disjoint",
+    "build_splits",
+    "load_requirements_by_design",
+    "requirements_for",
+    "text_hash",
     "BenchmarkScore",
     "EpisodeOutcome",
     "format_scores",
