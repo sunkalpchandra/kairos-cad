@@ -91,10 +91,32 @@ def evaluate_policy(
         max_episodes=episodes,
     )
     finished = [e for e in collected if (e.terminated or e.truncated) and e.steps > 0]
-    summary = summarize_episodes(finished or collected)
+    scored = finished or collected
+    summary = summarize_episodes(scored)
     summary["episodes_requested"] = episodes
     summary["deterministic"] = deterministic
+
+    # A point estimate over a dozen episodes overstates what was measured.
+    successes = [float(e.finished_successfully) for e in scored]
+    low, high = bootstrap_interval(successes, seed=seed)
+    summary["success_ci"] = [round(low, 4), round(high, 4)]
+    summary["per_requirement"] = per_requirement_breakdown(scored)
     return summary
+
+
+def per_requirement_breakdown(episodes) -> dict[str, dict[str, Any]]:
+    """Success per requirement — an aggregate can hide one dominant family."""
+    grouped: dict[str, list] = {}
+    for episode in episodes:
+        grouped.setdefault(episode.requirement, []).append(episode)
+    return {
+        requirement[:60]: {
+            "episodes": len(group),
+            "success_rate": round(float(np.mean([e.finished_successfully for e in group])), 4),
+            "reward_mean": round(float(np.mean([e.reward for e in group])), 4),
+        }
+        for requirement, group in grouped.items()
+    }
 
 
 def compare_policies(
@@ -123,7 +145,7 @@ def compare_policies(
 def format_comparison(results: dict[str, dict[str, Any]]) -> str:
     """Render a comparison table."""
     header = (
-        f"{'policy':>12}  {'episodes':>8}  {'success':>8}  {'solid':>7}  "
+        f"{'policy':>12}  {'episodes':>8}  {'success':>8}  {'95% CI':>14}  {'solid':>7}  "
         f"{'reward':>8}  {'steps':>6}  {'invalid':>8}"
     )
     lines = [header, "-" * len(header)]
@@ -131,8 +153,10 @@ def format_comparison(results: dict[str, dict[str, Any]]) -> str:
         if not row.get("episodes"):
             lines.append(f"{name:>12}  {'no episodes':>8}")
             continue
+        low, high = row.get("success_ci", [float("nan"), float("nan")])
         lines.append(
             f"{name:>12}  {row['episodes']:>8}  {row.get('success_rate', 0.0):>8.3f}  "
+            f"{f'[{low:.2f}, {high:.2f}]':>14}  "
             f"{row.get('solid_rate', 0.0):>7.3f}  {row.get('reward_mean', 0.0):>8.2f}  "
             f"{row.get('episode_length_mean', 0.0):>6.1f}  "
             f"{row.get('invalid_action_rate', 0.0):>8.3f}"
