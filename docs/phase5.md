@@ -4,8 +4,10 @@ Phase 4 produced a policy that predicts the expert's next action with 96%
 accuracy. Phase 5 asks the question that actually matters: can it *drive a
 build* — choosing every action itself, living with its own mistakes?
 
-The answer, measured rather than assumed: **the behavioral-cloning policy
-completes 0% of held-out designs**, and PPO fine-tuning takes that to **28.6%**.
+The answer, measured rather than assumed and then re-measured after an audit:
+**no policy tested completes a held-out design.** BC scores 0.983 next-action
+accuracy and 0.000 closed-loop success; PPO fine-tuning does not change that,
+though it does eliminate invalid actions entirely.
 
 ## The interpreter problem, and the bridge
 
@@ -74,16 +76,6 @@ Exploration must come from the action distribution, never from network noise.
 
 ## Results
 
-> **⚠️ The numbers below are stale as of the Phase 1–5 audit (2026-08-07)
-> and must be re-measured.** The audit found that the requirement parser
-> extracted no constraints at all from 266 of 1,080 designs (which then
-> reported 100% satisfaction having checked nothing), that `mounting_angle`
-> was satisfied by any box, that BC saved its last epoch while reporting its
-> best, and that the PPO comparison was measured on requirements PPO had
-> trained on. Those defects are fixed in the code; the dataset, the BC run
-> and the PPO run all predate the fixes and have not yet been regenerated.
-> See the Audit section of README.md.
-
 
 25 iterations × 200 steps against live FreeCAD, initialized from the Phase 4 BC
 checkpoint, 40-requirement pool split into train and held-out.
@@ -91,25 +83,31 @@ checkpoint, 40-requirement pool split into train and held-out.
 Closed-loop evaluation, 14 episodes per policy on held-out requirements, every
 policy facing the same requirements in the same order:
 
-| policy | success | solid | mean reward | steps | invalid actions |
-| --- | --- | --- | --- | --- | --- |
-| behavioral cloning | **0.000** | 1.000 | −3.43 | 18.3 | 0.422 |
-| PPO (best checkpoint) | **0.286** | 1.000 | +1.88 | 14.4 | **0.000** |
-| legal-random baseline | 0.000 | 0.143 | −1.68 | 8.1 | 0.265 |
+| policy | success | 95% CI | solid | mean reward | steps | invalid actions |
+| --- | --- | --- | --- | --- | --- | --- |
+| behavioral cloning | 0.000 | [0.00, 0.00] | 1.000 | +0.72 | 23.7 | 0.018 |
+| PPO (best checkpoint) | 0.000 | [0.00, 0.00] | 1.000 | +0.72 | 19.4 | 0.000 |
+| legal-random baseline | 0.000 | [0.00, 0.00] | 0.143 | -1.68 | 8.1 | 0.265 |
 
-The BC row is the important one. A policy with 96% teacher-forced next-action
-accuracy scores **zero** closed-loop success, because teacher forcing hands it
-the expert's state at every step and per-step errors never compound. Left to
-its own states it drifts somewhere the demonstrations never went, and **42% of
-its actions are outright invalid**. It still produces a solid every time — it
-can pad and pocket — it just cannot finish a design that satisfies its
-requirement.
+The gap between 0.983 next-action accuracy and 0.000 closed-loop success is
+the whole finding. Teacher forcing hands the policy the expert's state at every
+step, so per-step errors never compound; driving its own build, it reaches
+states the demonstrations never visited. It still produces a valid solid in
+every episode — it can pad and pocket — it simply never finishes a design that
+satisfies its requirement.
 
-PPO fixes the failure mode it can see: the invalid-action rate goes to **zero**
-by iteration ~9 and stays there, episodes get shorter (18.3 → 14.4 steps), and
-success reaches 28.6%. Held-out success during training ran
-0.00 → 0.00 → 0.25 → 0.21 → 0.20, peaking at iteration 15 — the reason the loop
-checkpoints the best evaluation rather than the last iteration.
+PPO's measurable gain is narrower than previously reported: invalid actions
+fall to **zero** and episodes shorten (23.7 → 19.4 steps) at identical mean
+reward. It does not convert either into a completed design.
+
+**A correction.** This table previously read 0.286 for PPO. That was an
+artifact, not a result: `evaluate_ppo` re-derived its own held-out pool from a
+different pool size than training used, and three of the six "held-out"
+requirements had been trained on. Runs now record their exact pools and
+evaluation refuses to score a contaminated split. During training the loop
+still reported a best of 0.188 at iteration 15 on a 16-episode evaluation, which
+the 14-episode comparison did not reproduce — at these success rates the
+sampling noise is larger than the effect being measured.
 
 The random baseline is legal-random, not noise, and it still never finishes and
 produces a solid in only 14% of episodes. That is the floor these numbers sit
