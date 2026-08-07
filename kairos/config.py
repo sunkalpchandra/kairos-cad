@@ -40,7 +40,7 @@ def reward_weights_from(config: dict[str, Any]) -> RewardWeights:
 
 
 KNOWN_SECTIONS = frozenset(
-    {"seed", "environment", "reward", "dataset", "model", "behavioral_cloning", "ppo"}
+    {"seed", "environment", "reward", "dataset", "model", "behavioral_cloning", "ppo", "optimization"}
 )
 _ENVIRONMENT_KEYS = frozenset({"requirement", "max_steps", "material"})
 

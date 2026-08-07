@@ -84,3 +84,18 @@ ppo:
   gamma: 0.99
   gae_lambda: 0.95
   out_dir: runs/ppo
+
+# Phase 6: surrogate-driven design optimization.
+optimization:
+  family: plate
+  # Manufacturing floor the optimized part must clear, mm.
+  min_thickness: 5.0
+  # FreeCAD builds used to fit the surrogate. Each one costs a real recompute
+  # plus a wall-thickness ray-cast, so this is the run's dominant cost.
+  samples: 60
+  iterations: 20
+  population: 128
+  # Degree 3, not 2: mass is a three-way product of dimensions, and a quadratic
+  # surrogate gets the thickness direction wrong while still scoring R2 ~ 0.997.
+  surrogate_degree: 3
+  out_dir: runs/optimize
