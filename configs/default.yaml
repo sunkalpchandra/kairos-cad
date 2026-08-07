@@ -66,7 +66,10 @@ ppo:
   steps_per_iteration: 256
   max_episode_steps: 40
   eval_every: 5
-  eval_episodes: 8
+  # Best-checkpoint selection reads this estimate, so it has to be big
+  # enough to mean something: a 6-episode eval once reported 0.50 for a
+  # policy that scored 0.286 over 14 episodes.
+  eval_episodes: 16
   learning_rate: 0.0001
   clip_range: 0.2
   value_coef: 0.5
