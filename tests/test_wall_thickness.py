@@ -43,11 +43,17 @@ def test_thickness_below_the_floor_is_violated():
     assert result.measured == pytest.approx(2.0)
 
 
-def test_a_near_miss_within_sampling_tolerance_passes():
-    """Ray sampling can only over-estimate, so it must not reject a hair under."""
+def test_a_measurement_under_the_floor_is_a_definitive_failure():
+    """Sampling only ever OVER-estimates, so measured is an upper bound.
+
+    A measured 2.99 mm means the true wall is at most 2.99 mm, which is below a
+    3 mm floor — conclusively. Slack here would pass parts that are provably
+    too thin, and it was letting 6.983 mm clear a 7.0 mm floor.
+    """
     spec = parse_requirement("Bracket with wall thickness 3 mm.")
-    assert check_constraints(_obs(2.99), spec).results[0].status == "satisfied"
-    assert check_constraints(_obs(2.5), spec).results[0].status == "violated"
+    assert check_constraints(_obs(2.99), spec).results[0].status == "violated"
+    assert check_constraints(_obs(3.0), spec).results[0].status == "satisfied"
+    assert check_constraints(_obs(3.01), spec).results[0].status == "satisfied"
 
 
 def test_is_manufacturable_distinguishes_unmeasured_from_false():

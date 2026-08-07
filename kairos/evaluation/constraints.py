@@ -30,8 +30,13 @@ _ANGLE_TOL = 1.0
 #: A part that bends through an angle leaves its bounding box mostly empty.
 #: An L-bracket fills roughly half; a plate or block fills all of it.
 _MAX_BENT_FILL = 0.95
-#: Wall-thickness sampling tolerance, mm.
-_THICKNESS_TOL = 0.05
+#: Wall-thickness slack, mm. Deliberately ~0: ray sampling can only
+#: OVER-estimate thickness (it misses thin spots between samples), so the
+#: measurement is an upper bound on the true wall. A measured value below
+#: the floor therefore means the real wall is below it too — a definitive
+#: failure, not a near-miss. Slack here would pass parts that are provably
+#: too thin; it was letting 6.983 mm clear a 7.0 mm floor.
+_THICKNESS_TOL = 1e-6
 
 
 @dataclass
@@ -169,8 +174,8 @@ def _check_min_wall_thickness(
             c, "unmeasured", detail="no wall-thickness measurement in this observation"
         )
     required = float(c.value)
-    # Ray sampling can only over-estimate thickness, so a near-miss is treated
-    # as a pass within the sampling tolerance rather than a false rejection.
+    # measured is an UPPER bound on the true thickness, so failing it is
+    # conclusive while passing it is only necessary, not sufficient.
     ok = float(measured) >= required - _THICKNESS_TOL
     return ConstraintResult(
         c,
