@@ -34,6 +34,7 @@ from kairos.rl.protocol import (
     encode_message,
     handshake_request,
     raise_for_error,
+    replay_request,
     reset_request,
     step_request,
 )
@@ -236,6 +237,17 @@ class RemoteCADEnv:
         )
         self.requirement = payload.get("requirement", self.requirement)
         return self._decode_observation(payload["observation"])
+
+    def replay(self, actions: list[dict[str, Any]]) -> dict[str, Any] | None:
+        """Execute raw expert actions; returns the observation, or None on failure."""
+        if not actions:
+            return None
+        try:
+            payload = raise_for_error(self._request(replay_request(actions)))
+        except (RemoteEnvError, ProtocolError):
+            return None
+        observation = payload.get("observation")
+        return self._decode_observation(observation) if observation else None
 
     def step(self, operation: int, params, target: int = 0):
         """Take one action; returns ``(obs, reward, terminated, truncated, info)``."""

@@ -20,10 +20,12 @@ import sys
 import traceback
 from typing import Any
 
+from kairos.representation.observation import observe
 from kairos.rl.protocol import (
     CLOSE,
     HANDSHAKE,
     PROTOCOL_VERSION,
+    REPLAY,
     RESET,
     STEP,
     ProtocolError,
@@ -103,6 +105,8 @@ class EnvironmentServer:
             return self._handle_reset(request)
         if command == STEP:
             return self._handle_step(request)
+        if command == REPLAY:
+            return self._handle_replay(request)
         if command == CLOSE:
             self._closed = True
             try:
@@ -150,6 +154,36 @@ class EnvironmentServer:
             terminated=bool(terminated),
             truncated=bool(truncated),
             info=_step_info(info),
+        )
+
+    def _handle_replay(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Execute raw expert actions, bypassing the policy action space."""
+        from kairos.actions.schema import Action, Operation
+
+        executed = 0
+        for raw in request.get("actions", []):
+            try:
+                action = Action(
+                    Operation(raw["operation"]),
+                    target=raw.get("target"),
+                    parameters=raw.get("parameters") or {},
+                )
+                result = self.env._executor.execute(action)
+            except Exception as err:
+                return error_response(
+                    f"replay failed at action {executed}: {err}", kind="replay_failed"
+                )
+            if not result.ok:
+                return error_response(
+                    f"replay rejected at action {executed}: {result.message}"[:200],
+                    kind="replay_rejected",
+                )
+            executed += 1
+
+        observation = self.env._encode_obs(observe(self.env.engine))
+        return ok_response(
+            observation=_observation_payload(self.env, observation),
+            executed=executed,
         )
 
     # ------------------------------------------------------------- run loop

@@ -23,11 +23,12 @@ from typing import Any
 #: Bumped whenever a message's shape changes. The client refuses to talk to a
 #: server that does not match, because a silent field mismatch would surface as
 #: a training bug days later rather than a startup error now.
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 
 RESET = "reset"
 STEP = "step"
 CLOSE = "close"
+REPLAY = "replay"
 HANDSHAKE = "handshake"
 
 
@@ -72,6 +73,18 @@ def step_request(operation: int, params: list[float], target: int = 0) -> dict[s
         "params": [float(v) for v in params],
         "target": int(target),
     }
+
+
+def replay_request(actions: list[dict[str, Any]]) -> dict[str, Any]:
+    """Ask the server to execute raw expert actions verbatim.
+
+    Benchmark COMPLETE tasks replay an expert prefix and hand the policy the
+    remainder. Sending those through the action codec would drop every
+    irregular ADD_POLYGON — the profile step of six of eight families — so the
+    task would abort rather than pose the question it exists to pose. A replay
+    is not a prediction, so it does not need the policy's action space.
+    """
+    return {"cmd": REPLAY, "actions": actions}
 
 
 def close_request() -> dict[str, Any]:
