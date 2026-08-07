@@ -75,6 +75,12 @@ class TrainConfig:
     device: str = "auto"
     grad_clip: float = 1.0
     warmup_fraction: float = 0.05
+    #: "none" or "inverse_sqrt". The expert action mix is heavily skewed (a
+    #: quarter of steps are ADD_CIRCLE, while FILLET is under 1%), and an
+    #: unweighted objective simply never predicts the rare operations.
+    #: Inverse-square-root rather than inverse frequency: full inverse
+    #: weighting swings too far and starts costing the common operations.
+    class_weighting: str = "none"
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -168,13 +174,33 @@ class BCTrainer:
             weight_decay=self.config.weight_decay,
         )
         self.history: list[EpochMetrics] = []
+        self.class_weights: torch.Tensor | None = None
+
+    def compute_class_weights(self, labels: np.ndarray) -> torch.Tensor | None:
+        """Inverse-sqrt-frequency weights over observed operations.
+
+        Operations absent from the training split keep weight 1.0 — they
+        contribute no gradient anyway, and a zero-count denominator would send
+        their weight to infinity.
+        """
+        if self.config.class_weighting == "none":
+            return None
+        if self.config.class_weighting != "inverse_sqrt":
+            raise ValueError(f"unknown class_weighting {self.config.class_weighting!r}")
+
+        counts = np.bincount(np.asarray(labels), minlength=len(OPERATIONS)).astype(np.float64)
+        weights = np.ones_like(counts)
+        seen = counts > 0
+        weights[seen] = 1.0 / np.sqrt(counts[seen])
+        weights[seen] *= seen.sum() / weights[seen].sum()  # mean weight 1 over seen classes
+        return torch.tensor(weights, dtype=torch.float32, device=self.device)
 
     # ----------------------------------------------------------------- loss
 
     def compute_loss(self, batch, outputs) -> tuple[torch.Tensor, dict[str, float]]:
         """Cross-entropy on the operation plus masked MSE on its parameters."""
         operation_loss = nn.functional.cross_entropy(
-            outputs["operation_logits"], batch.operation
+            outputs["operation_logits"], batch.operation, weight=self.class_weights
         )
 
         slots = self.slot_mask[batch.operation]
@@ -249,6 +275,13 @@ class BCTrainer:
         """Train for ``config.epochs``, returning per-epoch metrics."""
         c = self.config
         torch.manual_seed(c.seed)
+        # Weights come from the training split only — deriving them from the
+        # whole dataset would leak validation label frequencies into training.
+        if c.class_weighting != "none":
+            labels = np.asarray(
+                [int(train_set[i]["operation"]) for i in range(len(train_set))]
+            )
+            self.class_weights = self.compute_class_weights(labels)
         train_loader = DataLoader(
             train_set, batch_size=c.batch_size, shuffle=True, collate_fn=collate
         )
