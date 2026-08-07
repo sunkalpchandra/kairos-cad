@@ -105,9 +105,10 @@ diameter, never a quantity.
 
 ## Verification
 
-Full suite under FreeCAD 1.1.3: **178+ tests** (`make test-all`), including
-27 family tests authored and verified in parallel worktrees. Lint: `ruff`
-clean.
+Full suite under FreeCAD 1.1.3: **196 tests** (`make test-all`), including
+27 family tests authored and verified in parallel worktrees. The Phase 4
+learning tests skip there (no torch) and run under the system interpreter,
+where the CAD tests skip instead. Lint: `ruff` clean.
 
 ## Still deliberately out of scope here
 
