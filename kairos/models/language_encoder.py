@@ -68,6 +68,13 @@ class LanguageEncoder(nn.Module):
     ) -> torch.Tensor:
         """Return one ``[B, embed_dim]`` requirement embedding per row."""
         length = token_ids.shape[1]
+        if length > self.max_length:
+            # Otherwise the position embedding raises a bare "index out of
+            # range in self", which says nothing about the actual mismatch.
+            raise ValueError(
+                f"tokenized to {length} positions but this encoder was built for "
+                f"{self.max_length}; tokenize with max_length={self.max_length}"
+            )
         positions = torch.arange(length, device=token_ids.device)
 
         x = self.token_embedding(token_ids) + self.position_embedding(positions)[None]
