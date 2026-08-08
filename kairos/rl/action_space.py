@@ -49,43 +49,49 @@ _VIEWS = ("iso", "front", "top", "right")
 # Widening costs almost nothing numerically: decode rounds to 3 decimals in mm,
 # so resolution is 0.001 mm regardless of span.
 #
-# It costs a learned policy real accuracy, and the measurement is worth stating
-# because of how it presents. Retraining BC across the change:
+# It costs a learned policy a great deal, which is why only the three ranges
+# that actually clipped were moved. The first attempt widened all of them
+# generously -- _SMALL to (0.1, 50), _RADIUS to (0.1, 100) -- on the reasoning
+# that headroom is free. It is not. A mid-range fillet became 25 mm instead of
+# 5 mm, so ordinary policy noise decoded into geometry the kernel rejects:
 #
-#     held-out operation accuracy   0.983  ->  0.987
-#     parameter MAE (normalized)    0.035  ->  0.023   (better)
-#     parameter MAE (mm, approx)     ~6.9  ->   ~9.3   (worse)
+#     PPO invalid-action rate     0.001  ->  0.422
+#     PPO mean episode reward     +0.73  ->  -4.59
+#     BC validity rate            0.957  ->  0.485
 #
-# The normalized metric improves while the physical error degrades, because the
-# span those units cover roughly doubled. Anyone reading only the normalized
-# number would conclude the change helped. It is the same reporting trap this
-# codec already produced once by clipping silently, in a different costume.
+# Note how that presented in the BC metrics: normalized parameter MAE *improved*
+# (0.035 -> 0.023) while absolute error in mm got worse, because the span those
+# units cover had doubled. A reader watching only the normalized number would
+# have concluded the change helped.
 #
-# The right long-term fix is not a wider global span but a per-operation or
-# relative encoding, so precision does not have to be traded against range.
+# So the rule here is: widen exactly what the data proves is too narrow, and let
+# `_inv` raise on anything else. The right long-term fix is a per-operation or
+# relative encoding, so precision never has to be traded against range at all.
 # --------------------------------------------------------------------------
 
-#: Sketch-plane coordinates (mm). Data reaches 122.9.
-_COORD = (-200.0, 200.0)
-#: Sketch-plane offset along the normal (mm). Data reaches 89.9.
-_OFFSET = (-200.0, 200.0)
-#: Rectangle side lengths (mm). Data reaches 129.9.
-_SIDE = (0.5, 300.0)
-#: Circle and arc radii (mm). Data reaches 4.0; kept wide for bores.
-_RADIUS = (0.1, 100.0)
-#: Regular-polygon circumradius (mm).
-_POLY_RADIUS = (0.5, 200.0)
-#: Pad / revolve extrusion length (mm). Data reaches 62.5.
-_LENGTH = (0.5, 200.0)
-#: Pocket depth (mm).
-_DEPTH = (0.5, 100.0)
-#: Fillet radius, chamfer leg, shell thickness (mm). Data reaches 0.404 minimum,
-#: which the old 0.5 floor clipped upward.
-_SMALL = (0.1, 50.0)
-#: Sketch-constraint dimension value (mm).
-_DIMENSION = (0.1, 300.0)
-#: Linear-pattern span (mm).
-_SPAN = (1.0, 300.0)
+#: Sketch-plane coordinates (mm). Data spans -34.8 .. 122.9; was +-100, which
+#: clipped 142 circle centres.
+_COORD = (-150.0, 150.0)
+#: Sketch-plane offset along the normal (mm). Data 3.0 .. 89.9; was +-50, which
+#: clipped 110 sketches.
+_OFFSET = (-120.0, 120.0)
+#: Rectangle side lengths (mm). Data 4.1 .. 129.9. Never clipped; unchanged.
+_SIDE = (1.0, 150.0)
+#: Circle and arc radii (mm). Data 1.5 .. 4.0. Never clipped; unchanged.
+_RADIUS = (0.5, 25.0)
+#: Regular-polygon circumradius (mm). Never clipped; unchanged.
+_POLY_RADIUS = (1.0, 100.0)
+#: Pad / revolve extrusion length (mm). Data 3.1 .. 62.5. Never clipped.
+_LENGTH = (1.0, 100.0)
+#: Pocket depth (mm). Never clipped; unchanged.
+_DEPTH = (1.0, 50.0)
+#: Fillet radius, chamfer leg, shell thickness (mm). Data 0.404 .. 3.96; the old
+#: 0.5 floor clipped 8 chamfers upward, so only the floor moved.
+_SMALL = (0.25, 10.0)
+#: Sketch-constraint dimension value (mm). Never clipped; unchanged.
+_DIMENSION = (0.5, 150.0)
+#: Linear-pattern span (mm). Never clipped; unchanged.
+_SPAN = (5.0, 150.0)
 
 
 def _lin(x: float, lo: float, hi: float) -> float:
