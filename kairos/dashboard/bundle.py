@@ -26,11 +26,33 @@ def _read_json(path: Path) -> dict[str, Any] | None:
         return None
 
 
+#: Lines skipped by the last _read_jsonl calls, surfaced in the bundle counts.
+_SKIPPED: dict[str, int] = {}
+
+
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    """Parse a trace file line by line, skipping only the lines that fail.
+
+    Wrapping the whole comprehension in one try meant a single malformed line
+    discarded every trace for that policy and the build still exited 0, so the
+    dashboard showed a policy that had simply not been run.
+    """
     try:
-        return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
-    except (OSError, json.JSONDecodeError):
+        text = path.read_text()
+    except OSError:
+        _SKIPPED[path.name] = -1  # unreadable is different from empty
         return []
+    rows, skipped = [], 0
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            skipped += 1
+    if skipped:
+        _SKIPPED[path.name] = skipped
+    return rows
 
 
 def _measured(results: list[dict[str, Any]], kind: str) -> float | None:
@@ -215,6 +237,7 @@ def collect_comparisons(runs: str | Path) -> dict[str, Any]:
                 "pairs": c.n_pairs,
             }
             for c in compare_all(traces)
+            if c.n_pairs
         ]
     }
 
@@ -332,5 +355,11 @@ def build_bundle(
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
-        "counts": {"designs_embedded": len(designs), "meshes_attached": attached},
+        "counts": {
+            "designs_embedded": len(designs),
+            "meshes_attached": attached,
+            # Non-empty means a trace file had lines that would not parse. The
+            # affected policy is still charted, from fewer episodes than it ran.
+            "unparsable_trace_lines": dict(_SKIPPED),
+        },
     }

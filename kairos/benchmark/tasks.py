@@ -181,19 +181,24 @@ def select(
     tiers: tuple[str, ...] | None = None,
     limit_per_group: int | None = None,
 ) -> list[TaskSpec]:
-    """Filter tasks, keeping at most ``limit_per_group`` per (type, tier).
+    """Filter tasks, keeping at most ``limit_per_group`` per (type, tier, k).
 
     Capping per group rather than globally keeps every tier represented in a
     smoke run; a global head would return only spacers.
+
+    ``suffix_length`` is part of the key because without it the cap falls
+    across a design's whole COMPLETE(k) fan-out at once: k=1 was averaged over
+    5 tasks including two spacers while k=8 got 3 with none, so the success(k)
+    curve compared different task mixes at each k and read as compounding error.
     """
     chosen: list[TaskSpec] = []
-    counts: dict[tuple[str, str], int] = {}
+    counts: dict[tuple[str, str, int], int] = {}
     for task in tasks:
         if task_types and task.task_type not in task_types:
             continue
         if tiers and task.tier not in tiers:
             continue
-        key = (task.task_type.value, task.tier)
+        key = (task.task_type.value, task.tier, task.suffix_length)
         if limit_per_group is not None and counts.get(key, 0) >= limit_per_group:
             continue
         counts[key] = counts.get(key, 0) + 1

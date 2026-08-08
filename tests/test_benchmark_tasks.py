@@ -7,6 +7,7 @@ import pytest
 from kairos.benchmark.tasks import (
     COMPLETE_SUFFIXES,
     TIERS,
+    TaskSpec,
     TaskType,
     build_tasks,
     load_tasks,
@@ -82,7 +83,11 @@ def test_select_keeps_every_tier_represented(tmp_path):
     tasks = build_tasks(tmp_path, [f"design_00000{i}" for i in range(4)])
     chosen = select(tasks, limit_per_group=1)
     assert len({t.tier for t in chosen}) == 4
-    assert len({(t.task_type.value, t.tier) for t in chosen}) == len(chosen)
+    # One per (type, tier, k): COMPLETE fans out over suffix lengths, and each
+    # k is its own group so every k draws the same tier mix.
+    assert len(
+        {(t.task_type.value, t.tier, t.suffix_length) for t in chosen}
+    ) == len(chosen)
 
 
 def test_select_filters_by_type_and_tier(tmp_path):
@@ -124,3 +129,35 @@ def test_select_is_deterministic(tmp_path, preset_limit):
     first = [t.task_id for t in select(tasks, limit_per_group=preset_limit)]
     second = [t.task_id for t in select(tasks, limit_per_group=preset_limit)]
     assert first == second
+
+
+def test_selection_gives_every_k_the_same_tier_mix():
+    """Without suffix_length in the key, the cap falls across a design's whole
+    COMPLETE fan-out, so each k ends up averaging a different set of families
+    and the success(k) curve reads their difficulty as compounding error.
+    """
+    tasks = []
+    for tier, family in (("T1", "spacer"), ("T2", "plate")):
+        for design in range(6):
+            actions = [{"operation": "PAD", "parameters": {}} for _ in range(12)]
+            tasks.append(TaskSpec(
+                task_id=f"build-{family}{design}", task_type=TaskType.BUILD,
+                design_id=f"{family}{design}", family=family, tier=tier,
+                requirement="r", expert_actions=actions,
+            ))
+            for k in (1, 2, 4, 8):
+                tasks.append(TaskSpec(
+                    task_id=f"complete-k{k}-{family}{design}",
+                    task_type=TaskType.COMPLETE, design_id=f"{family}{design}",
+                    family=family, tier=tier, requirement="r",
+                    expert_actions=actions, suffix_length=k,
+                ))
+
+    chosen = select(tasks, limit_per_group=2)
+    mix: dict[int, set[str]] = {}
+    for task in chosen:
+        mix.setdefault(task.suffix_length, set()).add(task.tier)
+    assert len(mix) == 5  # build plus four k values
+    assert all(tiers == {"T1", "T2"} for tiers in mix.values())
+    counts = {k: len([t for t in chosen if t.suffix_length == k]) for k in mix}
+    assert len(set(counts.values())) == 1, f"uneven task counts per k: {counts}"
