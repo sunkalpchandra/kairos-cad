@@ -92,7 +92,7 @@ diameter, never a quantity.
   constraints is winnable, success is `all_measured_satisfied`, which
   already distinguishes "nothing to check" from "nothing checkable".
 - `action_space.py`, codec between policy outputs
-  (operation index + [0,1]⁶ params + target index) and validated structured
+  (operation index + [0,1]^6 params + target index) and validated structured
   actions; documented denormalization ranges; `encode` inverts expert
   actions for BC. `ADD_POLYGON` decodes to a regular 3-8-gon; irregular
   expert profiles (the L and U recipes) are not representable in the fixed

@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint check-docs sync-docs generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard demo clean
+.PHONY: setup setup-learn test test-cad test-all lint check-text check-docs sync-docs generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -29,6 +29,11 @@ test-all: test test-cad
 
 lint:
 	$(PYTHON) -m ruff check kairos tests scripts
+	$(PYTHON) scripts/check_text.py
+
+## Fail on unicode punctuation and invisible characters in source and docs.
+check-text:
+	$(PYTHON) scripts/check_text.py
 
 ## Fail if a doc's generated tables disagree with the artifacts on disk.
 check-docs:

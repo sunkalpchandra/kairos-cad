@@ -8,7 +8,7 @@ open docs/dashboard.html
 ```
 
 It reads only committed artifacts, `dataset/designs/*/`, `runs/*/report.json`,
-`runs/*/‌*_traces.jsonl`, `runs/*/leaderboard.json`. Nothing is computed from a
+`runs/*/*_traces.jsonl`, `runs/*/leaderboard.json`. Nothing is computed from a
 live model at page-build time, so a number on screen can always be traced to a
 file on disk. This is the same discipline `benchmark_report.py` follows, for the
 same reason: a dashboard that can disagree with the repo is worse than no
