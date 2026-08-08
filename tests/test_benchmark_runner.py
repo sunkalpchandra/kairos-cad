@@ -96,3 +96,18 @@ def test_env_server_payload_reports_hole_count():
         FakeEnv(), {"numeric": [0.0], "action_mask": [1], "targets": {}}, info
     )
     assert payload["hole_count"] == 6
+
+
+def test_a_stalled_episode_is_scored_not_dropped():
+    """A rejected action leaves the document unchanged and the observation
+    carries no last-action-success signal, so a deterministic policy re-emits
+    the same action forever. Cutting the loop must not change the score.
+    """
+    from kairos.benchmark.runner import STALL_LIMIT, TaskResult
+
+    result = TaskResult(task_id="t", policy="p", repeat=0,
+                        outcome=EpisodeOutcome(requirement="r", family="plate"))
+    result.stalled = True
+    assert not result.aborted, "a stalled episode must still be scored"
+    assert result.to_dict()["stalled"] is True
+    assert STALL_LIMIT >= 2
