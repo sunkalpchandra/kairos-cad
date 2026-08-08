@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard demo clean
+.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard paper demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -87,6 +87,13 @@ dashboard:
 		--out docs/dashboard.html --stamp "$(SUITE_VERSION)"
 
 SUITE_VERSION := kairos-cad-v1
+
+## Phase 9: regenerate the paper's tables from artifacts, then build the PDF.
+## Tables are always rebuilt first, so the PDF cannot lag the run it describes.
+paper:
+	$(PYTHON) scripts/build_paper_tables.py --benchmark runs/benchmark_core \
+		--ablation runs/ablation --runs runs --out paper/generated
+	cd paper && tectonic main.tex
 
 ## End-to-end demo: requirement → spec → build → rewards → exports (spec §50).
 demo:
