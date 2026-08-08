@@ -26,7 +26,7 @@ from torch import nn
 
 from kairos.models.distributions import ActionDistribution
 from kairos.models.value_head import ValueHead
-from kairos.models.vla import KairosVLA, VLAConfig
+from kairos.models.vla import KairosVLA, VLAConfig, load_model_state
 from kairos.rl.action_space import PARAM_SLOTS
 
 
@@ -174,7 +174,7 @@ class ActorCritic(nn.Module):
         """
         payload = torch.load(Path(path), map_location=device, weights_only=False)
         vla = KairosVLA(VLAConfig.from_dict(payload["model_config"]))
-        vla.load_state_dict(payload["model_state"])
+        load_model_state(vla, payload["model_state"])
         model = cls(vla=vla, init_log_std=init_log_std, **kwargs)
         return model.to(device)
 

@@ -35,6 +35,13 @@ class VLAConfig:
     language_heads: int = 4
     max_text_length: int = 64
     vision_widths: tuple[int, ...] = (16, 32, 64, 128)
+    #: Build the vision encoder at all. Off by default because no training or
+    #: rollout path passes `views`: grep for `views=` and every call site is
+    #: rendering, not inference. Building it anyway cost 115,089 parameters
+    #: (10.1% of the model) that never see a gradient, plus their Adam moments
+    #: and their bytes in every checkpoint. Turn this on when something
+    #: actually feeds images.
+    use_vision: bool = False
     numeric_dim: int = ENCODING_DIM
     history_embed_dim: int = 32
     fusion_depth: int = 2
@@ -56,6 +63,25 @@ class VLAConfig:
         return config
 
 
+def load_model_state(model: nn.Module, state: dict) -> None:
+    """Load weights, tolerating only the vision encoder's absence.
+
+    Checkpoints written before `use_vision` defaulted off carry `vision.*`
+    tensors the model no longer builds. `strict=False` would accept those, but
+    it also silently accepts *missing* keys, which would let a genuinely
+    mismatched checkpoint load as a partly random policy and score as a result.
+    So the extra keys are dropped explicitly and everything else stays strict.
+    """
+    own = set(model.state_dict())
+    extra = [k for k in state if k not in own]
+    unexpected = [k for k in extra if not k.startswith("vision.")]
+    if unexpected:
+        raise RuntimeError(
+            f"checkpoint has {len(unexpected)} unexpected tensors: {unexpected[:5]}"
+        )
+    model.load_state_dict({k: v for k, v in state.items() if k in own}, strict=True)
+
+
 class KairosVLA(nn.Module):
     """Multimodal policy over structured CAD actions."""
 
@@ -71,8 +97,10 @@ class KairosVLA(nn.Module):
             max_length=c.max_text_length,
             dropout=c.dropout,
         )
-        self.vision = VisionEncoder(
-            embed_dim=c.embed_dim, widths=c.vision_widths, dropout=c.dropout
+        self.vision = (
+            VisionEncoder(embed_dim=c.embed_dim, widths=c.vision_widths, dropout=c.dropout)
+            if c.use_vision
+            else None
         )
         self.state = StateEncoder(
             embed_dim=c.embed_dim,
@@ -106,6 +134,11 @@ class KairosVLA(nn.Module):
         """Run the encoders and fuse them into ``[B, embed_dim]``."""
         language = self.language(token_ids, token_values, token_mask)
         state = self.state(numeric, history)
+        if views is not None and self.vision is None:
+            raise ValueError(
+                "views were passed but the vision encoder is disabled; set "
+                "VLAConfig.use_vision=True to build it"
+            )
         vision = self.vision(views) if views is not None else None
         return self.fusion(language, state, vision)
 

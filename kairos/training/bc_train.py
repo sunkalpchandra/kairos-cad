@@ -31,7 +31,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 
-from kairos.models.vla import KairosVLA, VLAConfig
+from kairos.models.vla import KairosVLA, VLAConfig, load_model_state
 from kairos.rl.action_space import OPERATIONS, PARAM_SLOTS, decode
 from kairos.training.bc_dataset import TrajectoryDataset, collate
 
@@ -359,7 +359,7 @@ def load_checkpoint(path: str | Path, device: torch.device | str = "cpu") -> Kai
     """Rebuild the exact architecture a checkpoint was trained with."""
     payload = torch.load(Path(path), map_location=device, weights_only=False)
     model = KairosVLA(VLAConfig.from_dict(payload["model_config"]))
-    model.load_state_dict(payload["model_state"])
+    load_model_state(model, payload["model_state"])
     # eval(), not the nn.Module default of train(): a loaded checkpoint is
     # for inference, and dropout would silently change the emitted CAD
     # dimensions from one call to the next.

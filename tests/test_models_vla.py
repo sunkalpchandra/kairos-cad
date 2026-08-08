@@ -1,11 +1,13 @@
 """End-to-end VLA tests (skipped without the optional torch extra)."""
 
+from dataclasses import replace
+
 import pytest
 
 torch = pytest.importorskip("torch", reason="requires the 'learn' extra")
 
 from kairos.language import tokenizer as tk  # noqa: E402
-from kairos.models.vla import KairosVLA, VLAConfig  # noqa: E402
+from kairos.models.vla import KairosVLA, VLAConfig, load_model_state  # noqa: E402
 from kairos.representation.numerical_encoder import ENCODING_DIM  # noqa: E402
 from kairos.rl.action_space import MAX_TARGETS, NUM_OPERATIONS, PARAM_SLOTS  # noqa: E402
 
@@ -46,7 +48,7 @@ def test_forward_produces_the_full_action_distribution():
 
 def test_runs_with_and_without_views():
     """Per-step renders do not exist yet; one checkpoint must serve both."""
-    model = KairosVLA(CONFIG).eval()
+    model = KairosVLA(replace(CONFIG, use_vision=True)).eval()
     with torch.no_grad():
         blind = model(**_inputs())["operation_logits"]
         seeing = model(**_inputs(with_views=True))["operation_logits"]
@@ -66,7 +68,13 @@ def test_requirement_text_changes_the_prediction():
 
 
 def test_gradients_reach_every_submodule():
-    model = KairosVLA(CONFIG)
+    """Passing views here is what hid the dead vision encoder for so long.
+
+    Gradients reach `vision` in this test and never in training, because no
+    training or rollout path passes `views` at all. See
+    test_vision_is_off_unless_asked_for below, which pins the real default.
+    """
+    model = KairosVLA(replace(CONFIG, use_vision=True))
     out = model(**_inputs(with_views=True))
     (out["operation_logits"].sum() + out["parameters"].sum()).backward()
     for name in ("language", "vision", "state", "fusion", "heads"):
@@ -74,6 +82,36 @@ def test_gradients_reach_every_submodule():
         grads = [p.grad for p in module.parameters() if p.requires_grad]
         assert grads, f"{name} has no parameters"
         assert any(g is not None and g.abs().sum() > 0 for g in grads), f"{name} got no gradient"
+
+
+def test_vision_is_off_unless_asked_for():
+    """The default model has no vision encoder, and says so when handed views."""
+    model = KairosVLA(CONFIG)
+    assert model.vision is None
+    with pytest.raises(ValueError, match="vision encoder is disabled"):
+        model(**_inputs(with_views=True))
+
+
+def test_disabling_vision_drops_its_parameters():
+    blind = sum(p.numel() for p in KairosVLA(CONFIG).parameters())
+    seeing = sum(p.numel() for p in KairosVLA(replace(CONFIG, use_vision=True)).parameters())
+    assert blind < seeing
+
+
+def test_a_checkpoint_with_vision_loads_into_a_blind_model():
+    """Checkpoints predate the flag and carry vision.* tensors."""
+    seeing = KairosVLA(replace(CONFIG, use_vision=True))
+    blind = KairosVLA(CONFIG)
+    load_model_state(blind, seeing.state_dict())  # must not raise
+
+
+def test_a_genuinely_wrong_checkpoint_still_fails():
+    """strict=False would swallow this, and a half-loaded policy would score."""
+    model = KairosVLA(CONFIG)
+    state = dict(model.state_dict())
+    state["nonsense.weight"] = torch.zeros(1)
+    with pytest.raises(RuntimeError, match="unexpected tensors"):
+        load_model_state(model, state)
 
 
 def test_config_round_trips_through_a_dict():
