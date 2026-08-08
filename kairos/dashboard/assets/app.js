@@ -175,6 +175,9 @@ function renderSuccessCurve() {
       xLabel: 'k = trailing actions the policy must supply (larger is harder)',
       yLabel: 'success rate',
       yMax: 1.0,
+      // Tick only where k was actually measured. Generic round-number ticks
+      // put marks at 3, 5, 6 and 7, implying samples that do not exist.
+      xTickLabels: ks.map((k) => [k, String(k)]),
     }) + legend(series.map((s) => s.name));
 }
 
@@ -187,15 +190,28 @@ function renderTraining() {
 
   const bcHistory = bc.history || [];
   if (bcHistory.length) {
-    const series = [
-      { name: 'train accuracy', points: bcHistory.map((r) => [r.epoch, r.train_accuracy]) },
-      { name: 'dev accuracy', points: bcHistory.map((r) => [r.epoch, r.dev_accuracy ?? r.val_accuracy]) },
+    const accuracy = [
+      { name: 'train', points: bcHistory.map((r) => [r.epoch, r.train_accuracy]) },
+      { name: 'held out', points: bcHistory.map((r) => [r.epoch, r.held_out_accuracy]) },
     ].filter((s) => s.points.every((p) => p[1] != null));
     el('bc-chart').innerHTML =
-      lineChart(series, { xLabel: 'epoch', yLabel: 'next-action accuracy', yMax: 1.0 }) +
-      legend(series.map((s) => s.name));
+      lineChart(accuracy, { xLabel: 'epoch', yLabel: 'next-action accuracy', yMax: 1.0 }) +
+      legend(accuracy.map((s) => s.name));
+
+    const loss = [
+      { name: 'train loss', points: bcHistory.map((r) => [r.epoch, r.train_loss]) },
+      { name: 'held-out loss', points: bcHistory.map((r) => [r.epoch, r.val_loss]) },
+    ].filter((s) => s.points.every((p) => p[1] != null));
+    el('bc-loss-chart').innerHTML =
+      lineChart(loss, { xLabel: 'epoch', yLabel: 'loss' }) + legend(loss.map((s) => s.name));
+
+    const best = bc.best_held_out_accuracy;
+    el('bc-summary').textContent = best == null ? '' :
+      `best held-out next-action accuracy ${fmt(best)} over ${bcHistory.length} epochs` +
+      (bc.parameters ? ` · ${(bc.parameters / 1e6).toFixed(2)}M parameters` : '');
   } else {
     el('bc-chart').innerHTML = '<p class="empty">no BC history in this bundle</p>';
+    el('bc-loss-chart').innerHTML = '';
   }
 
   const ppoHistory = (ppo.history || []).filter((r) => r.iteration != null);
