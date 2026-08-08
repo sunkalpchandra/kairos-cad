@@ -5,8 +5,8 @@ are baked into trained checkpoints, so they must not shift when the dataset is
 regenerated or a new family is added. Unknown words map to ``<unk>``; adding a
 family means appending to ``EXTRA_WORDS`` (never reordering ``CORPUS_WORDS``).
 
-Numbers are the part of a CAD requirement that carries the most signal — "6 mm
-holes" and "20 mm holes" are different designs — but treating every distinct
+Numbers are the part of a CAD requirement that carries the most signal, "6 mm
+holes" and "20 mm holes" are different designs, but treating every distinct
 magnitude as its own token would fragment the vocabulary. Each numeric literal
 therefore becomes a single ``<num>`` token *plus* its value in a parallel
 array, so the encoder can embed magnitude continuously instead of
@@ -23,7 +23,7 @@ SPECIALS: tuple[str, ...] = (PAD, UNK, NUM, BOS, EOS)
 PAD_ID, UNK_ID, NUM_ID, BOS_ID, EOS_ID = range(5)
 
 #: Every word appearing in the eight families' generated requirements
-#: (1,080 designs). Frozen — append to EXTRA_WORDS instead of editing this.
+#: (1,080 designs). Frozen, append to EXTRA_WORDS instead of editing this.
 CORPUS_WORDS: tuple[str, ...] = (
     "a", "all", "and", "at", "base", "bolt", "bore", "braced", "bracket", "by",
     "central", "chamfers", "circle", "circular", "corner", "cross-wall",

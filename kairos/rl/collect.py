@@ -6,7 +6,7 @@ action, sends it across the bridge, and stores the transition.
 
 Requirements are **sampled per episode** from a pool rather than fixed. A
 policy trained against one requirement learns that requirement's build, not how
-to read requirements at all — and the language encoder would receive no
+to read requirements at all, and the language encoder would receive no
 training signal whatsoever.
 
 Episode endings are recorded as terminated or truncated separately, because
@@ -215,7 +215,7 @@ class RolloutCollector:
                 summary.truncated = bool(truncated or crashed)
                 summary.crashed = crashed
                 # A successful finish is FINISH_DESIGN on a valid solid whose
-                # measured constraints all hold — the reward tracker's own
+                # measured constraints all hold, the reward tracker's own
                 # definition, read back rather than re-derived here.
                 summary.finished_successfully = bool(
                     terminated

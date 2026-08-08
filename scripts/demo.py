@@ -6,7 +6,7 @@ actions → constraint checking → shaped rewards → exports + renders + metri
 
 The design actions come from the procedural expert (the same recipes that
 generate BC data); the learned policy replaces it in Phase 4/5. Everything
-else — parsing, execution, inspection, reward, export — is the real
+else, parsing, execution, inspection, reward, export, is the real
 pipeline.
 
 Run under FreeCAD's interpreter:
@@ -25,7 +25,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Imported, not copied: this string lived in three places and the copies
-# had drifted — the demo asked for symmetry, which has no checker, so the
+# had drifted, the demo asked for symmetry, which has no checker, so the
 # headline demo reported an unmeasured constraint every run.
 from kairos.rl.environment import DEFAULT_REQUIREMENT
 

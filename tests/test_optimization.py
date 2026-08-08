@@ -1,4 +1,4 @@
-"""Surrogate and optimizer tests (pure numpy — no torch, no FreeCAD)."""
+"""Surrogate and optimizer tests (pure numpy, no torch, no FreeCAD)."""
 
 import math
 
@@ -225,7 +225,7 @@ def test_verification_records_reality_and_exposes_surrogate_error():
 
 
 def test_verification_can_overturn_a_predicted_pass():
-    """The surrogate said fine, the geometry says otherwise — reality wins."""
+    """The surrogate said fine, the geometry says otherwise, reality wins."""
     result = OptimizationResult(
         parameters={"t": 3.0}, predicted_mass_g=5.0, predicted_thickness_mm=3.2
     )

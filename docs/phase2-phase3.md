@@ -1,4 +1,4 @@
-# Phases 2–3 — Dataset scale-up and CAD representation
+# Phases 2-3, Dataset scale-up and CAD representation
 
 Phase 2 delivers the procedural dataset at benchmark scale; Phase 3 delivers
 the state representation the learning stack consumes. Alongside them this
@@ -22,8 +22,8 @@ Eight self-registering parametric families, each exposing `sample(rng)`,
 | `spacer` | revolved annulus + rim chamfers | revolve, circular-edge search, chamfer |
 | `flange` | disk + hub + bore + bolt circle | revolve, CIRCULAR_PATTERN of a pocket |
 
-Every family test asserts a **closed-form analytic volume** (rel=1e-6) — not
-snapshots — plus hole-count validation and seeded feasibility property tests.
+Every family test asserts a **closed-form analytic volume** (rel=1e-6), not
+snapshots, plus hole-count validation and seeded feasibility property tests.
 
 ## Dataset
 
@@ -47,25 +47,25 @@ reward signal the RL agent will see.
 
 ## Representation (`kairos/representation/`)
 
-- `observation.py` — one JSON snapshot per step (summary, holes, faces,
+- `observation.py`, one JSON snapshot per step (summary, holes, faces,
   sketch status). Every downstream consumer takes these dicts, never live
   FreeCAD objects: constraint checking, rewards, and encoders are all
   pure-python testable.
-- `numerical_encoder.py` — frozen 24-dim state vector (layout documented in
+- `numerical_encoder.py`, frozen 24-dim state vector (layout documented in
   `FEATURE_NAMES`; BC data and policies must agree on it).
-- `feature_encoder.py` — feature-history token ids / one-hot with PAD/UNK.
-- `geometry_graph.py` — typed attributed graph: body/solid/face/edge/vertex/
+- `feature_encoder.py`, feature-history token ids / one-hot with PAD/UNK.
+- `geometry_graph.py`, typed attributed graph: body/solid/face/edge/vertex/
   sketch/feature/constraint nodes; contains/adjacent_to/created_by/
   constrained_by/depends_on/modified_by relations; numpy arrays ready for a
   PyG wrapper in Phase 4.
 
 ## Requirement understanding and evaluation
 
-- `kairos/language/` — deterministic rule-based parser → `EngineeringSpec`
+- `kairos/language/`, deterministic rule-based parser → `EngineeringSpec`
   (typed constraints + objectives). Never invents values; covers all
   benchmark phrasings (M-thread sizes, wall thickness, envelopes, symmetry,
   cylindrical interfaces, mass-reduction %).
-- `kairos/evaluation/constraints.py` — checkers resolve each constraint to
+- `kairos/evaluation/constraints.py`, checkers resolve each constraint to
   satisfied / violated / **unmeasured**. Unmeasured kinds (min wall
   thickness until Phase 6, symmetry) are excluded from satisfaction rates
   and can never earn reward credit. `hole_diameter` checks the holes the
@@ -81,32 +81,32 @@ diameter, never a quantity.
 
 ## Reward and environment (`kairos/rl/`)
 
-- `rewards.py` — episode-scoped shaped reward per the project spec
-  (§16–17): one-shot shaping bonuses, per-constraint bonuses, validity
+- `rewards.py`, episode-scoped shaped reward per the project spec
+  (§16-17): one-shot shaping bonuses, per-constraint bonuses, validity
   regression penalty, complexity/action costs, and a mass-progress term
   that only activates while all measured constraints hold (no farming mass
   reduction by skipping requirements). Mass progress is **potential-based**:
   it pays against the lightest constraint-satisfying design so far, so an
   episode's total telescopes to the real improvement and a pad-then-pocket
   cycle earns nothing the second time. A requirement that parses to zero
-  constraints is winnable — success is `all_measured_satisfied`, which
+  constraints is winnable, success is `all_measured_satisfied`, which
   already distinguishes "nothing to check" from "nothing checkable".
-- `action_space.py` — codec between policy outputs
+- `action_space.py`, codec between policy outputs
   (operation index + [0,1]⁶ params + target index) and validated structured
   actions; documented denormalization ranges; `encode` inverts expert
-  actions for BC. `ADD_POLYGON` decodes to a regular 3–8-gon; irregular
+  actions for BC. `ADD_POLYGON` decodes to a regular 3-8-gon; irregular
   expert profiles (the L and U recipes) are not representable in the fixed
   slots, so `encode` raises `UnrepresentableAction` rather than emit a
-  target that decodes into a different shape — BC expands those into
+  target that decodes into a different shape, BC expands those into
   `ADD_LINE` sequences.
-- `environment.py` — `KairosCADEnv` (Gymnasium): Dict observation
+- `environment.py`, `KairosCADEnv` (Gymnasium): Dict observation
   (numeric vector + legality mask), Dict action, per-step info carrying the
   action result, reward breakdown, and constraint report.
 
 ## Verification
 
 Full suite under FreeCAD 1.1.3: **251 tests** (`make test-all`), including
-27 family tests authored and verified in parallel worktrees. The Phase 4–5
+27 family tests authored and verified in parallel worktrees. The Phase 4-5
 learning tests skip there (no torch) and run under the system interpreter
 (**330 tests**), where the CAD tests skip instead. Lint: `ruff` clean.
 

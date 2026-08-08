@@ -34,7 +34,7 @@ def main() -> int:
 
     from kairos.data.generator import generate_dataset
 
-    print(f"FreeCAD {freecad_version()} — generating {args.count} designs → {args.out}")
+    print(f"FreeCAD {freecad_version()}, generating {args.count} designs → {args.out}")
     start = time.time()
     stats = generate_dataset(
         args.out,

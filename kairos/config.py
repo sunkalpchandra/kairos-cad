@@ -1,8 +1,8 @@
 """YAML experiment configuration loading.
 
 Configs are plain dicts with a few typed accessors; experiments pass a path
-(e.g. ``configs/default.yaml``) and everything downstream — environment,
-reward weights, dataset generation — is constructed from it. No experiment
+(e.g. ``configs/default.yaml``) and everything downstream, environment,
+reward weights, dataset generation, is constructed from it. No experiment
 parameter may be hardcoded at a call site.
 """
 
@@ -49,7 +49,7 @@ def validate_sections(config: dict[str, Any]) -> None:
     """Reject unknown top-level sections.
 
     A typo like ``rewrad:`` otherwise leaves the run silently on default
-    weights — an ablation that changes nothing and reports success.
+    weights, an ablation that changes nothing and reports success.
     """
     unknown = set(config) - KNOWN_SECTIONS
     if unknown:

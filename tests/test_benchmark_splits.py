@@ -1,4 +1,4 @@
-"""Split tests — the contamination gate is the point of this module."""
+"""Split tests, the contamination gate is the point of this module."""
 
 import json
 
@@ -37,7 +37,7 @@ def test_duplicate_texts_never_straddle_a_boundary():
     """Two designs with the same requirement must land in the same split.
 
     Splitting by design id alone lets a policy that memorized one score on the
-    other — the near-duplicate version of the leak that already shipped once.
+    other, the near-duplicate version of the leak that already shipped once.
     """
     designs = {f"design_{i:06d}": "Design a plate 60 x 40 x 5 mm" for i in range(20)}
     designs.update({f"design_1{i:05d}": f"Design a spacer {i} mm tall" for i in range(20)})
@@ -61,7 +61,7 @@ def test_contamination_is_detected_by_shared_id():
 
 
 def test_contamination_is_detected_by_shared_text():
-    """Different designs, same requirement — still contamination."""
+    """Different designs, same requirement, still contamination."""
     splits = SplitSet(splits={
         "train": Split("train", ["design_000001"], ["same"]),
         "test": Split("test", ["design_000002"], ["same"]),

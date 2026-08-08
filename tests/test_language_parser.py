@@ -86,7 +86,7 @@ def test_thread_designation_is_not_read_as_a_hole_count():
 
 def test_sub_component_dimensions_are_not_the_part_envelope():
     """A triple that sizes a sub-component the design then stacks material on
-    is left unextracted — the finished part is meant to be taller than it."""
+    is left unextracted, the finished part is meant to be taller than it."""
     reinforced = parse_requirement(
         "Design a reinforced rectangular plate 100 x 60 x 6.0 mm stiffened by 2 "
         "full-length ribs 8 mm wide and 8 mm tall, with 4 corner through-holes "

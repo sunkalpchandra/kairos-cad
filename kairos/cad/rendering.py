@@ -3,7 +3,7 @@
 FreeCAD's own viewport requires the GUI, so this module implements a small
 software rasterizer: tessellate the shape, orthographically project it for a
 named view, z-buffer the triangles with Lambert shading, and write a PNG
-(stdlib zlib only — usable from any FreeCAD-bundled interpreter).
+(stdlib zlib only, usable from any FreeCAD-bundled interpreter).
 
 Standard views: ``iso``, ``front``, ``top``, ``right``.
 """
@@ -167,7 +167,7 @@ def read_png(path: str | Path) -> np.ndarray:
     The inverse of :func:`write_png`, kept dependency-free for the same reason:
     the training stack must be able to load rendered views without pulling an
     image library into FreeCAD's interpreter. All five PNG row filters are
-    reconstructed, so re-encoded files load too — not just our own output.
+    reconstructed, so re-encoded files load too, not just our own output.
     """
     data = Path(path).read_bytes()
     if data[:8] != b"\x89PNG\r\n\x1a\n":

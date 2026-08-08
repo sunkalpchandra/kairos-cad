@@ -6,8 +6,8 @@ state at every step, so per-step errors never compound. Closed-loop evaluation
 is the number that actually answers the research question, and it is
 consistently lower.
 
-Every policy is measured the same way — same requirements, same seed, same step
-budget — so the comparison is like-for-like. The random baseline exists to make
+Every policy is measured the same way, same requirements, same seed, same step
+budget, so the comparison is like-for-like. The random baseline exists to make
 the others legible: it acts uniformly over *legal* operations, so it is already
 stronger than pure noise, and anything not beating it has learned nothing.
 """
@@ -108,7 +108,7 @@ def evaluate_policy(
 
 
 def per_requirement_breakdown(episodes) -> dict[str, dict[str, Any]]:
-    """Success per requirement — an aggregate can hide one dominant family."""
+    """Success per requirement, an aggregate can hide one dominant family."""
     grouped: dict[str, list] = {}
     for episode in episodes:
         grouped.setdefault(episode.requirement, []).append(episode)
@@ -170,7 +170,7 @@ def format_comparison(results: dict[str, dict[str, Any]]) -> str:
 def bootstrap_interval(
     values: list[float], samples: int = 2000, seed: int = 0, alpha: float = 0.05
 ) -> tuple[float, float]:
-    """Percentile bootstrap CI — episode counts here are small enough that a
+    """Percentile bootstrap CI, episode counts here are small enough that a
     point estimate alone would overstate what was measured."""
     if not values:
         return (float("nan"), float("nan"))

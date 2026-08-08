@@ -34,7 +34,7 @@ def export_step(cad_doc: CADDocument, path: str | Path) -> Path:
 def export_stl(cad_doc: CADDocument, path: str | Path, linear_deflection: float = 0.3) -> Path:
     """Export the body tip solid as a binary STL mesh.
 
-    ``linear_deflection`` (mm) bounds the tessellation chord error — it
+    ``linear_deflection`` (mm) bounds the tessellation chord error, it
     controls file size directly (0.3 mm keeps bracket-scale parts well under
     1 MB; ``Shape.exportStl`` ignores deflection entirely, so meshing goes
     through MeshPart when available).

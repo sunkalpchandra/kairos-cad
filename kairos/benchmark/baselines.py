@@ -5,7 +5,7 @@ to check that the benchmark itself is measuring what it claims:
 
 - :class:`ExpertReplay` re-executes the recorded expert actions verbatim. It
   **must score 1.000**. If it does not, the fault is in the harness, the
-  environment or the constraint checker — not in any policy — and every other
+  environment or the constraint checker, not in any policy, and every other
   number that run produces is meaningless.
 - :class:`ImmediateFinish` calls FINISH_DESIGN at once. It **must score bottom
   on every metric**. This is not a hypothetical: PPO trained from scratch
@@ -66,7 +66,7 @@ class ImmediateFinish(BenchmarkPolicy):
 
 
 class LegalRandom(BenchmarkPolicy):
-    """Uniform over *legal* operations — a floor stronger than pure noise."""
+    """Uniform over *legal* operations, a floor stronger than pure noise."""
 
     name = "legal-random"
 
@@ -137,8 +137,8 @@ class ScriptedSpec(BenchmarkPolicy):
 
     Builds the only shape a fixed script can build from a parsed spec: a
     rectangular plate padded to thickness, then one circle per required hole,
-    pocketed through. It should nail the plate family and fail the bent ones —
-    which is exactly what makes it a useful null hypothesis.
+    pocketed through. It should nail the plate family and fail the bent ones. Which is
+    exactly what makes it a useful null hypothesis.
     """
 
     name = "scripted-spec"

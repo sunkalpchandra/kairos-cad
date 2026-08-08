@@ -1,8 +1,7 @@
 """Stating a requirement so the geometry can actually satisfy it.
 
 A requirement is a *contract* the recipe must meet, and the constraint checker
-reads it from the requirement text — not from the exact float the recipe used.
-So the text has to round in the direction that keeps the contract satisfiable.
+reads it from the requirement text, not from the exact float the recipe used, so the text has to round in the direction that keeps the contract satisfiable.
 
 Rounding to nearest does not. A 6.1866 mm wall stated as "6.2 mm" makes the
 expert violate its own requirement by 0.013 mm: the geometry is correct, the
@@ -57,7 +56,7 @@ def stated_minimum(value: float, decimals: int = DECIMALS) -> float:
 
     The spec and the text must agree. Keeping the spec at full precision while
     the text is floored would leave the parser and the recipe disagreeing about
-    what was promised — the same split that caused the original bug.
+    what was promised, the same split that caused the original bug.
     """
     scale = 10.0**decimals
     return math.floor(value * scale) / scale

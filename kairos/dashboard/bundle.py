@@ -4,7 +4,7 @@ The dashboard is a single HTML file with the data inlined, not a server reading
 the repo. Two reasons: a static file can be opened from disk, mailed, or
 attached to a paper without anything running, and inlining forces the bundle to
 be **derived from the artifacts on disk** rather than from whatever a live
-process happens to hold in memory — the same discipline that keeps
+process happens to hold in memory, the same discipline that keeps
 `benchmark_report.py` reading only traces.
 
 Everything here is pure python, so the bundle can be built under either
@@ -301,7 +301,7 @@ def attach_meshes(designs: list[dict[str, Any]], root: str | Path) -> int:
     """Attach a viewer mesh to each design; returns how many succeeded.
 
     A design whose STL is missing or unreadable keeps every one of its metrics
-    and simply renders without geometry — a bundle is still useful without a
+    and simply renders without geometry, a bundle is still useful without a
     picture, and failing the whole build over one bad mesh is not.
     """
     from kairos.dashboard.mesh import mesh_from_stl

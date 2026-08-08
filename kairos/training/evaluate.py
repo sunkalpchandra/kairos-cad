@@ -1,7 +1,7 @@
 """Offline evaluation of a trained policy against held-out expert steps.
 
 A single accuracy number hides the thing that matters. The action distribution
-is heavily skewed — a quarter of all steps are ADD_CIRCLE — so a policy that
+is heavily skewed, a quarter of all steps are ADD_CIRCLE, so a policy that
 learned only the majority operation can look competent. These breakdowns make
 that visible: per-operation recall exposes collapse onto frequent classes, and
 per-family accuracy exposes a policy that handles plates but not flanges.

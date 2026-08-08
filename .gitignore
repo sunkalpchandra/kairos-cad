@@ -34,9 +34,3 @@ wandb/
 .DS_Store
 .idea/
 .vscode/
-paper/*.aux
-paper/*.log
-paper/*.bbl
-paper/*.blg
-paper/*.out
-paper/*.xdv

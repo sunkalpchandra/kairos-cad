@@ -2,7 +2,7 @@
 
 A ``TrajectoryRecorder`` hooks an ``ActionExecutor`` and, after every action,
 captures the observation snapshot, the numeric state vector, and the shaped
-reward — single-pass, during the same execution that builds the design. The
+reward, single-pass, during the same execution that builds the design. The
 result is the project trajectory format:
 
     {"requirement": ..., "states": [...], "actions": [...],
@@ -50,7 +50,7 @@ class TrajectoryRecorder:
 
     def _on_action(self, action: Action, result: ActionResult) -> None:
         # Wall thickness is ray-cast against the solid, far too costly to run
-        # every step — but the terminal step is the one whose constraint
+        # every step, but the terminal step is the one whose constraint
         # report decides success, so it is measured exactly there. Without
         # this, min_wall_thickness stays 'unmeasured' on every design that
         # declares one, which is the state Phase 6 exists to end.

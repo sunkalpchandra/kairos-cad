@@ -1,7 +1,7 @@
 """Drive policies over the benchmark suite and record what happened.
 
 Separate from :class:`kairos.rl.collect.RolloutCollector` on purpose. The
-collector *samples* requirements from a pool and speaks only tensors — both
+collector *samples* requirements from a pool and speaks only tensors, both
 right for PPO training, both wrong here. A benchmark must **enumerate** tasks so
 every policy faces the same work in the same order, and it must hand the
 requirement text to baselines that have no encoder at all.
@@ -9,8 +9,8 @@ requirement text to baselines that have no encoder at all.
 ``COMPLETE`` tasks replay the expert prefix through the ordinary step API
 rather than a new protocol message: the environment already executes actions,
 so replaying `n - k` of them and then handing over is the whole mechanism. A
-prefix step that the environment rejects aborts the task rather than scoring it
-— the policy never got the state the task promised, and grading that as a
+prefix step that the environment rejects aborts the task rather than scoring it, the
+policy never got the state the task promised, and grading that as a
 policy failure would blame it for the harness.
 """
 
@@ -58,8 +58,8 @@ def _replay_prefix(env, task: TaskSpec) -> tuple[dict | None, str]:
 
     Sent as raw actions rather than codec-encoded ones: a prefix is replayed,
     not predicted, so it need not fit the policy's action space. Encoding it
-    dropped every irregular ADD_POLYGON — the profile step of six of eight
-    families — which aborted the very tasks COMPLETE exists to pose.
+    dropped every irregular ADD_POLYGON, the profile step of six of eight
+    families, which aborted the very tasks COMPLETE exists to pose.
     """
     env.reset(requirement=task.requirement)
     if not task.prefix_actions:

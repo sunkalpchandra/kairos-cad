@@ -7,14 +7,14 @@ wall thickness directly from a family's parameters in microseconds, which is
 what makes search practical; FreeCAD then verifies only the winner.
 
 **It predicts what is expensive, not what is easy.** Mass is cheap to compute
-analytically for these families, but wall thickness is not — it needs the ray
+analytically for these families, but wall thickness is not, it needs the ray
 casting in :mod:`kairos.evaluation.wall_thickness`. Both are predicted so the
 optimizer can trade them off, and both are verified exactly before any result
 is reported.
 
 The surrogate is a closed-form ridge fit on polynomial features, not a neural
 network. Sample counts here are hundreds, not millions, because every training
-row costs a real FreeCAD build — at that scale a closed-form fit has no
+row costs a real FreeCAD build, at that scale a closed-form fit has no
 optimizer, no seed and no training curve to misread, and it runs without torch,
 so the search can live in the same interpreter as the verification build.
 """
@@ -157,8 +157,8 @@ def r_squared(predicted: np.ndarray, actual: np.ndarray) -> float:
 class RidgeSurrogate:
     """Closed-form ridge regression on polynomial features.
 
-    Chosen over a neural network on purpose: with a few hundred rows per family
-    — each one a real FreeCAD build — a closed-form fit has no optimizer, no
+    Chosen over a neural network on purpose: with a few hundred rows per family, each
+    one a real FreeCAD build, a closed-form fit has no optimizer, no
     seed, and no training curve to misread, and mass is genuinely close to
     polynomial in the parameters. It also has no torch dependency, so the
     optimizer runs under FreeCAD's interpreter where the verification happens.
@@ -175,7 +175,7 @@ class RidgeSurrogate:
         """Bias, linear, then all monomials up to ``degree``.
 
         Degree 3 is the default rather than 2 because mass is a *three-way*
-        product of dimensions — a plate's is width x height x thickness — and a
+        product of dimensions, a plate's is width x height x thickness, and a
         quadratic simply cannot represent that. Fitted at degree 2 the surrogate
         still scores R^2 ~ 0.997 overall while getting the thickness direction
         wrong, so an optimizer following it walks the wrong way on exactly the

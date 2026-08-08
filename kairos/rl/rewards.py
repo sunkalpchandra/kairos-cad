@@ -12,7 +12,7 @@ constraint is satisfied, so the agent cannot farm "mass reduction" by never
 building the required geometry.
 
 The tracker consumes plain observation dicts (``kairos.representation.observe``)
-and ``ConstraintReport``s — pure python, unit-testable without FreeCAD.
+and ``ConstraintReport``s, pure python, unit-testable without FreeCAD.
 """
 
 from __future__ import annotations
@@ -162,8 +162,8 @@ class RewardTracker:
             # ``all_measured_satisfied`` already encodes the right rule for an
             # empty spec (trivially satisfied) and for one whose constraints are
             # all unmeasured (no credit). Also demanding a non-empty
-            # ``satisfied`` list would make every zero-constraint requirement —
-            # e.g. the u_bracket and spacer families — unwinnable.
+            # ``satisfied`` list would make every zero-constraint requirement, # e.g.
+            # the u_bracket and spacer families, unwinnable.
             success = has_solid and is_valid and report.all_measured_satisfied
             breakdown.add(
                 "finish", w.finish_success if success else w.finish_failure

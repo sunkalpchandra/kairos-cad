@@ -1,4 +1,4 @@
-"""kairos.rl export surface — must import cleanly in both interpreters."""
+"""kairos.rl export surface, must import cleanly in both interpreters."""
 
 import pytest
 

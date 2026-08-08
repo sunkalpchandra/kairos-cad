@@ -4,8 +4,8 @@ Geometry: U profile sketched on XZ (outer width along +x, height along +z,
 side walls ``wall_thickness``, floor ``base_thickness``), midplane-padded
 along y by ``depth``. Base holes are pocketed through the floor from an
 offset XY sketch; side holes are sketched on the outer +x wall face (YZ at
-``outer_width``) and pocketed through-all along -x, piercing BOTH walls —
-the two wall bores share one axis, so each position counts as one hole.
+``outer_width``) and pocketed through-all along -x, piercing BOTH walls, the two wall
+bores share one axis, so each position counts as one hole.
 """
 
 from __future__ import annotations

@@ -11,8 +11,8 @@ task's* requirement while scoring it against the real one. If the score barely
 moves, the requirement was decoration.
 
 Ablations are policy **wrappers**, not new policies, so the perturbed and
-unperturbed runs share every other condition — same tasks, same order, same
-seeds — and the difference between them is the ablation alone.
+unperturbed runs share every other condition, same tasks, same order, same
+seeds, and the difference between them is the ablation alone.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ class ShuffledRequirement(AblationWrapper):
     """Hands the policy a different task's requirement.
 
     Scoring still uses the real task, so a policy that reads the text should
-    collapse. One that has memorized a build prior will not move — and that
+    collapse. One that has memorized a build prior will not move, and that
     result would mean the language encoder is decorative, which no aggregate
     score can reveal.
     """
@@ -94,7 +94,7 @@ class NoActionMask(AblationWrapper):
     """Strips the legality mask from the observation.
 
     PPO's headline Phase 5 gain was a zero invalid-action rate. That is only a
-    policy result if the policy is what produced it — with the mask removed,
+    policy result if the policy is what produced it, with the mask removed,
     whatever remains is the policy's own doing.
     """
 

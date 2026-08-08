@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KAIROS — CAD agent dashboard</title>
+<title>KAIROS, CAD agent dashboard</title>
 <style>/* KAIROS dashboard styling.
  *
  * Dark by default because the viewer's canvas is dark and a light chrome
@@ -196,7 +196,7 @@ tr.highlight td { background: rgba(107, 149, 220, 0.09); }
   <p class="note">
     Each part below was built by a procedural expert from a natural-language
     requirement, then measured. The geometry is the real tessellated solid, not
-    a render — orbit it by dragging.
+    a render. Orbit it by dragging.
   </p>
   <div class="explorer">
     <div class="design-list" id="design-list"></div>
@@ -207,7 +207,7 @@ tr.highlight td { background: rgba(107, 149, 220, 0.09); }
         <label style="display:flex;gap:6px;align-items:center">
           colour <input type="color" id="color-picker" value="#6b95dc">
         </label>
-        <span class="hint">drag to orbit · scroll to zoom</span>
+        <span class="hint">drag to orbit - scroll to zoom</span>
       </div>
       <p class="callout" id="viewer-error" hidden style="margin:0;border-radius:0"></p>
     </div>
@@ -226,7 +226,7 @@ tr.highlight td { background: rgba(107, 149, 220, 0.09); }
   <h2>Leaderboard</h2>
   <p class="note">
     Every policy faces the <strong>same enumerated tasks in the same order</strong>.
-    <code>oracle-replay</code> is not a policy — it replays the expert through the
+    <code>oracle-replay</code> is not a policy. It replays the expert through the
     action codec, so its score is the <strong>ceiling</strong> any policy could
     reach, and the gap between it and 1.000 measures what the codec cannot express.
   </p>
@@ -245,7 +245,7 @@ tr.highlight td { background: rgba(107, 149, 220, 0.09); }
     Bootstrap intervals on the <strong>per-task</strong> difference, recomputed
     from the traces in this bundle. Pairing matters at this sample size: most
     of the variance is between tasks, and pairing removes it. An interval that
-    straddles zero means the benchmark cannot separate the two policies — which
+    straddles zero means the benchmark cannot separate the two policies, which
     is the honest answer more often than not here.
   </p>
   <div id="comparisons"></div>
@@ -810,7 +810,7 @@ const DATA = window.KAIROS_DATA;
 const el = (id) => document.getElementById(id);
 
 function fmt(value, digits) {
-  if (value == null || Number.isNaN(value)) return '—';
+  if (value == null || Number.isNaN(value)) return '-';
   return Number(value).toFixed(digits == null ? 3 : digits);
 }
 
@@ -861,29 +861,29 @@ function selectDesign(index) {
   }
 
   const meshInfo = design.mesh
-    ? `${design.mesh.triangle_count} triangles · ${design.mesh.vertex_count} vertices`
+    ? `${design.mesh.triangle_count} triangles - ${design.mesh.vertex_count} vertices`
     : 'no mesh bundled';
-  el('stage-info').textContent = `${design.design_id} · ${meshInfo}`;
+  el('stage-info').textContent = `${design.design_id} - ${meshInfo}`;
 
   el('detail-requirement').textContent = design.requirement || '(no requirement text)';
 
   const extent = design.extent_mm || [];
   const dims = extent[0] != null
-    ? `${fmt(extent[0], 1)} × ${fmt(extent[1], 1)} × ${fmt(extent[2], 1)}`
-    : '—';
+    ? `${fmt(extent[0], 1)} x ${fmt(extent[1], 1)} x ${fmt(extent[2], 1)}`
+    : '-';
   const wall = design.min_wall_thickness_mm;
   el('detail-kv').innerHTML = `
     <dt>family</dt><dd>${esc(design.family)}</dd>
-    <dt>material</dt><dd>${esc(design.material || '—')}</dd>
+    <dt>material</dt><dd>${esc(design.material || '-')}</dd>
     <dt>mass</dt><dd>${fmt(design.mass_g, 2)} g</dd>
     <dt>volume</dt><dd>${fmt(design.volume_mm3, 0)} mm³</dd>
     <dt>surface area</dt><dd>${fmt(design.surface_area_mm2, 0)} mm²</dd>
     <dt>extent (mm)</dt><dd>${dims}</dd>
-    <dt>faces</dt><dd>${design.faces == null ? '—' : design.faces}</dd>
-    <dt>holes</dt><dd>${design.hole_count == null ? '—' : design.hole_count}</dd>
+    <dt>faces</dt><dd>${design.faces == null ? '-' : design.faces}</dd>
+    <dt>holes</dt><dd>${design.hole_count == null ? '-' : design.hole_count}</dd>
     <dt>min wall</dt><dd>${wall == null ? 'not measured' : fmt(wall, 2) + ' mm'}</dd>
-    <dt>expert steps</dt><dd>${design.steps == null ? '—' : design.steps}</dd>
-    <dt>constraints met</dt><dd>${design.satisfaction_rate == null ? '—' : fmt(design.satisfaction_rate * 100, 0) + '%'}</dd>`;
+    <dt>expert steps</dt><dd>${design.steps == null ? '-' : design.steps}</dd>
+    <dt>constraints met</dt><dd>${design.satisfaction_rate == null ? '-' : fmt(design.satisfaction_rate * 100, 0) + '%'}</dd>`;
 
   const constraints = design.constraints || [];
   el('detail-constraints').innerHTML = constraints.length
@@ -938,7 +938,7 @@ function renderLeaderboard() {
           <td style="width:110px">${barRow(r.progress_mean || 0, best)}</td>
           <td class="num">${fmt(r.success_rate)}</td>
           <td class="num">${fmt(r.validity)}</td>
-          <td class="num">${r.tasks == null ? '—' : r.tasks}</td>
+          <td class="num">${r.tasks == null ? '-' : r.tasks}</td>
         </tr>`).join('')}</tbody>
     </table>`;
 }
@@ -1004,7 +1004,7 @@ function renderTraining() {
     const best = bc.best_held_out_accuracy;
     el('bc-summary').textContent = best == null ? '' :
       `best held-out next-action accuracy ${fmt(best)} over ${bcHistory.length} epochs` +
-      (bc.parameters ? ` · ${(bc.parameters / 1e6).toFixed(2)}M parameters` : '');
+      (bc.parameters ? ` - ${(bc.parameters / 1e6).toFixed(2)}M parameters` : '');
   } else {
     el('bc-chart').innerHTML = '<p class="empty">no BC history in this bundle</p>';
     el('bc-loss-chart').innerHTML = '';
@@ -1047,7 +1047,7 @@ function renderAblations() {
           <td class="name">${esc(r.name)}</td>
           <td class="num">${fmt(r.progress_mean)}</td>
           <td class="num" style="color:${(r.delta || 0) < 0 ? 'var(--fail)' : 'var(--muted)'}">
-            ${r.delta == null ? '—' : (r.delta > 0 ? '+' : '') + fmt(r.delta * 100, 1) + '%'}
+            ${r.delta == null ? '-' : (r.delta > 0 ? '+' : '') + fmt(r.delta * 100, 1) + '%'}
           </td>
           <td class="num">${fmt(r.validity)}</td>
         </tr>`).join('')}</tbody>
@@ -1070,7 +1070,7 @@ function renderComparisons() {
       <tbody>${rows.map((r) => {
         const separates = r.low != null && r.high != null && (r.low > 0 || r.high < 0);
         return `<tr>
-          <td class="name">${esc(r.a)} − ${esc(r.b)}</td>
+          <td class="name">${esc(r.a)} - ${esc(r.b)}</td>
           <td class="num">${(r.difference > 0 ? '+' : '') + fmt(r.difference)}</td>
           <td class="num">[${fmt(r.low)}, ${fmt(r.high)}]</td>
           <td class="num">${r.wins}/${r.losses}/${r.ties}</td>

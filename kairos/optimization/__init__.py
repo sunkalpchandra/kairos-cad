@@ -1,6 +1,6 @@
 """Phase 6: engineering optimization over a learned surrogate.
 
-Pure numpy — no torch — so the search runs under FreeCAD's interpreter, where
+Pure numpy, no torch, so the search runs under FreeCAD's interpreter, where
 the verification build happens.
 """
 

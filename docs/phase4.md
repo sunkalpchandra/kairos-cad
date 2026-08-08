@@ -1,8 +1,8 @@
-# Phase 4 — Multimodal VLA and behavioral cloning
+# Phase 4: Multimodal VLA and behavioral cloning
 
 Phase 4 turns the recorded expert trajectories into a policy: a
 vision-language-action model that reads a natural-language requirement and the
-current geometry, and emits the next **structured CAD action** — never code.
+current geometry, and emits the next **structured CAD action**, never code.
 
 ```text
 requirement tokens ──→ LanguageEncoder ──┐
@@ -29,8 +29,7 @@ Three choices are worth stating because the obvious alternative is wrong:
 
 - **Numbers are embedded, not tokenized.** `6 mm` and `60 mm` describe
   different parts. Each numeric literal becomes one `<num>` token plus its
-  scaled value, which a learned projection adds to the token embedding —
-  otherwise every distinct dimension would fragment the vocabulary.
+  scaled value, which a learned projection adds to the token embedding, otherwise every distinct dimension would fragment the vocabulary.
 - **The vision trunk is shared across views.** An orthographic silhouette
   means the same thing whichever axis produced it; a per-view trunk would
   quadruple parameters to relearn edges four times. *Which* view saw a feature
@@ -40,7 +39,7 @@ Three choices are worth stating because the obvious alternative is wrong:
   a flat head would learn one distribution averaged over every operation.
 
 Illegal operations receive `-1e9` logits from `kairos.actions.masking`, so they
-cannot be sampled and contribute no gradient — the policy is never trained to
+cannot be sampled and contribute no gradient. The policy is never trained to
 pick an action the document forbids. The value is finite rather than `-inf` so
 a fully masked row softmaxes to uniform instead of NaN.
 
@@ -50,7 +49,7 @@ The dataset builder is where the honest limits live.
 
 - **States are shifted by one.** `TrajectoryRecorder` observes in the
   post-action callback, so `states[i]` already contains the effect of
-  `actions[i]`. Step `i` is supervised from `states[i-1]` — pairing them as
+  `actions[i]`. Step `i` is supervised from `states[i-1]`, pairing them as
   recorded would let the model read "a pad exists" and predict `PAD`. Step 0
   reads the encoding of an empty document.
 - **8% of steps are dropped.** The codec expresses `ADD_POLYGON` only as a
@@ -84,7 +83,7 @@ python3 scripts/evaluate_bc.py --checkpoint runs/bc/checkpoint.pt
 Loss is cross-entropy on the operation plus MSE on its parameters in the
 codec's normalized [0, 1] space. The parameter term is **masked to the slots
 the operation actually decodes**, probed from the codec rather than read off
-the action schema — the two disagree (`ADD_POLYGON` takes one schema parameter
+the action schema, the two disagree (`ADD_POLYGON` takes one schema parameter
 but consumes five slots). Averaging over all six would teach every operation to
 emit 0.5 into slots it ignores.
 
@@ -105,7 +104,7 @@ via Metal, ~10 s/epoch), 9,723 training steps and 1,757 held-out steps from
 | top-3 operation accuracy | 1.000 | 1.000 |
 | majority-class baseline | 0.277 | 0.277 |
 | parameter MAE, teacher-forced | 0.026 | 0.0346 |
-| parameter MAE, self-conditioned | — | **0.0396** |
+| parameter MAE, self-conditioned |, | **0.0396** |
 
 Reporting the majority baseline alongside accuracy is deliberate: a quarter of
 all steps are `ADD_CIRCLE`, so "96%" needs the 27.7% floor next to it to mean
@@ -116,8 +115,8 @@ carrying the number.
 ### Class weighting fixed a real failure
 
 The per-operation breakdown is what made the problem visible. The unweighted
-run **never once predicted `FILLET`** — recall 0.000 across its 14 held-out
-steps — because fillets are under 1% of the expert action mix. Aggregate
+run **never once predicted `FILLET`**, recall 0.000 across its 14 held-out
+steps, because fillets are under 1% of the expert action mix. Aggregate
 accuracy hid it completely: 95.5% looks healthy while an entire operation is
 dead.
 
@@ -132,8 +131,8 @@ and the two operations that were being confused with their neighbours as well:
 | `FINISH_DESIGN` | 162 | 1.000 | 0.932 |
 
 The last two rows are the cost: weighting trades a little recall on the common
-operations for the rare ones. It is a good trade here — overall accuracy and
-parameter error both improved — but `FILLET` precision is only 0.560, so the
+operations for the rare ones. It is a good trade here, overall accuracy and
+parameter error both improved, but `FILLET` precision is only 0.560, so the
 policy now over-predicts fillets. Weighting rebalanced the skew rather than
 eliminating it.
 
@@ -144,8 +143,8 @@ policy's choices up against the expert's. On a plate it reproduces the whole
 12-step build exactly; across 12 randomly sampled designs it agrees on 121 of
 139 steps (0.871).
 
-This is **teacher forced** — each step is scored from the expert's recorded
-state, not from what the policy's own previous action would have produced — so
+This is **teacher forced**, each step is scored from the expert's recorded
+state, not from what the policy's own previous action would have produced, so
 it measures per-step agreement, not the compounding error a closed-loop rollout
 would expose. The gap between 0.96 next-action accuracy and whatever
 closed-loop success turns out to be is exactly what Phase 5 has to close.

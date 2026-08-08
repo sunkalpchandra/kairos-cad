@@ -1,7 +1,7 @@
 """Controlled FreeCAD backend for KAIROS.
 
 All CAD manipulation flows through this package. The RL agent never executes
-arbitrary Python — it emits structured actions (see ``kairos.actions``) that
+arbitrary Python. It emits structured actions (see ``kairos.actions``) that
 are validated and dispatched onto the typed API exposed here.
 """
 

@@ -1,4 +1,4 @@
-# Phase 1 — CAD backend and structured action API
+# Phase 1: CAD backend and structured action API
 
 Phase 1 delivers the foundation everything else builds on: a controlled,
 transactional, fully headless CAD execution layer, plus the structured action
@@ -42,16 +42,16 @@ actions without corrupting the episode's document.
 **No silent no-ops.** FreeCAD quirks discovered and handled during Phase 1:
 
 - `body.newObject` does not advance the tip for transform features
-  (Mirrored, patterns) — the engine now advances it explicitly, otherwise
+  (Mirrored, patterns), the engine now advances it explicitly, otherwise
   measurements keep reading the pre-pattern solid.
 - Pattern features that leave the volume unchanged are rejected as failures
   rather than reported as successes.
 - Compound tip shapes have no `CenterOfMass`; it is aggregated
   volume-weighted over solids.
 
-**Hole detection is semantic.** "4 × M5 holes" is checked by grouping
+**Hole detection is semantic.** "4 x M5 holes" is checked by grouping
 *concave* cylindrical faces on a shared axis and requiring (nearly) full
-360° angular wrap — this excludes convex rounds *and* concave corner-fillet
+360° angular wrap. This excludes convex rounds *and* concave corner-fillet
 coves, both of which are cylinders too.
 
 **Serializable everything.** Engine targets are name strings
@@ -61,9 +61,9 @@ trajectories replay through the same executor the agent will use.
 ## Verification
 
 - 285 tests under FreeCAD's interpreter, and 364 under the system one
-  (there the CAD tests skip and the Phase 4-6 learning tests run) — `make test-all`.
-- Volume assertions are analytic (e.g. pad = w·h·l, fillet removes
-  `(r² − πr²/4)·L`), not snapshots.
+  (there the CAD tests skip and the Phase 4-6 learning tests run), `make test-all`.
+- Volume assertions are analytic (e.g. pad = w-h-l, fillet removes
+  `(r² - πr²/4)-L`), not snapshots.
 - `make generate-data` writes only designs that pass kernel validation and
   requirement checks; rejects are counted with reasons in
   `generation_stats.json`. First 30-design run: 30 written / 33 attempted
@@ -74,10 +74,10 @@ trajectories replay through the same executor the agent will use.
 - Minimum-wall-thickness measurement is not yet implemented (Phase 6 per the
   project plan); requirements record the parametric wall thickness instead.
 - Boolean ops operate on shapes, not yet wired into multi-body documents or
-  the executor (single-body PartDesign covers Phases 2–5 tasks).
+  the executor (single-body PartDesign covers Phases 2-5 tasks).
 - Edge/face names (`Edge7`) are FreeCAD topological names and can shift
-  across feature insertions — recipes locate edges geometrically
-  (`find_edges(direction=…, near=…)`) immediately before use, which is also
+  across feature insertions, recipes locate edges geometrically
+  (`find_edges(direction=..., near=...)`) immediately before use, which is also
   the pattern the agent will learn.
 
 ## Next (Phase 2)

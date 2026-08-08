@@ -1,4 +1,4 @@
-"""Benchmark metric tests — pure python, no torch, no FreeCAD."""
+"""Benchmark metric tests, pure python, no torch, no FreeCAD."""
 
 import pytest
 

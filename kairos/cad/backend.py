@@ -7,7 +7,7 @@ application bundle. This module locates an installation, extends
 Search order:
 
 1. ``FreeCAD`` already importable (running under FreeCAD's bundled python).
-2. ``$KAIROS_FREECAD_LIB`` — explicit path to the directory holding
+2. ``$KAIROS_FREECAD_LIB``, explicit path to the directory holding
    ``FreeCAD.so`` / ``FreeCAD.pyd``.
 3. Well-known install locations per platform.
 

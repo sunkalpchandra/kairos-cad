@@ -6,7 +6,7 @@ torch and runs under the system interpreter. They meet over the JSON bridge in
 ``protocol`` / ``env_server`` / ``env_client``.
 
 Torch-dependent names are exported lazily so importing this package under
-FreeCAD's python — which has no torch — keeps working.
+FreeCAD's python, which has no torch, keeps working.
 """
 
 from __future__ import annotations

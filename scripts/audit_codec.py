@@ -5,7 +5,7 @@
 
 This is the number that caps every learned policy. An expert step the codec
 cannot encode is a step behavioural cloning silently drops from its training
-set and a step no policy can ever emit — so an oracle replaying the expert
+set and a step no policy can ever emit, so an oracle replaying the expert
 through the codec cannot rebuild the part, and the benchmark's ceiling sits
 below 1.0 for reasons that have nothing to do with learning.
 

@@ -1,6 +1,6 @@
 # FreeCAD setup
 
-KAIROS drives FreeCAD ≥ 0.21 (tested against **1.1.3**) through its Python
+KAIROS drives FreeCAD >= 0.21 (tested against **1.1.3**) through its Python
 modules. FreeCAD is not pip-installable; the modules ship inside the
 application bundle with their own Python interpreter.
 

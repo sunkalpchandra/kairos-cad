@@ -1,7 +1,7 @@
 """Tests for the dashboard data bundle.
 
 Every assertion here guards a *silent* failure mode. Nothing in this pipeline
-raises when it reads a field that does not exist — it renders a dash, or drops
+raises when it reads a field that does not exist. It renders a dash, or drops
 a series, or flattens a curve, and the page still looks finished. Two of these
 tests were written after exactly that happened.
 """

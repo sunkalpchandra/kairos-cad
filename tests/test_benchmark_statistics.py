@@ -1,4 +1,4 @@
-"""Paired comparison tests — pure python, no torch, no FreeCAD."""
+"""Paired comparison tests, pure python, no torch, no FreeCAD."""
 
 import pytest
 

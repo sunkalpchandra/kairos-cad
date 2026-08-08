@@ -2,7 +2,7 @@
 
 The baselines in :mod:`kairos.benchmark.baselines` read the task and the raw
 observation. A trained policy needs tensors, and building them is exactly what
-:func:`kairos.rl.collect.build_inputs` already does for PPO rollouts — so this
+:func:`kairos.rl.collect.build_inputs` already does for PPO rollouts, so this
 module reuses that rather than growing a second encoder that could silently
 drift from the one training used.
 

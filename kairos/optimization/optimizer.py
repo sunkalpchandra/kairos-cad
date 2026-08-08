@@ -7,8 +7,8 @@ is built in FreeCAD and measured for real.
 
 That split is the point. Scoring every candidate in FreeCAD would make a
 10,000-candidate search take hours; scoring none of them exactly would let a
-surrogate error ship as a result. So the search is surrogate-driven and the
-*answer* is always a verified build — and when verification disagrees with the
+surrogate error ship as a result, so the search is surrogate-driven and the
+*answer* is always a verified build, and when verification disagrees with the
 prediction, the report says so rather than quietly reporting the prediction.
 
 Infeasible parameter draws are rejected by the family's own ``is_feasible``
@@ -95,7 +95,7 @@ def penalized_objective(
     Multiplicative, not additive. An additive penalty has to be picked in mass
     units, and a value large enough to forbid a real violation (1000 g) also
     makes a 0.01 mm prediction error at the boundary cost more than every mass
-    difference in the search — so the optimum, which sits exactly on the
+    difference in the search, so the optimum, which sits exactly on the
     boundary, is precisely where the search refuses to go. Scaling keeps the
     penalty commensurate with the objective at any part size.
 
@@ -106,7 +106,7 @@ def penalized_objective(
         # A non-physical prediction means the surrogate is extrapolating out of
         # the region it was fitted on. Observed on a real plate run: it
         # predicted -85 g, and because the penalty is multiplicative, scaling a
-        # negative objective by a violation made it *better* — the search drove
+        # negative objective by a violation made it *better*, the search drove
         # straight into the nonsense and returned an unmanufacturable part.
         # Refusing the candidate outright is the only safe reading.
         return math.inf

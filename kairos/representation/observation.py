@@ -1,7 +1,7 @@
 """Observation extraction: one dict snapshot of engine state per step.
 
-The observation is plain JSON data (no FreeCAD objects), so every consumer —
-constraint checker, reward tracker, numerical encoder, trajectory files — is
+The observation is plain JSON data (no FreeCAD objects), so every consumer, constraint
+checker, reward tracker, numerical encoder, trajectory files, is
 pure-python testable on recorded observations.
 """
 

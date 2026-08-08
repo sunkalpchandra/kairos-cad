@@ -2,7 +2,8 @@
 """Run the KAIROS-CAD benchmark and write a leaderboard.
 
     python3 scripts/run_benchmark.py --preset smoke
-    python3 scripts/run_benchmark.py --preset core --policies oracle-replay,scripted-spec
+    python3 scripts/run_benchmark.py --preset core --policies
+    oracle-replay,scripted-spec
 
 Tasks come from the frozen test split, so every policy faces the same work in
 the same order. Two baselines audit the harness: `oracle-replay` must score
@@ -191,7 +192,7 @@ def _check_invariants(scores, by_type: dict) -> dict:
 
     Both invariants are checked on BUILD tasks only. On COMPLETE(k=1) the
     expert's own last action is FINISH_DESIGN, so finishing immediately is the
-    *correct* answer there — scoring well is not evidence of a broken metric,
+    *correct* answer there, scoring well is not evidence of a broken metric,
     and the oracle's codec losses are likewise a BUILD-only phenomenon.
     """
     messages, ok = [], True

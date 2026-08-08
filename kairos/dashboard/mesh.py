@@ -1,6 +1,6 @@
 """Tessellate solids into a compact mesh payload for the dashboard's 3D viewer.
 
-This module runs **under FreeCAD's interpreter only** — it opens documents and
+This module runs **under FreeCAD's interpreter only**, it opens documents and
 touches `Shape`. Everything it emits is plain JSON, so the bundling side
 (`bundle.py`, either interpreter) never needs FreeCAD.
 
@@ -46,7 +46,7 @@ def _degenerate(positions: list[int], a: int, b: int, c: int) -> bool:
     vertices are collinear. Both leave the vertex normal undefined, which shades
     as a black shard across the part, so both have to go.
 
-    The cross product runs on the quantized integers, so this is exact — no
+    The cross product runs on the quantized integers, so this is exact, no
     epsilon to tune, and no sensitivity to part scale.
     """
     if a == b or b == c or a == c:
@@ -123,7 +123,7 @@ def mesh_from_stl(path: str | Path) -> dict[str, Any]:
     """Weld and quantize a binary STL into the same payload as `tessellate_shape`.
 
     Every generated design already ships `model.stl`, so the dashboard can be
-    built entirely under the torch interpreter — no FreeCAD subprocess, and no
+    built entirely under the torch interpreter, no FreeCAD subprocess, and no
     re-meshing of geometry that was already meshed at generation time.
 
     STL is a triangle soup with no shared vertices at all, which makes the

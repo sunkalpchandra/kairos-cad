@@ -27,7 +27,7 @@ def _add_feature(
         name: object base name.
         configure: callback(feature) applying parameters before recompute.
         require_volume_change: reject features that leave the solid volume
-            untouched — PartDesign silently drops pattern/mirror instances
+            untouched, PartDesign silently drops pattern/mirror instances
             that are disjoint from the base solid, which must surface as a
             failure rather than a successful no-op.
     """
@@ -58,7 +58,7 @@ def _add_feature(
             and abs(shape.Volume - volume_before) < 1e-6
         ):
             raise FeatureError(
-                f"{name} left the solid unchanged — pattern instances are "
+                f"{name} left the solid unchanged, pattern instances are "
                 "likely disjoint from the base solid and were discarded"
             )
         # newObject does not advance the tip for transform features

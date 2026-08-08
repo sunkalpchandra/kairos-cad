@@ -37,7 +37,7 @@ from kairos.rl.action_space import (
 )
 from kairos.rl.rewards import RewardTracker, RewardWeights
 
-#: Default benchmark requirement (Task A – mounting bracket).
+#: Default benchmark requirement (Task A - mounting bracket).
 DEFAULT_REQUIREMENT = (
     "Create an L-bracket with 4 M5 mounting holes, 3 mm minimum wall "
     "thickness, 90 degree angle, and minimum possible mass."

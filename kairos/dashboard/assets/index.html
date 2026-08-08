@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>KAIROS — CAD agent dashboard</title>
+<title>KAIROS, CAD agent dashboard</title>
 <style>/*__STYLE__*/</style>
 </head>
 <body>
@@ -28,7 +28,7 @@
   <p class="note">
     Each part below was built by a procedural expert from a natural-language
     requirement, then measured. The geometry is the real tessellated solid, not
-    a render — orbit it by dragging.
+    a render. Orbit it by dragging.
   </p>
   <div class="explorer">
     <div class="design-list" id="design-list"></div>
@@ -39,7 +39,7 @@
         <label style="display:flex;gap:6px;align-items:center">
           colour <input type="color" id="color-picker" value="#6b95dc">
         </label>
-        <span class="hint">drag to orbit · scroll to zoom</span>
+        <span class="hint">drag to orbit - scroll to zoom</span>
       </div>
       <p class="callout" id="viewer-error" hidden style="margin:0;border-radius:0"></p>
     </div>
@@ -58,7 +58,7 @@
   <h2>Leaderboard</h2>
   <p class="note">
     Every policy faces the <strong>same enumerated tasks in the same order</strong>.
-    <code>oracle-replay</code> is not a policy — it replays the expert through the
+    <code>oracle-replay</code> is not a policy. It replays the expert through the
     action codec, so its score is the <strong>ceiling</strong> any policy could
     reach, and the gap between it and 1.000 measures what the codec cannot express.
   </p>
@@ -77,7 +77,7 @@
     Bootstrap intervals on the <strong>per-task</strong> difference, recomputed
     from the traces in this bundle. Pairing matters at this sample size: most
     of the variance is between tasks, and pairing removes it. An interval that
-    straddles zero means the benchmark cannot separate the two policies — which
+    straddles zero means the benchmark cannot separate the two policies, which
     is the honest answer more often than not here.
   </p>
   <div id="comparisons"></div>

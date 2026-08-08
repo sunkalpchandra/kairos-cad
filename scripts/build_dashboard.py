@@ -3,8 +3,8 @@
 
     python3 scripts/build_dashboard.py --out docs/dashboard.html
 
-Reads only committed artifacts — designs, benchmark traces, training reports —
-so the page can never show a number that is not also on disk.
+Reads only committed artifacts, designs, benchmark traces, training reports, so the page
+can never show a number that is not also on disk.
 """
 
 from __future__ import annotations

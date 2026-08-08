@@ -4,7 +4,7 @@
     python3 scripts/evaluate_ppo.py --episodes 12
 
 Every policy faces the same held-out requirements in the same order with the
-same step budget. Reports closed-loop success rate — a much harder number than
+same step budget. Reports closed-loop success rate, a much harder number than
 the teacher-forced next-action accuracy Phase 4 reports, because here per-step
 errors compound.
 """

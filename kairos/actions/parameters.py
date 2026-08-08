@@ -3,7 +3,7 @@
 This is the gate that makes the action interface *controlled*: every action
 is checked against a typed spec (required params, types, ranges, choices)
 before it may touch the CAD engine. Validation failures are cheap, typed,
-and never mutate the document — the RL environment maps them to invalid
+and never mutate the document, the RL environment maps them to invalid
 action penalties.
 """
 

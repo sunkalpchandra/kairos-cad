@@ -5,8 +5,8 @@ convolutional trunk and then pooled. Sharing weights is deliberate: an
 orthographic silhouette means the same thing whichever axis produced it, and a
 per-view trunk would quadruple parameters to relearn edges four times.
 
-Which view showed a feature still matters — a hole visible from the top is not
-the same design decision as one visible from the front — so each view's
+Which view showed a feature still matters, a hole visible from the top is not
+the same design decision as one visible from the front, so each view's
 embedding gets a learned view-identity vector added before pooling, and pooling
 is attention-weighted rather than a plain mean.
 

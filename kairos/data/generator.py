@@ -1,9 +1,7 @@
 """Validated dataset generation over the design-family registry.
 
 For each sampled design: execute the family recipe, validate the result, and
-write the dataset layout from the project spec —
-
-    designs/design_NNNNNN/
+write the dataset layout from the project spec, designs/design_NNNNNN/
         model.FCStd  model.step  model.stl
         iso.png  front.png  top.png  right.png
         state.json  requirements.json  trajectory.json

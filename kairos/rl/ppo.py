@@ -5,7 +5,7 @@ against the frozen BC policy**.
 
 Why the anchor. A valid CAD build is a long, precisely ordered action sequence,
 and the reward for finishing one is sparse. Early PPO updates chase whatever
-shaping reward is reachable — opening sketches, adding circles — and it is very
+shaping reward is reachable, opening sketches, adding circles, and it is very
 easy for the policy to drift off the BC manifold and lose the ability to
 produce a coherent build at all. Once that happens it cannot recover, because
 random exploration essentially never rediscovers a 12-step valid sequence. The
@@ -13,7 +13,7 @@ anchor keeps updates near the demonstrations while still letting reward shape
 behavior; ``bc_kl_coef: 0.0`` disables it for comparison runs.
 
 Advantages are normalized per minibatch, and the value function is clipped the
-same way the policy is — with rollouts this small (a few hundred transitions
+same way the policy is, with rollouts this small (a few hundred transitions
 per iteration, since every step is a FreeCAD recompute) an unclipped critic
 update is a reliable way to destabilize training.
 """
@@ -130,7 +130,7 @@ class PPOTrainer:
         # eval(), not train(): dropout must stay off during the update. The
         # stored log-probs were computed by the deterministic (eval) policy, so
         # re-scoring under dropout compares two different functions and the PPO
-        # ratio stops meaning "how much did the policy change" — it reads as a
+        # ratio stops meaning "how much did the policy change", it reads as a
         # large spurious KL from step one. Only dropout differs between modes
         # here; the norm layers are LayerNorm/GroupNorm, which do not.
         was_training = self.model.training

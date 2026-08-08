@@ -7,9 +7,9 @@ and useless for a benchmark: two runs draw different work.
 
 Task types, in increasing distance from the training distribution:
 
-- ``BUILD`` — empty document, requirement text, full horizon. The Phase 5
+- ``BUILD``, empty document, requirement text, full horizon. The Phase 5
   setting, kept for continuity with the published numbers.
-- ``COMPLETE`` — the expert's first ``n - k`` actions are replayed, and the
+- ``COMPLETE``, the expert's first ``n - k`` actions are replayed, and the
   policy supplies the last ``k``. This is the signal generator: at ``k = 1`` a
   policy with 0.983 next-action accuracy should nearly always succeed, and at
   ``k = 8`` it faces almost the full closed-loop problem. The curve between
@@ -108,7 +108,7 @@ def task_seed(suite_version: str, task_id: str, policy: str, repeat: int = 0) ->
     """Deterministic per-(task, policy, repeat) seed.
 
     Hashed rather than derived from an index, so adding a policy or a task never
-    shifts the seeds of the others — which would silently change results that
+    shifts the seeds of the others, which would silently change results that
     were supposed to be comparable.
     """
     key = f"{suite_version}|{task_id}|{policy}|{repeat}"

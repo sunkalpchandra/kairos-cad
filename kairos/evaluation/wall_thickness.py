@@ -12,7 +12,7 @@ the minimum over all samples is the wall thickness.
 Why not a maximal-inscribed-sphere or medial-axis method, which is the textbook
 answer: those need a distance field or a medial-axis transform that FreeCAD does
 not expose, and both cost far more than the whole rest of an episode. Ray
-casting is exact along each ray and its error is purely one of *sampling* — it
+casting is exact along each ray and its error is purely one of *sampling*, it
 can only ever over-estimate, by missing a thin spot between samples. That is the
 safe direction for a manufacturing check to be wrong in only if you know it, so
 the sample density is explicit and the result is reported with the ray count.
@@ -116,7 +116,7 @@ def measure_min_wall_thickness(
         return ThicknessMeasurement(None, 0, 0)
 
     # PartDesign tips are Compounds, and a boolean against a compound
-    # returns nothing — every ray silently missed. Work on the solid.
+    # returns nothing, every ray silently missed. Work on the solid.
     solids = list(getattr(shape, "Solids", None) or [])
     if solids:
         shape = solids[0] if len(solids) == 1 else solids[0].multiFuse(solids[1:])
@@ -183,7 +183,7 @@ def is_manufacturable(
 ) -> bool | None:
     """Whether a measured thickness clears a manufacturing minimum.
 
-    Returns None when nothing was measured — the caller must not read that as
+    Returns None when nothing was measured, the caller must not read that as
     a pass, which is the whole reason `unmeasured` exists as a status.
     """
     if not measurement.measured:
@@ -206,7 +206,7 @@ def cylindrical_wall_thickness(shape, tolerance: float = 1e-6) -> float | None:
     """Thickness of a tube wall, from concentric cylinder radii.
 
     Ray casting along a cylinder's own normal is unreliable near the axis, and
-    a spacer's wall — the gap between its bore and its outer surface — is the
+    a spacer's wall, the gap between its bore and its outer surface, is the
     case that matters. Coaxial cylinder pairs give it exactly.
     """
     cylinders = []

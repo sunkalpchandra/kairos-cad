@@ -1,19 +1,16 @@
-"""Action-space codec: policy outputs ↔ structured CAD actions.
+"""Action-space codec: policy outputs <-> structured CAD actions.
 
-The RL policy emits ``(operation_index, params ∈ [0,1]^PARAM_SLOTS,
-target_index)``. This module deterministically decodes that into a validated
-``Action`` — denormalizing each slot into the operation's documented range —
-and encodes expert Actions back into the same representation for behavioral
-cloning. The workspace envelope is ±200 mm.
+The policy emits (operation_index, params in [0,1]^PARAM_SLOTS, target_index).
+decode() denormalizes each slot into the operation's range and returns a
+validated Action; encode() maps expert Actions back for behavioral cloning.
 
-Slot ranges are frozen here; policies and BC datasets must agree on them.
-Changing one invalidates every trained checkpoint, because a checkpoint's
-parameter head is calibrated to the span it was trained against.
+Slot ranges are frozen here and policies and BC datasets must agree on them.
+Changing one invalidates every trained checkpoint, since the parameter head is
+calibrated to the span it trained against.
 
-Encoding a value outside its slot range **raises** rather than clipping. The
-distinction is not pedantic: a clipped value is a different action, executes
-cleanly, and reports `ok: True`, so it corrupts geometry with nothing anywhere
-recording that it happened.
+Encoding a value outside its range raises rather than clipping: a clipped value
+is a different action that still executes cleanly and reports ok, so it corrupts
+geometry with nothing recording that it happened.
 """
 
 from __future__ import annotations
@@ -36,38 +33,18 @@ _PLANES = ("XY", "XZ", "YZ")
 _AXES = ("X", "Y", "Z")
 _VIEWS = ("iso", "front", "top", "right")
 
-# --------------------------------------------------------------------------
-# Slot ranges, named once and shared by encode and decode.
+# Slot ranges, shared by encode and decode. Keeping them as literals in both
+# directions is how they drifted below the data in the first place.
 #
-# These were previously repeated as literals in both directions, which is how
-# they drifted below the data: sketch offsets reached 89.9 mm against a +-50
-# range and circle centres reached 122.9 mm against +-100, so encode clipped and
-# decode handed back the boundary. Widths below carry roughly 60% headroom over
-# the widest value the eight families generate, and `_inv` now raises rather
-# than clipping, so the next overflow is a failed audit and not silent damage.
+# Widen only what the data proves is too narrow. Generous headroom is not free:
+# widening every range (_SMALL to 0.1-50, _RADIUS to 0.1-100) put a mid-range
+# fillet at 25 mm instead of 5 mm, and PPO's invalid-action rate went 0.001 ->
+# 0.422 with BC validity 0.957 -> 0.485. Normalized parameter MAE *improved*
+# over the same change (0.035 -> 0.023) while absolute mm error got worse.
 #
-# Widening costs almost nothing numerically: decode rounds to 3 decimals in mm,
-# so resolution is 0.001 mm regardless of span.
-#
-# It costs a learned policy a great deal, which is why only the three ranges
-# that actually clipped were moved. The first attempt widened all of them
-# generously -- _SMALL to (0.1, 50), _RADIUS to (0.1, 100) -- on the reasoning
-# that headroom is free. It is not. A mid-range fillet became 25 mm instead of
-# 5 mm, so ordinary policy noise decoded into geometry the kernel rejects:
-#
-#     PPO invalid-action rate     0.001  ->  0.422
-#     PPO mean episode reward     +0.73  ->  -4.59
-#     BC validity rate            0.957  ->  0.485
-#
-# Note how that presented in the BC metrics: normalized parameter MAE *improved*
-# (0.035 -> 0.023) while absolute error in mm got worse, because the span those
-# units cover had doubled. A reader watching only the normalized number would
-# have concluded the change helped.
-#
-# So the rule here is: widen exactly what the data proves is too narrow, and let
-# `_inv` raise on anything else. The right long-term fix is a per-operation or
-# relative encoding, so precision never has to be traded against range at all.
-# --------------------------------------------------------------------------
+# Anything outside a range raises in `_inv` rather than clipping, so the next
+# overflow shows up as a failed audit. A per-operation or relative encoding
+# would remove the range/precision tradeoff entirely.
 
 #: Sketch-plane coordinates (mm). Data spans -34.8 .. 122.9; was +-100, which
 #: clipped 142 circle centres.
@@ -99,18 +76,11 @@ def _lin(x: float, lo: float, hi: float) -> float:
 
 
 def _inv(v: float, lo: float, hi: float) -> float:
-    """Normalize a value into its slot range, refusing to clip silently.
+    """Normalize a value into its slot range, raising rather than clipping.
 
-    Clipping here is not a rounding error, it is a *different action*. A sketch
-    offset of 89.9 mm clipped to a 50 mm range decodes back as 50 mm, so an
-    oracle replaying the expert builds the feature 40 mm from where the expert
-    put it — with `ok: True` on every step and no invalid action recorded. That
-    is exactly how 19.1% of designs were being quietly corrupted while every
-    audit reported the trajectory as fully representable.
-
-    Raising instead makes the same condition loud: `audit_codec.py` counts it,
-    BC drops the step rather than training toward a target it would decode into
-    different geometry, and widening the range becomes a deliberate decision.
+    A sketch offset of 89.9 mm clipped to a 50 mm range decodes back as 50 mm,
+    so replaying the expert builds the feature 40 mm off with ok=True on every
+    step. Raising makes audit_codec.py count it and BC drop the step.
     """
     if hi == lo:
         return 0.0
@@ -141,7 +111,7 @@ class UnrepresentableAction(ValueError):
 def _fit_regular_polygon(points: list) -> tuple[float, float, float, int, float]:
     """Recover (cx, cy, radius, sides, rotation_deg) from a regular polygon.
 
-    Raises ``UnrepresentableAction`` for irregular profiles — BC pipelines must
+    Raises ``UnrepresentableAction`` for irregular profiles, BC pipelines must
     expand those into ADD_LINE actions rather than train toward a target the
     codec would decode into a different shape.
     """
@@ -181,7 +151,7 @@ TARGET_KIND: dict[Operation, str] = {
     Operation.CIRCULAR_PATTERN: "features",
     # Booleans are multi-body (Phase 6); decoding still resolves a feature
     # target so the action validates and the executor's "not executable"
-    # failure — not a validation crash — is what the policy experiences.
+    # failure, not a validation crash, is what the policy experiences.
     Operation.UNION: "features",
     Operation.CUT: "features",
     Operation.INTERSECTION: "features",
@@ -203,8 +173,8 @@ def decode(
         targets: available targets by kind, e.g. ``{"edges": [...],
             "faces": [...], "features": [...]}`` from the live engine. If an
             operation needs a target and none are available, the Action is
-            emitted with target=None and will fail validation downstream —
-            that is the correct penalty path, not an exception here.
+            emitted with target=None and will fail validation downstream. That is the
+            correct penalty path, not an exception here.
     """
     op = OPERATIONS[int(operation_index) % NUM_OPERATIONS]
     p = np.asarray(params, dtype=np.float64).reshape(-1)

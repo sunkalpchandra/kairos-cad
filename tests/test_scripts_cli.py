@@ -1,6 +1,6 @@
 """CLI contract tests.
 
-The scripts are the project's public surface — a broken argument parser or an
+The scripts are the project's public surface, a broken argument parser or an
 unhelpful failure on a missing checkpoint is a real defect, and one that unit
 tests of the libraries never catch. These run each CLI as a subprocess.
 """

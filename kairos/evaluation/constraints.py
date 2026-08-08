@@ -1,7 +1,7 @@
 """Constraint checking: EngineeringSpec vs. an observation snapshot.
 
-Consumes the plain-dict observation from ``kairos.representation.observe`` —
-never live FreeCAD objects — so it is pure logic, unit-testable anywhere and
+Consumes the plain-dict observation from ``kairos.representation.observe``, never live
+FreeCAD objects, so it is pure logic, unit-testable anywhere and
 replayable over recorded trajectories.
 
 Every constraint resolves to one of three statuses:
@@ -9,7 +9,7 @@ Every constraint resolves to one of three statuses:
 - ``satisfied`` / ``violated``: the checker measured it against geometry.
 - ``unmeasured``: KAIROS cannot measure this kind yet (e.g. minimum wall
   thickness before Phase 6). Unmeasured constraints are *excluded* from the
-  satisfaction rate rather than silently counted as satisfied — rewards and
+  satisfaction rate rather than silently counted as satisfied, rewards and
   benchmark numbers must never claim credit for unchecked requirements.
 """
 
@@ -33,7 +33,7 @@ _MAX_BENT_FILL = 0.95
 #: Wall-thickness slack, mm. Deliberately ~0: ray sampling can only
 #: OVER-estimate thickness (it misses thin spots between samples), so the
 #: measurement is an upper bound on the true wall. A measured value below
-#: the floor therefore means the real wall is below it too — a definitive
+#: the floor therefore means the real wall is below it too, a definitive
 #: failure, not a near-miss. Slack here would pass parts that are provably
 #: too thin; it was letting 6.983 mm clear a 7.0 mm floor.
 _THICKNESS_TOL = 1e-6  # mirrors wall_thickness.THICKNESS_TOLERANCE_MM
@@ -120,9 +120,9 @@ def _check_hole_count(c: Constraint, observation: dict, spec: EngineeringSpec) -
     """Check the part's total hole count against the requirement.
 
     Counts **every** hole, not only those matching the nominal diameter. A
-    requirement's stated total spans groups of different sizes — a flange's
-    "12 mm central bore, and 6 bolt holes of 5 mm diameter" is seven holes —
-    so filtering by the nominal diameter would find six and report a correct
+    requirement's stated total spans groups of different sizes, a flange's
+    "12 mm central bore, and 6 bolt holes of 5 mm diameter" is seven holes. So filtering
+    by the nominal diameter would find six and report a correct
     part as violated. Whether the named diameter is actually present is
     :func:`_check_hole_diameter`'s job.
     """
@@ -139,8 +139,8 @@ def _check_hole_count(c: Constraint, observation: dict, spec: EngineeringSpec) -
 def _check_hole_diameter(c: Constraint, observation: dict, spec: EngineeringSpec) -> ConstraintResult:
     """Check that the holes the requirement names exist at the stated diameter.
 
-    A part legitimately carries holes at other diameters — a flange's central
-    bore sits alongside its bolt holes — so extra sizes are not violations, and
+    A part legitimately carries holes at other diameters, a flange's central
+    bore sits alongside its bolt holes. So extra sizes are not violations, and
     the requirement's total cannot be used as the number that must match: it
     spans those groups. This check therefore asks only that the named diameter
     is present; ``hole_count`` pins the total independently.
@@ -166,7 +166,7 @@ def _check_min_wall_thickness(
     The measurement is expensive (ray casting against the solid), so it is not
     part of every observation: whoever built the observation puts it in
     ``summary["min_wall_thickness_mm"]``. Absent, the constraint stays
-    ``unmeasured`` — never satisfied by default.
+    ``unmeasured``, never satisfied by default.
     """
     measured = (observation.get("summary") or {}).get("min_wall_thickness_mm")
     if measured is None:
@@ -225,7 +225,7 @@ def _check_mounting_angle(c: Constraint, observation: dict, spec: EngineeringSpe
     """Check that two large planar faces meet at the required angle.
 
     Uses the six largest planar faces; the constraint is satisfied when any
-    pair's normals subtend the target angle (or its supplement — a 90° wall
+    pair's normals subtend the target angle (or its supplement, a 90° wall
     pair reads as 90° or 270° depending on orientation).
     """
     faces = [f for f in observation.get("faces", []) if f.get("surface") == "Plane"]
@@ -329,7 +329,7 @@ def _check_mass_reduction(c: Constraint, observation: dict, spec: EngineeringSpe
         c,
         "satisfied" if ok else "violated",
         measured=round(reduction, 2),
-        detail=f"mass {initial:.1f}g → {current:.1f}g ({reduction:.1f}%, need ≥{c.value}%)",
+        detail=f"mass {initial:.1f}g → {current:.1f}g ({reduction:.1f}%, need >={c.value}%)",
     )
 
 

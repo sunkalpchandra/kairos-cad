@@ -4,12 +4,12 @@ Six of the eight families sketch their outline with a single `ADD_POLYGON`
 carrying an arbitrary vertex list. The action codec can only express a polygon
 as a *regular* n-gon, so those steps are unrepresentable: behavioral cloning
 drops them (7.8% of all expert steps), and an oracle replaying the expert
-through the codec cannot rebuild the part — which is why the measured ceiling on
+through the codec cannot rebuild the part. Which is why the measured ceiling on
 BUILD tasks is 0.431 rather than 1.0.
 
 Both `kairos/rl/action_space.py` and `kairos/training/bc_dataset.py` already
-prescribe the fix in their docstrings — "expand those into ADD_LINE actions" —
-and this is that expansion. One `ADD_LINE` per edge, closing back to the first
+prescribe the fix in their docstrings, "expand those into ADD_LINE actions", and this is
+that expansion. One `ADD_LINE` per edge, closing back to the first
 vertex, each of which round-trips through the codec exactly.
 
 The cost is honest and worth stating: a 6-vertex L profile becomes 6 actions
@@ -36,7 +36,7 @@ def profile_actions(points: Sequence[Sequence[float]]) -> list[Action]:
             first vertex is added automatically, so callers pass an open list.
 
     Raises:
-        ValueError: fewer than three distinct vertices — that is not a profile,
+        ValueError: fewer than three distinct vertices, that is not a profile,
             and emitting it would produce a sketch that cannot be padded.
     """
     cleaned: list[tuple[float, float]] = []

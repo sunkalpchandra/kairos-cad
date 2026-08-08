@@ -1,7 +1,7 @@
 """Rollout storage and advantage estimation for PPO.
 
-Transitions arrive one at a time from a single CAD environment — FreeCAD
-recomputes are serial and slow — so the buffer is a plain append-and-stack
+Transitions arrive one at a time from a single CAD environment, FreeCAD
+recomputes are serial and slow, so the buffer is a plain append-and-stack
 structure rather than a vectorized ring.
 
 The subtlety that decides whether the advantages are correct is the difference
@@ -95,7 +95,7 @@ class RolloutBuffer:
         """Flag the most recent transition as a truncated episode ending.
 
         The collector can stop an episode for reasons the environment never
-        reports — its own per-episode cap, or the rollout step budget running
+        reports, its own per-episode cap, or the rollout step budget running
         out. Those transitions arrive flagged as ordinary mid-episode steps, so
         GAE would chain the advantage into the *next* episode (or invent a
         terminal at the end of the buffer). Marking them here is what keeps the

@@ -2,11 +2,11 @@
 
 Phase 5 needs one process holding both FreeCAD and torch, and no such process
 exists: the CAD stack runs under FreeCAD's bundled interpreter, which has no
-torch and cannot practically get one. So the environment is served *out* of
+torch and cannot practically get one, so the environment is served *out* of
 that interpreter over newline-delimited JSON on stdin/stdout, and the trainer
 drives it from the interpreter that does have torch.
 
-JSON rather than pickle deliberately — the two ends run different Python
+JSON rather than pickle deliberately, the two ends run different Python
 versions (3.11 vs 3.12), and pickle across versions is a portability trap. The
 payloads are small (a 24-float state, two boolean masks), so encoding cost is
 irrelevant next to a FreeCAD recompute.
@@ -80,7 +80,7 @@ def replay_request(actions: list[dict[str, Any]]) -> dict[str, Any]:
 
     Benchmark COMPLETE tasks replay an expert prefix and hand the policy the
     remainder. Sending those through the action codec would drop every
-    irregular ADD_POLYGON — the profile step of six of eight families — so the
+    irregular ADD_POLYGON, the profile step of six of eight families, so the
     task would abort rather than pose the question it exists to pose. A replay
     is not a prediction, so it does not need the policy's action space.
     """

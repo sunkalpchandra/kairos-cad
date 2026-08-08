@@ -1,6 +1,6 @@
 """Hierarchical action heads: fused embedding → a structured CAD action.
 
-The action space is not flat — an operation, its continuous parameters, and its
+The action space is not flat, an operation, its continuous parameters, and its
 target are chosen at different levels. ``PAD``'s length and ``FILLET``'s radius
 occupy the same slot but mean different things, so the parameter and target
 heads are **conditioned on the operation**: the chosen operation's embedding is
@@ -20,7 +20,7 @@ from torch import nn
 
 from kairos.rl.action_space import MAX_TARGETS, NUM_OPERATIONS, PARAM_SLOTS
 
-#: Logit value for illegal choices — large negative, but finite so that a row
+#: Logit value for illegal choices, large negative, but finite so that a row
 #: with every choice masked yields a uniform distribution instead of NaNs.
 MASK_FILL = -1e9
 

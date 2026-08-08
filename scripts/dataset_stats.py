@@ -19,7 +19,7 @@ from pathlib import Path
 def _fmt(values: list[float], places: int = 2) -> str:
     """mean / median / min / max, or a dash when there is nothing to summarize."""
     if not values:
-        return "— | — | — | —"
+        return "- |, |, | -"
     return " | ".join(
         f"{v:.{places}f}"
         for v in (
@@ -141,7 +141,7 @@ def render(stats: dict, root: Path) -> str:
         "",
         "Constraints KAIROS cannot yet measure (minimum wall thickness, symmetry) are "
         "reported `unmeasured` and excluded from satisfaction rates rather than counted "
-        "as passing — rewards must never claim credit for unchecked requirements.",
+        "as passing, rewards must never claim credit for unchecked requirements.",
         "",
         "## Action mix",
         "",

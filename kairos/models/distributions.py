@@ -1,7 +1,7 @@
 """Action distribution over the structured CAD action space.
 
-One action is a triple — a discrete operation, six continuous parameters, and a
-discrete target — so the distribution is a product of three factors, and the
+One action is a triple, a discrete operation, six continuous parameters, and a
+discrete target, so the distribution is a product of three factors, and the
 log-probability of an action is the sum of their log-probabilities.
 
 Two decisions matter for correctness:
@@ -15,7 +15,7 @@ as uncertain when it is merely forbidden from acting.
 **Parameters use a squashed Gaussian, not a Beta.** The codec's slots are
 bounded to [0, 1], and a Gaussian squashed through a sigmoid keeps a simple
 reparameterized sample with a closed-form log-det correction, while remaining
-well behaved when BC initialization puts the mean near a boundary — which it
+well behaved when BC initialization puts the mean near a boundary, which it
 does constantly, since many expert parameters sit at 0 or 1.
 
 Parameters for slots an operation ignores still receive a log-probability; that
@@ -39,7 +39,7 @@ def masked_categorical(logits: torch.Tensor, mask: torch.Tensor | None) -> td.Ca
     """Categorical over legal choices only.
 
     ``mask`` is 1 where a choice is legal. Rows with nothing legal fall back to
-    a uniform distribution rather than producing NaNs — that row's gradient is
+    a uniform distribution rather than producing NaNs, that row's gradient is
     meaningless either way, and a NaN would poison the whole batch.
     """
     if mask is not None:

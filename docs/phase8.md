@@ -1,4 +1,4 @@
-# Phase 8 — Interactive dashboard
+# Phase 8: Interactive dashboard
 
 One HTML file. Open it from disk, no server, no network, no build step:
 
@@ -7,7 +7,7 @@ make dashboard          # -> docs/dashboard.html
 open docs/dashboard.html
 ```
 
-It reads only committed artifacts — `dataset/designs/*/`, `runs/*/report.json`,
+It reads only committed artifacts, `dataset/designs/*/`, `runs/*/report.json`,
 `runs/*/‌*_traces.jsonl`, `runs/*/leaderboard.json`. Nothing is computed from a
 live model at page-build time, so a number on screen can always be traced to a
 file on disk. This is the same discipline `benchmark_report.py` follows, for the
@@ -21,7 +21,7 @@ its requirement text, its measured properties, its per-constraint pass/fail with
 the measured value, and the expert's action sequence.
 
 **Benchmark.** The leaderboard, the success-against-difficulty curve, and paired
-bootstrap intervals. `oracle-replay` is marked as what it is — a ceiling, not a
+bootstrap intervals. `oracle-replay` is marked as what it is, a ceiling, not a
 competitor.
 
 **Training.** BC accuracy and loss per epoch (train and held-out), PPO reward
@@ -33,8 +33,8 @@ policy, since the absolute score of `bc+shuffled-req` means little alone.
 ## Three deliberate deviations from the plan
 
 **No Three.js.** The plan named it; this ships a ~250-line WebGL renderer
-instead. Three.js minified is ~600 KB — six times the size of every part,
-metric and curve in the bundle put together — and the one constraint that
+instead. Three.js minified is ~600 KB, six times the size of every part,
+metric and curve in the bundle put together, and the one constraint that
 actually decides this dashboard's shape is that it must be a single file that
 opens offline. What the viewer needs is to orbit a static mesh and shade it.
 
@@ -66,7 +66,7 @@ compact, but averaging normals across a welded 90° edge shades every corner as
 if it were filleted, and the tessellation's diagonals appear as creases across
 faces that are dead flat. Fixed with per-fragment face normals from screen-space
 derivatives. The derivative cross product's sign follows screen orientation
-rather than winding, so `gl_FrontFacing` cannot correct it — every visible
+rather than winding, so `gl_FrontFacing` cannot correct it, every visible
 fragment of a closed solid faces the camera, so the normal is oriented against
 the view ray instead.
 
@@ -80,11 +80,11 @@ prefix stripped, the curve reproduces the documented BC decay exactly:
 **3. The held-out BC curve was missing from its own chart.** The report names
 that series `operation_accuracy`. Nothing in it is called `dev_accuracy` or
 `val_accuracy`, so those lookups returned null for every epoch and the series
-was filtered out — leaving a chart of *training* accuracy alone, which is the
+was filtered out, leaving a chart of *training* accuracy alone, which is the
 one curve that proves nothing.
 
 **4. Bounding box and wall thickness showed a dash.** The state stores span per
-axis as `x_len`/`y_len`/`z_len`, and wall thickness is never stored at all — the
+axis as `x_len`/`y_len`/`z_len`, and wall thickness is never stored at all, the
 constraint checker measures it, so it has to be lifted back out of the result.
 
 There is a pattern here worth naming: **this pipeline never raises on a missing
@@ -112,7 +112,7 @@ Software rendering (swiftshader) is enough to judge shading, layout and colour.
 
 - **24 designs, not 1,080.** Beyond that the file stops being openable. The cap
   is `--limit`; the selection round-robins across families, so every family
-  appears before any family repeats. It is not a random sample — within a
+  appears before any family repeats. It is not a random sample, within a
   family it takes the lowest ids.
 - **Static.** It shows the run that built it. Re-run `make dashboard` after new
   results; there is no live reload and no server.

@@ -6,7 +6,7 @@ Wires the four encoders and the action heads into one module:
     rendered views ─────→ VisionEncoder ───┼─→ FusionEncoder ─→ PolicyHeads
     numeric state + history → StateEncoder ┘
 
-The model never emits code — only an operation id, ``PARAM_SLOTS`` normalized
+The model never emits code, only an operation id, ``PARAM_SLOTS`` normalized
 floats, and a target index, which ``kairos.rl.action_space.decode`` turns into
 a schema-validated :class:`~kairos.actions.schema.Action`.
 """

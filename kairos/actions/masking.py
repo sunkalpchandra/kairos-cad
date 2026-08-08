@@ -1,7 +1,7 @@
 """Action masking: which operations are legal in a given CAD state.
 
 Masking is computed from cheap boolean state flags so it can run every step
-without touching geometry, and it is pure logic — unit-testable without
+without touching geometry, and it is pure logic, unit-testable without
 FreeCAD. The RL environment multiplies the policy's operation logits by this
 mask, collapsing the search space.
 """

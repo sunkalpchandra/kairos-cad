@@ -1,6 +1,6 @@
 """Rule-based requirement parser: natural language → EngineeringSpec.
 
-This is deliberately a deterministic, testable extraction layer — not an LLM.
+This is deliberately a deterministic, testable extraction layer, not an LLM.
 It covers the phrasing used by the KAIROS task families and benchmark
 (§ hole counts, metric thread sizes, wall thickness, mounting angles,
 dimensions, materials, objectives). Anything it cannot extract is simply
@@ -29,7 +29,7 @@ _STACKED_FEATURE_RE = re.compile(
 )
 
 
-#: "<n> [up to two adjectives] holes" — the adjectives matter because real
+#: "<n> [up to two adjectives] holes", the adjectives matter because real
 #: requirements say "6 bolt holes", "2 base mounting holes", "4 corner
 #: through-holes". Intervening words must be alphabetic so a number belonging
 #: to a different clause ("2 ribs 8 mm wide ... holes") cannot be captured.
@@ -48,15 +48,15 @@ def _find_hole_spec(text: str) -> tuple[int | None, float | None]:
 
     Counts are **summed across every group the text names**. Requirements
     routinely split them ("2 base mounting holes and 2 cross-wall holes"), and
-    reading only the first group under-counts the part — which then reads as a
+    reading only the first group under-counts the part, which then reads as a
     satisfied constraint against geometry that has twice as many holes.
     """
     count: int | None = None
     diameter: float | None = None
 
-    # "4 x M5 holes", "4 M5 mounting holes" — thread designations carry the
+    # "4 x M5 holes", "4 M5 mounting holes", thread designations carry the
     # diameter, so they are matched before the generic count pattern.
-    threaded = re.search(r"(\d+)\s*[x×]?\s*(M\d+)\s+(?:mounting\s+)?holes?", text, re.I)
+    threaded = re.search(r"(\d+)\s*[xx]?\s*(M\d+)\s+(?:mounting\s+)?holes?", text, re.I)
     if threaded:
         count = int(threaded.group(1))
         diameter = _METRIC_THREADS.get(threaded.group(2).upper())
@@ -106,7 +106,7 @@ def parse_requirement(text: str) -> EngineeringSpec:
     if not m:
         m = re.search(rf"(?:minimum|min\.?)\s+{_NUM}\s*mm\s+wall(?:\s+thickness)?", text, re.I)
     if not m:
-        # Plain "wall thickness 6.2 mm" — the separator is optional. Six
+        # Plain "wall thickness 6.2 mm". The separator is optional. Six
         # families phrase it exactly this way, so requiring ':' or '=' meant
         # the constraint was declared 940 times and extracted zero times.
         m = re.search(rf"wall\s+thickness\s*[:=>]*\s*{_NUM}\s*mm", text, re.I)
@@ -120,18 +120,18 @@ def parse_requirement(text: str) -> EngineeringSpec:
     if m:
         spec.constraints.append(Constraint("mounting_angle", float(m.group(1)), tolerance=0.5))
 
-    # "60 x 40 x 5 mm" exact envelope — but only when the triple describes the
+    # "60 x 40 x 5 mm" exact envelope, but only when the triple describes the
     # whole part. When the text also stacks material on it ("... 100 x 60 x 6 mm
     # plate stiffened by ribs 8 mm tall"), the triple sizes a sub-component and
     # the real envelope is larger; emitting it as the part envelope would invent
     # a requirement the part is meant to violate, so it is left unextracted.
-    m = re.search(rf"{_NUM}\s*[x×]\s*{_NUM}\s*[x×]\s*{_NUM}\s*mm", text, re.I)
+    m = re.search(rf"{_NUM}\s*[xx]\s*{_NUM}\s*[xx]\s*{_NUM}\s*mm", text, re.I)
     if m and not _STACKED_FEATURE_RE.search(text):
         dims = [float(m.group(i)) for i in (1, 2, 3)]
         spec.constraints.append(Constraint("bounding_box_exact", dims, tolerance=1.0))
 
     # "fit within 80 x 60 x 20 mm"
-    m = re.search(rf"(?:within|max(?:imum)?\s+envelope)\s+{_NUM}\s*[x×]\s*{_NUM}\s*[x×]\s*{_NUM}\s*mm", text, re.I)
+    m = re.search(rf"(?:within|max(?:imum)?\s+envelope)\s+{_NUM}\s*[xx]\s*{_NUM}\s*[xx]\s*{_NUM}\s*mm", text, re.I)
     if m:
         dims = [float(m.group(i)) for i in (1, 2, 3)]
         # Replace the exact-box reading: "within" is an upper bound.

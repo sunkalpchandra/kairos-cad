@@ -1,7 +1,7 @@
 """Multimodal fusion: requirement + views + geometry state → one embedding.
 
-The three encoders answer different questions — what was asked, what the part
-looks like, what it measures — and the next action depends on their
+The three encoders answer different questions, what was asked, what the part
+looks like, what it measures, and the next action depends on their
 *relationship* ("the requirement wants 4 holes, the state has 2"). Concatenation
 alone cannot express that, so the modality embeddings are treated as a
 three-token sequence and passed through self-attention, letting each modality

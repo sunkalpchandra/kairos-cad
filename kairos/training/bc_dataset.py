@@ -4,14 +4,14 @@ Three details decide whether this data teaches anything real:
 
 **States are recorded after their action.** ``TrajectoryRecorder`` observes in
 the post-action callback, so ``states[i]`` already contains the effect of
-``actions[i]``. Training on that pair would leak the answer — the model would
+``actions[i]``. Training on that pair would leak the answer, the model would
 read "a pad exists" and predict PAD. Step ``i`` is therefore supervised from
 ``states[i - 1]``, and step 0 from the encoding of an empty document.
 
 **Not every expert action is representable.** The codec expresses ADD_POLYGON
 only as a regular n-gon, while the L, U, corner, spacer, flange, and support
 recipes sketch irregular profiles. Those steps are dropped rather than
-approximated, and the count is reported — silently fitting them to the nearest
+approximated, and the count is reported, silently fitting them to the nearest
 hexagon would train the policy toward a shape the expert never drew.
 
 **Targets are not supervised.** ``encode`` cannot recover a target *index*

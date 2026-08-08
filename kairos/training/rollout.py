@@ -6,8 +6,8 @@ has no torch). Replay is the honest stand-in: walk a recorded design's states
 and ask the policy what it would do at each one, then line its answers up
 against what the expert actually did.
 
-It is *teacher forced* — every step is scored from the expert's state, not from
-whatever the policy's own previous action would have produced — so it measures
+It is *teacher forced*, every step is scored from the expert's state, not from
+whatever the policy's own previous action would have produced, so it measures
 per-step agreement, not the compounding error a real rollout would show. That
 distinction matters when reading the numbers.
 """
@@ -68,7 +68,7 @@ def predict_action(
 ):
     """Predict the next action for a requirement and geometry state.
 
-    ``numeric=None`` means an empty document — the state before any action.
+    ``numeric=None`` means an empty document, the state before any action.
     Returns ``(Action, probabilities)``.
     """
     spec = parse_requirement(requirement)

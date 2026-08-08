@@ -3,9 +3,8 @@
 Two streams, because they carry different kinds of information:
 
 - The frozen 24-dim numeric vector from ``kairos.representation`` (volume,
-  bounding box, hole and face counts, sketch status) — *what the part is now*.
-- The feature history (``Pad``, ``Pocket``, ``Fillet``, …) as a token sequence
-  — *how it got there*. Order matters: a pocket before a pad is a different
+  bounding box, hole and face counts, sketch status), *what the part is now*.
+- The feature history (``Pad``, ``Pocket``, ``Fillet``, ...) as a token sequence, *how it got there*. Order matters: a pocket before a pad is a different
   build than a pad before a pocket, so this runs through a GRU rather than
   being bag-of-features pooled.
 """
@@ -57,7 +56,7 @@ class StateEncoder(nn.Module):
 
         Histories are right-padded with ``PAD``. The GRU still advances its
         state over those slots, so the summary is read at each row's last real
-        feature rather than at the end of the padded sequence — otherwise a
+        feature rather than at the end of the padded sequence, otherwise a
         two-feature build and a ten-feature build with the same prefix would
         converge to whatever the trailing pads produce.
         """

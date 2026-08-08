@@ -1,12 +1,10 @@
 """Benchmark metrics that still discriminate when nothing succeeds.
 
-Closed-loop success is currently **0.000 for every policy** — BC, PPO, and a
+Closed-loop success is currently **0.000 for every policy**, BC, PPO, and a
 legal-random baseline alike. A benchmark reporting only success rate would rank
 a policy that builds a valid solid and gets its hole count right identically
 with one that emits nothing but invalid actions. That is useless for measuring
-progress, and it is the situation this module exists for.
-
-So the headline is a **progress score**: a weighted sum of milestones a design
+progress, and it is the situation this module exists for, so the headline is a **progress score**: a weighted sum of milestones a design
 passes through on the way to being finished, each one independently verifiable
 from the environment's own reports.
 
@@ -15,7 +13,7 @@ from the environment's own reports.
 The weights are deliberately monotone and increasing: reaching a later
 milestone always scores more than any combination of earlier ones, so the score
 can never reward a policy for skipping ahead by luck. Partial credit stops at
-the first milestone missed — a policy that produces a valid solid with the
+the first milestone missed, a policy that produces a valid solid with the
 wrong hole count does not get constraint credit because a later check happened
 to pass on empty geometry.
 
@@ -192,7 +190,7 @@ def format_scores(scores: list[BenchmarkScore]) -> str:
     )
     lines = [header, "-" * len(header)]
     for s in sorted(scores, key=lambda s: -s.progress_score):
-        efficiency = "—" if s.efficiency is None else f"{s.efficiency:.3f}"
+        efficiency = "-" if s.efficiency is None else f"{s.efficiency:.3f}"
         lines.append(
             f"{s.policy:>14}  {s.episodes:>8}  {s.progress_score:>8.3f}  "
             f"{s.success_rate:>8.3f}  {s.validity_rate:>7.3f}  "

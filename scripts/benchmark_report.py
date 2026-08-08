@@ -4,7 +4,7 @@
     python3 scripts/benchmark_report.py --runs runs/benchmark_core
 
 Reads only ``*_traces.jsonl``. Every published table must be reproducible from
-the traces without re-running the environment — otherwise a number can outlive
+the traces without re-running the environment, otherwise a number can outlive
 the run that produced it, which is how a stale figure shipped in Phase 4.
 
 The headline output is the **success(k) curve**: success against how many
@@ -109,11 +109,11 @@ def main() -> int:
 
     def mean(policy: str, field: str) -> str:
         values = columns[policy].get(field, [])
-        return f"{sum(values) / len(values):.3f}" if values else "—"
+        return f"{sum(values) / len(values):.3f}" if values else "-"
 
     def rate(policy: str, field: str) -> str:
         values = columns[policy].get(field, [])
-        return f"{sum(values) / len(values):.2f}" if values else "—"
+        return f"{sum(values) / len(values):.2f}" if values else "-"
 
     ranked = sorted(
         columns,
@@ -147,9 +147,9 @@ def main() -> int:
         cells = []
         for k in ks:
             values = curves[policy].get(k, [])
-            cells.append(f"{sum(values) / len(values):.2f}" if values else "—")
+            cells.append(f"{sum(values) / len(values):.2f}" if values else "-")
         build = builds.get(policy, [])
-        build_cell = f"{sum(build) / len(build):.2f}" if build else "—"
+        build_cell = f"{sum(build) / len(build):.2f}" if build else "-"
         lines.append(f"| `{policy}` | {build_cell} | " + " | ".join(cells) + " |")
 
     lines += ["", "## progress by family", ""]
@@ -162,7 +162,7 @@ def main() -> int:
         cells = []
         for family in all_families:
             values = families[policy].get(family, [])
-            cells.append(f"{sum(values) / len(values):.2f}" if values else "—")
+            cells.append(f"{sum(values) / len(values):.2f}" if values else "-")
         lines.append(f"| `{policy}` | " + " | ".join(cells) + " |")
 
     # Paired comparisons: every policy faced identical tasks, so the per-task

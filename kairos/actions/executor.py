@@ -1,6 +1,6 @@
 """ActionExecutor: validated dispatch of structured actions onto a CADEngine.
 
-Failures never raise out of ``execute`` — they return ``ActionResult(ok=False)``
+Failures never raise out of ``execute``. They return ``ActionResult(ok=False)``
 with a typed message, so the RL environment can convert them into penalties
 while the document remains consistent (feature builders roll back internally).
 """

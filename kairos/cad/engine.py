@@ -2,8 +2,8 @@
 
 Owns one document, tracks named sketches and features, and exposes the
 controlled API surface (sketch, constrain, feature, measure, render, export).
-Targets are referenced by *name strings* — sketch object names ('Sketch001')
-and subelement names ('Edge7', 'Face3') — never by raw Python objects, so
+Targets are referenced by *name strings*, sketch object names ('Sketch001')
+and subelement names ('Edge7', 'Face3'), never by raw Python objects, so
 every call is serializable into a trajectory.
 """
 

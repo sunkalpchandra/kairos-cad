@@ -222,7 +222,7 @@ def find_cylindrical_holes(
 ) -> list[dict[str, Any]]:
     """Detect cylindrical holes by grouping concave cylindrical faces on a
     shared axis line, keeping only groups that wrap (nearly) the full 360
-    degrees — this excludes concave corner fillets (coves), which share the
+    degrees. This excludes concave corner fillets (coves), which share the
     concavity but only sweep ~90 degrees. Optionally filter by diameter (mm).
 
     Returns one entry per distinct hole: ``{"diameter", "axis", "axis_point",

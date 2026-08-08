@@ -14,7 +14,7 @@ const DATA = window.KAIROS_DATA;
 const el = (id) => document.getElementById(id);
 
 function fmt(value, digits) {
-  if (value == null || Number.isNaN(value)) return '—';
+  if (value == null || Number.isNaN(value)) return '-';
   return Number(value).toFixed(digits == null ? 3 : digits);
 }
 
@@ -65,29 +65,29 @@ function selectDesign(index) {
   }
 
   const meshInfo = design.mesh
-    ? `${design.mesh.triangle_count} triangles · ${design.mesh.vertex_count} vertices`
+    ? `${design.mesh.triangle_count} triangles - ${design.mesh.vertex_count} vertices`
     : 'no mesh bundled';
-  el('stage-info').textContent = `${design.design_id} · ${meshInfo}`;
+  el('stage-info').textContent = `${design.design_id} - ${meshInfo}`;
 
   el('detail-requirement').textContent = design.requirement || '(no requirement text)';
 
   const extent = design.extent_mm || [];
   const dims = extent[0] != null
-    ? `${fmt(extent[0], 1)} × ${fmt(extent[1], 1)} × ${fmt(extent[2], 1)}`
-    : '—';
+    ? `${fmt(extent[0], 1)} x ${fmt(extent[1], 1)} x ${fmt(extent[2], 1)}`
+    : '-';
   const wall = design.min_wall_thickness_mm;
   el('detail-kv').innerHTML = `
     <dt>family</dt><dd>${esc(design.family)}</dd>
-    <dt>material</dt><dd>${esc(design.material || '—')}</dd>
+    <dt>material</dt><dd>${esc(design.material || '-')}</dd>
     <dt>mass</dt><dd>${fmt(design.mass_g, 2)} g</dd>
     <dt>volume</dt><dd>${fmt(design.volume_mm3, 0)} mm³</dd>
     <dt>surface area</dt><dd>${fmt(design.surface_area_mm2, 0)} mm²</dd>
     <dt>extent (mm)</dt><dd>${dims}</dd>
-    <dt>faces</dt><dd>${design.faces == null ? '—' : design.faces}</dd>
-    <dt>holes</dt><dd>${design.hole_count == null ? '—' : design.hole_count}</dd>
+    <dt>faces</dt><dd>${design.faces == null ? '-' : design.faces}</dd>
+    <dt>holes</dt><dd>${design.hole_count == null ? '-' : design.hole_count}</dd>
     <dt>min wall</dt><dd>${wall == null ? 'not measured' : fmt(wall, 2) + ' mm'}</dd>
-    <dt>expert steps</dt><dd>${design.steps == null ? '—' : design.steps}</dd>
-    <dt>constraints met</dt><dd>${design.satisfaction_rate == null ? '—' : fmt(design.satisfaction_rate * 100, 0) + '%'}</dd>`;
+    <dt>expert steps</dt><dd>${design.steps == null ? '-' : design.steps}</dd>
+    <dt>constraints met</dt><dd>${design.satisfaction_rate == null ? '-' : fmt(design.satisfaction_rate * 100, 0) + '%'}</dd>`;
 
   const constraints = design.constraints || [];
   el('detail-constraints').innerHTML = constraints.length
@@ -142,7 +142,7 @@ function renderLeaderboard() {
           <td style="width:110px">${barRow(r.progress_mean || 0, best)}</td>
           <td class="num">${fmt(r.success_rate)}</td>
           <td class="num">${fmt(r.validity)}</td>
-          <td class="num">${r.tasks == null ? '—' : r.tasks}</td>
+          <td class="num">${r.tasks == null ? '-' : r.tasks}</td>
         </tr>`).join('')}</tbody>
     </table>`;
 }
@@ -208,7 +208,7 @@ function renderTraining() {
     const best = bc.best_held_out_accuracy;
     el('bc-summary').textContent = best == null ? '' :
       `best held-out next-action accuracy ${fmt(best)} over ${bcHistory.length} epochs` +
-      (bc.parameters ? ` · ${(bc.parameters / 1e6).toFixed(2)}M parameters` : '');
+      (bc.parameters ? ` - ${(bc.parameters / 1e6).toFixed(2)}M parameters` : '');
   } else {
     el('bc-chart').innerHTML = '<p class="empty">no BC history in this bundle</p>';
     el('bc-loss-chart').innerHTML = '';
@@ -251,7 +251,7 @@ function renderAblations() {
           <td class="name">${esc(r.name)}</td>
           <td class="num">${fmt(r.progress_mean)}</td>
           <td class="num" style="color:${(r.delta || 0) < 0 ? 'var(--fail)' : 'var(--muted)'}">
-            ${r.delta == null ? '—' : (r.delta > 0 ? '+' : '') + fmt(r.delta * 100, 1) + '%'}
+            ${r.delta == null ? '-' : (r.delta > 0 ? '+' : '') + fmt(r.delta * 100, 1) + '%'}
           </td>
           <td class="num">${fmt(r.validity)}</td>
         </tr>`).join('')}</tbody>
@@ -274,7 +274,7 @@ function renderComparisons() {
       <tbody>${rows.map((r) => {
         const separates = r.low != null && r.high != null && (r.low > 0 || r.high < 0);
         return `<tr>
-          <td class="name">${esc(r.a)} − ${esc(r.b)}</td>
+          <td class="name">${esc(r.a)} - ${esc(r.b)}</td>
           <td class="num">${(r.difference > 0 ? '+' : '') + fmt(r.difference)}</td>
           <td class="num">[${fmt(r.low)}, ${fmt(r.high)}]</td>
           <td class="num">${r.wins}/${r.losses}/${r.ties}</td>

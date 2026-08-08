@@ -170,7 +170,7 @@ class ActorCritic(nn.Module):
         Starting PPO from a random policy would be hopeless here: a valid CAD
         build is a long, precisely ordered action sequence, and random
         exploration essentially never produces one to learn from. The value
-        head is new and starts at zero — only the policy is inherited.
+        head is new and starts at zero, only the policy is inherited.
         """
         payload = torch.load(Path(path), map_location=device, weights_only=False)
         vla = KairosVLA(VLAConfig.from_dict(payload["model_config"]))

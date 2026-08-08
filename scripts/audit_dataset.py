@@ -5,7 +5,7 @@ Checks every ``design_*`` directory for the full artifact set, parseable
 JSON, and recorded validity; optionally deletes incomplete directories
 (crash leftovers) and stray FreeCAD backup files.
 
-Pure python — runs under any interpreter:
+Pure python, runs under any interpreter:
 
     python3 scripts/audit_dataset.py --root dataset [--fix]
 """

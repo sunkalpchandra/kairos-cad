@@ -190,8 +190,8 @@ def test_collector_requires_at_least_one_requirement():
 def test_an_episode_cut_by_the_step_cap_is_marked_truncated():
     """Otherwise GAE chains the advantage into the next episode.
 
-    The environment never reports truncation here — the collector's own
-    per-episode cap ends it — so the last transition would stay flagged as an
+    The environment never reports truncation here, the collector's own
+    per-episode cap ends it, so the last transition would stay flagged as an
     ordinary mid-episode step.
     """
     buffer = RolloutBuffer()

@@ -1,7 +1,7 @@
 """Requirement pools for RL training and evaluation.
 
 Episodes draw their requirement from a pool so the language encoder receives
-signal — a single fixed requirement teaches one build, not requirement reading.
+signal, a single fixed requirement teaches one build, not requirement reading.
 
 Pools are drawn from the generated dataset when it is available, because those
 requirements are exactly the distribution BC was fitted to, and PPO starting
@@ -109,7 +109,7 @@ def requirement_pools(
     be read as in-distribution.
 
     .. deprecated::
-        Two-way only, and derived at call time — calling it twice with
+        Two-way only, and derived at call time, calling it twice with
         different ``limit`` values draws a different boundary, which is how a
         contaminated comparison shipped. Use :func:`three_way_pools`.
     """

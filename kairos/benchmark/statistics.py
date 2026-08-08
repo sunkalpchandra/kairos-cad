@@ -4,7 +4,7 @@ Every policy faces the **same enumerated tasks in the same order**, which makes
 the comparison paired: for each task there is a matched pair of scores, and the
 quantity of interest is the distribution of their per-task difference. Treating
 the two as independent samples throws that pairing away and widens the interval
-for no reason — with 32 tasks and a shared task-difficulty spread, most of the
+for no reason, with 32 tasks and a shared task-difficulty spread, most of the
 variance is *between tasks*, and pairing removes exactly that.
 
 Phase 5 already showed what happens without this discipline: a 6-episode
@@ -39,7 +39,7 @@ class PairedComparison:
 
     @property
     def separates(self) -> bool:
-        """True when the interval excludes zero — a difference the data supports."""
+        """True when the interval excludes zero, a difference the data supports."""
         return self.ci_low > 0.0 or self.ci_high < 0.0
 
     def summary(self) -> str:
@@ -54,7 +54,7 @@ class PairedComparison:
             f"{self.policy_a} vs {self.policy_b} on {self.metric}: "
             f"{self.mean_difference:+.3f} [{self.ci_low:+.3f}, {self.ci_high:+.3f}] "
             f"over {self.n_pairs} paired tasks "
-            f"({self.wins}W/{self.losses}L/{self.ties}T) — {verdict}"
+            f"({self.wins}W/{self.losses}L/{self.ties}T), {verdict}"
         )
 
     def to_dict(self) -> dict[str, Any]:

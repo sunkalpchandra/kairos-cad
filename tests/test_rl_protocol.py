@@ -1,4 +1,4 @@
-"""Protocol tests — must pass under both interpreters (no torch, no FreeCAD)."""
+"""Protocol tests, must pass under both interpreters (no torch, no FreeCAD)."""
 
 import math
 

@@ -9,7 +9,7 @@ The loss is the sum of two supervised terms:
   over all six slots would teach every operation to emit 0.5 in the slots it
   ignores, and that noise competes with the slots that matter.
 
-The target head is not supervised — trajectories do not record the live
+The target head is not supervised, trajectories do not record the live
 edge/face list an index would refer to (see :mod:`kairos.training.bc_dataset`).
 
 Splits are **by design, not by step**: steps from one design are highly
@@ -46,7 +46,7 @@ def _slots_used_by_operation() -> torch.Tensor:
     Probed from the codec rather than read off the action schema: the two do
     not agree (ADD_POLYGON takes one schema parameter, ``points``, but consumes
     five slots for centre, radius, sides, and rotation). Perturbing one slot at
-    a time and watching the decoded parameters is self-maintaining — change a
+    a time and watching the decoded parameters is self-maintaining, change a
     range in the codec and this mask follows.
     """
     mask = torch.zeros(len(OPERATIONS), PARAM_SLOTS)
@@ -119,7 +119,7 @@ def configs_from(config: dict[str, Any]) -> tuple[VLAConfig, TrainConfig, str]:
     """Build ``(VLAConfig, TrainConfig, out_dir)`` from a loaded YAML config.
 
     Validation lives here rather than in :mod:`kairos.config` so the dataclass
-    fields stay the single source of truth — and so ``kairos.config`` never has
+    fields stay the single source of truth, and so ``kairos.config`` never has
     to import torch.
     """
     model_section = dict(config.get("model", {}) or {})
@@ -192,7 +192,7 @@ class BCTrainer:
     def compute_class_weights(self, labels: np.ndarray) -> torch.Tensor | None:
         """Inverse-sqrt-frequency weights over observed operations.
 
-        Operations absent from the training split keep weight 1.0 — they
+        Operations absent from the training split keep weight 1.0, they
         contribute no gradient anyway, and a zero-count denominator would send
         their weight to infinity.
         """
@@ -288,7 +288,7 @@ class BCTrainer:
         """Train for ``config.epochs``, returning per-epoch metrics."""
         c = self.config
         torch.manual_seed(c.seed)
-        # Weights come from the training split only — deriving them from the
+        # Weights come from the training split only, deriving them from the
         # whole dataset would leak validation label frequencies into training.
         if c.class_weighting != "none":
             self.class_weights = self.compute_class_weights(_labels_of(train_set))

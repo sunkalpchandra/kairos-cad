@@ -47,7 +47,7 @@ def test_a_measurement_under_the_floor_is_a_definitive_failure():
     """Sampling only ever OVER-estimates, so measured is an upper bound.
 
     A measured 2.99 mm means the true wall is at most 2.99 mm, which is below a
-    3 mm floor — conclusively. Slack here would pass parts that are provably
+    3 mm floor, conclusively. Slack here would pass parts that are provably
     too thin, and it was letting 6.983 mm clear a 7.0 mm floor.
     """
     spec = parse_requirement("Bracket with wall thickness 3 mm.")

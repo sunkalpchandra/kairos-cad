@@ -1,6 +1,6 @@
 """Phase 7: the KAIROS-CAD benchmark.
 
-Pure python — no torch — so the benchmark can score results anywhere, including
+Pure python, no torch, so the benchmark can score results anywhere, including
 under FreeCAD's interpreter where the environment runs.
 """
 

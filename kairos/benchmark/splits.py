@@ -5,17 +5,15 @@ same root cause: **the split was a function, evaluated more than once, with
 different arguments.** `requirement_pools(limit=64)` and
 `requirement_pools(limit=40)` permute over different pool sizes and therefore
 draw a different boundary, which is how three of six "held-out" requirements
-turned out to be trained on.
-
-So a split here is a frozen artifact — an explicit list of ids and text hashes,
-written once and read back — not a computation to repeat.
+turned out to be trained on, so a split here is a frozen artifact, an explicit list of ids and text hashes,
+written once and read back, not a computation to repeat.
 
 **Why three ways and not two.** PPO picks its best checkpoint by success rate on
 the pool it is then scored against. Nothing is *trained* on that pool, so the
 existing leak check passes; but choosing which checkpoint to ship using the
 evaluation set is model selection on the test set, and it inflates the reported
-number just the same. `dev` exists to absorb every such choice — checkpoint
-selection, hyperparameters, ablation decisions — leaving `test` for a number
+number just the same. `dev` exists to absorb every such choice, checkpoint
+selection, hyperparameters, ablation decisions, leaving `test` for a number
 quoted once.
 """
 

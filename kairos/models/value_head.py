@@ -3,7 +3,7 @@
 Predicts the expected discounted return from a fused multimodal embedding.
 
 The head is **deliberately separate from the policy heads but shares the
-trunk**. Sharing the encoders is what makes value learning cheap here — a
+trunk**. Sharing the encoders is what makes value learning cheap here, a
 FreeCAD rollout step costs orders of magnitude more than a forward pass, so
 samples are scarce and the critic cannot afford its own encoder stack. Keeping
 the final layers separate stops the value loss from dominating the shared
@@ -31,7 +31,7 @@ class ValueHead(nn.Module):
             nn.Dropout(dropout),
             nn.Linear(hidden_dim, 1),
         )
-        # A near-zero final layer starts the critic at V≈0 rather than at some
+        # A near-zero final layer starts the critic at V~0 rather than at some
         # arbitrary offset, so early advantages reflect rewards instead of
         # initialization noise.
         nn.init.zeros_(self.net[-1].bias)

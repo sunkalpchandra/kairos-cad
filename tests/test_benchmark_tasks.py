@@ -1,4 +1,4 @@
-"""Task enumeration tests — pure python, no torch, no FreeCAD."""
+"""Task enumeration tests, pure python, no torch, no FreeCAD."""
 
 import json
 

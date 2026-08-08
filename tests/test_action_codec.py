@@ -33,7 +33,7 @@ def test_every_operation_decodes_to_valid_action():
 
 
 def test_polygon_decodes_to_a_buildable_ngon():
-    """ADD_POLYGON must never decode to an empty point list — that made a
+    """ADD_POLYGON must never decode to an empty point list, that made a
     masked-legal operation a guaranteed executor failure."""
     rng = np.random.default_rng(1)
     idx = OPERATIONS.index(Operation.ADD_POLYGON)
@@ -207,8 +207,8 @@ def test_encode_round_trips_every_parameterized_operation():
     It used to fall through to a catch-all returning zeros for sixteen
     operations decode() fully supports. Because the BC slot mask is probed from
     the *decoder*, those slots were marked supervised and would have been
-    trained toward the all-zero encoding instead of the expert's value —
-    silently, and only once a recipe emitted one of them.
+    trained toward the all-zero encoding instead of the expert's value, silently, and
+    only once a recipe emitted one of them.
     """
     targets = {"edges": ["Edge1"], "faces": ["Face1"], "features": ["Pad"]}
     lossy = []

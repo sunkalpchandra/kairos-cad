@@ -1,4 +1,4 @@
-"""Ablation wrapper tests — pure python, no torch, no FreeCAD."""
+"""Ablation wrapper tests, pure python, no torch, no FreeCAD."""
 
 import numpy as np
 import pytest
