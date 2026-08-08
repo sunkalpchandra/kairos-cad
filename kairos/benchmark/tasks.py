@@ -1,24 +1,20 @@
-"""Benchmark tasks: an explicit, enumerable list rather than a sampled pool.
+"""Benchmark tasks: an enumerable list, not a sampled pool.
 
-Every policy must face **the same tasks in the same order**, so comparisons are
-paired and a difference between two policies is a difference in the policies.
+Every policy faces the same tasks in the same order, so comparisons are paired.
 The RL collector samples requirements from a pool, which is fine for training
-and useless for a benchmark: two runs draw different work.
+and useless for a benchmark since two runs draw different work.
 
-Task types, in increasing distance from the training distribution:
+Two task types:
 
-- ``BUILD``, empty document, requirement text, full horizon. The Phase 5
-  setting, kept for continuity with the published numbers.
-- ``COMPLETE``, the expert's first ``n - k`` actions are replayed, and the
-  policy supplies the last ``k``. This is the signal generator: at ``k = 1`` a
-  policy with 0.983 next-action accuracy should nearly always succeed, and at
-  ``k = 8`` it faces almost the full closed-loop problem. The curve between
-  them *is* the compounding-error measurement, and unlike success rate it
-  cannot be uniformly zero.
+- BUILD: empty document, requirement text, full horizon. The Phase 5 setting.
+- COMPLETE: the expert's first n-k actions are replayed and the policy supplies
+  the last k. At k=1 a policy with high next-action accuracy should nearly
+  always succeed; at k=8 it faces almost the full closed-loop problem. The curve
+  between them measures compounding error, and unlike success rate it cannot be
+  uniformly zero.
 
-Difficulty tiers come from the families' measured expert length and from how
-many constraints the parser actually extracts, not from intuition about which
-shapes look hard.
+Difficulty tiers come from measured expert length and extracted constraint
+count, not from intuition about which shapes look hard.
 """
 
 from __future__ import annotations

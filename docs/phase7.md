@@ -31,9 +31,9 @@ actions against 0.018), and a single success number hid it entirely.
   1.000. Anything less is a fault in the harness, the environment or the
   constraint checker, not a policy result.
 - **`immediate-finish`** calls `FINISH_DESIGN` at once. It must score bottom.
-  This is not hypothetical: PPO trained from scratch converged on exactly this
-  policy, driving episode length to ~2 steps because quitting stops paying the
-  per-action cost. Any metric it can win is a broken metric.
+  PPO trained from scratch converged on this policy, driving episode length to
+  ~2 steps because quitting stops paying the per-action cost. Any metric it can
+  win is a broken metric.
 
 **Both invariants must be checked per task type, and finding that out was
 itself a result.** Run across all tasks, `immediate-finish` scored 0.406 and beat
@@ -82,9 +82,9 @@ policy tested, which is a far more actionable diagnosis than "success 0.000".
 BC appears to edge PPO (0.445 vs 0.413), **but the paired test says the
 benchmark cannot separate them**: the per-task difference is +0.031 with a 95%
 interval of [-0.008, +0.091] over 32 paired tasks, 5 wins to 1 loss with 26
-ties. Reporting "BC beats PPO" from those point estimates would have been
-exactly the error Phase 5 made when a 6-episode evaluation produced 0.500 for a
-policy that scored 0.286.
+ties. Reporting "BC beats PPO" from those point estimates would repeat the
+Phase 5 error, where a 6-episode evaluation produced 0.500 for a policy that
+scored 0.286.
 
 What *does* separate, with intervals excluding zero:
 

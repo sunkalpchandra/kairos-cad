@@ -67,8 +67,8 @@ def main() -> int:
         print(f"error: no traces under {args.runs}", file=sys.stderr)
         return 1
 
-    # A silently reordered or renamed ladder would publish a table whose columns
-    # do not mean what their headers say, which is worse than not publishing it.
+    # A reordered or renamed ladder would publish a table whose columns do not
+    # match their headers.
     from kairos.benchmark.metrics import MILESTONES as LADDER
 
     if tuple(name for name, _ in LADDER) != MILESTONES:

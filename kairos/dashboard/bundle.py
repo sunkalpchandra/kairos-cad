@@ -257,11 +257,10 @@ def collect_training(runs_root: str | Path) -> dict[str, Any]:
     ppo = _read_json(runs_root / "ppo" / "report.json") or {}
     return {
         "bc": {
-            # `operation_accuracy` is the HELD-OUT next-action accuracy and
-            # `train_accuracy` the training one. Nothing in the report is named
-            # dev_/val_accuracy, so guessing those names drops the held-out
-            # curve from the chart without any error -- which is precisely the
-            # series the whole plot exists to show.
+            # operation_accuracy is the held-out next-action accuracy;
+            # train_accuracy is the training one. Nothing is named dev_/val_
+            # accuracy, so guessing those names silently drops the held-out
+            # series, which is the one the plot exists to show.
             "history": [
                 {
                     "epoch": r.get("epoch"),
