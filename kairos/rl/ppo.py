@@ -1,16 +1,12 @@
 """PPO with a behavioral-cloning anchor.
 
-Standard clipped-surrogate PPO, plus one term this domain needs: a **KL penalty
-against the frozen BC policy**.
+Clipped-surrogate PPO plus a KL penalty against the frozen BC policy.
 
-Why the anchor. A valid CAD build is a long, precisely ordered action sequence,
-and the reward for finishing one is sparse. Early PPO updates chase whatever
-shaping reward is reachable, opening sketches, adding circles, and it is very
-easy for the policy to drift off the BC manifold and lose the ability to
-produce a coherent build at all. Once that happens it cannot recover, because
-random exploration essentially never rediscovers a 12-step valid sequence. The
-anchor keeps updates near the demonstrations while still letting reward shape
-behavior; ``bc_kl_coef: 0.0`` disables it for comparison runs.
+A valid build is a long ordered action sequence with a sparse finish reward.
+Early updates chase whatever shaping reward is reachable and can drift off the
+BC manifold, after which exploration rarely rediscovers a 12-step valid
+sequence. The anchor keeps updates near the demonstrations while reward still
+shapes behaviour; ``bc_kl_coef: 0.0`` disables it for comparison runs.
 
 Advantages are normalized per minibatch, and the value function is clipped the
 same way the policy is, with rollouts this small (a few hundred transitions

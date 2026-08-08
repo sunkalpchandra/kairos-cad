@@ -6,17 +6,15 @@ ten-thousand-candidate search is hours. The surrogate predicts mass and minimum
 wall thickness directly from a family's parameters in microseconds, which is
 what makes search practical; FreeCAD then verifies only the winner.
 
-**It predicts what is expensive, not what is easy.** Mass is cheap to compute
-analytically for these families, but wall thickness is not, it needs the ray
-casting in :mod:`kairos.evaluation.wall_thickness`. Both are predicted so the
-optimizer can trade them off, and both are verified exactly before any result
-is reported.
+Mass is cheap to compute analytically for these families; minimum wall
+thickness is not, since it requires the ray casting in
+:mod:`kairos.evaluation.wall_thickness`. Both are predicted so the optimizer
+can trade them off, and both are verified exactly before any result is reported.
 
-The surrogate is a closed-form ridge fit on polynomial features, not a neural
-network. Sample counts here are hundreds, not millions, because every training
-row costs a real FreeCAD build, at that scale a closed-form fit has no
-optimizer, no seed and no training curve to misread, and it runs without torch,
-so the search can live in the same interpreter as the verification build.
+The surrogate is a closed-form ridge fit on polynomial features. Training sets
+here are hundreds of rows, since each row costs a real FreeCAD build, and a
+closed-form fit needs no torch, so search and verification share one
+interpreter.
 """
 
 from __future__ import annotations

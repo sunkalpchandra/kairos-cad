@@ -167,10 +167,9 @@ class ActorCritic(nn.Module):
     ) -> ActorCritic:
         """Initialize from a behavioral-cloning checkpoint.
 
-        Starting PPO from a random policy would be hopeless here: a valid CAD
-        build is a long, precisely ordered action sequence, and random
-        exploration essentially never produces one to learn from. The value
-        head is new and starts at zero, only the policy is inherited.
+        Random initialization is impractical here: exploration rarely produces
+        a valid build to learn from. The value head is new and starts at zero;
+        only the policy is inherited. See kairos/rl/ppo.py for the anchor.
         """
         payload = torch.load(Path(path), map_location=device, weights_only=False)
         vla = KairosVLA(VLAConfig.from_dict(payload["model_config"]))

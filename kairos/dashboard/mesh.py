@@ -1,21 +1,16 @@
 """Tessellate solids into a compact mesh payload for the dashboard's 3D viewer.
 
-This module runs **under FreeCAD's interpreter only**, it opens documents and
-touches `Shape`. Everything it emits is plain JSON, so the bundling side
-(`bundle.py`, either interpreter) never needs FreeCAD.
+The FreeCAD path here opens documents and touches Shape, so it runs only under
+FreeCAD's interpreter. Everything emitted is plain JSON, so bundle.py never
+needs FreeCAD.
 
-Size is the whole design problem here. A dashboard embeds two dozen parts, and
-`Shape.tessellate` hands back float64 coordinates that serialize to ~20 chars
-each. Two things keep the payload small enough to inline:
-
-  * **Vertex welding.** FreeCAD tessellates face by face, so every vertex on a
-    shared edge appears once per adjoining face. Welding on the quantized
-    coordinate typically removes a third of them and, more importantly, makes
-    the mesh watertight enough for smooth-normal shading.
-  * **Quantization.** Coordinates are rounded to `QUANTUM` mm and emitted as
-    integers, which the viewer scales back. At 0.01 mm this is far below the
-    0.1 mm tolerance every constraint check in this repo uses, so it cannot
-    change what the viewer shows about a part that passed or failed.
+Payload size drives the design. A dashboard embeds two dozen parts and
+Shape.tessellate returns float64 coordinates that serialize to ~20 chars each.
+Two passes shrink it: vertex welding (FreeCAD tessellates face by face, so
+shared-edge vertices repeat; welding on the quantized coordinate removes about
+a third and makes the mesh watertight enough for smooth normals), and
+quantization to QUANTUM mm emitted as integers, well below the 0.1 mm tolerance
+every constraint check in this repo uses.
 """
 
 from __future__ import annotations

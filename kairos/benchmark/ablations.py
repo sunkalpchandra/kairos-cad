@@ -1,18 +1,16 @@
-"""Ablations: perturb an input and see whether the policy notices.
+"""Ablations: perturb one input and measure whether the policy notices.
 
-The most valuable question a benchmark can answer about a
-requirement-conditioned policy is whether it is conditioned on the requirement
-at all. A policy trained on eight families, each with a near-fixed build recipe,
-can reach respectable numbers by learning "what CAD builds look like" and never
-reading the text. Aggregate scores cannot distinguish that from understanding.
+Ablations test whether a requirement-conditioned policy actually reads the
+requirement. With eight families and near-fixed build recipes, a policy can
+score well by learning what CAD builds look like; aggregate scores do not
+separate that from requirement following.
 
-:class:`ShuffledRequirement` answers it directly: give the policy *another
-task's* requirement while scoring it against the real one. If the score barely
-moves, the requirement was decoration.
+:class:`ShuffledRequirement` hands the policy another task's requirement while
+scoring against the real one. A score that does not move means the requirement
+is unused, which is what the current run reports.
 
-Ablations are policy **wrappers**, not new policies, so the perturbed and
-unperturbed runs share every other condition, same tasks, same order, same
-seeds, and the difference between them is the ablation alone.
+Ablations are wrappers rather than separate policies, so tasks, ordering and
+seeds are identical between the perturbed and unperturbed runs.
 """
 
 from __future__ import annotations

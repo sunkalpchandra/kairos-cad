@@ -1,15 +1,13 @@
 """Constrained design optimization: minimize mass, keep the part manufacturable.
 
-The loop is **propose cheaply, verify exactly**. A cross-entropy-method search
-samples parameter sets, scores them with the surrogate (microseconds), keeps
-the best, and refits the sampling distribution to them. Only the final winner
-is built in FreeCAD and measured for real.
+Candidates are proposed cheaply and the winner is verified exactly. A
+cross-entropy-method search samples parameter sets, scores them with the
+surrogate (microseconds), keeps the best and refits the sampling distribution.
+Only the final winner is built in FreeCAD and measured.
 
-That split is the point. Scoring every candidate in FreeCAD would make a
-10,000-candidate search take hours; scoring none of them exactly would let a
-surrogate error ship as a result, so the search is surrogate-driven and the
-*answer* is always a verified build, and when verification disagrees with the
-prediction, the report says so rather than quietly reporting the prediction.
+Scoring every candidate in FreeCAD would take hours; reporting an unverified
+surrogate score would let prediction error reach the results table. When
+verification disagrees with the prediction, the report says so.
 
 Infeasible parameter draws are rejected by the family's own ``is_feasible``
 before the surrogate ever sees them, so the search never spends its budget on
