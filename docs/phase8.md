@@ -111,8 +111,9 @@ Software rendering (swiftshader) is enough to judge shading, layout and colour.
 ## Limits
 
 - **24 designs, not 1,080.** Beyond that the file stops being openable. The cap
-  is `--limit`; the selection is the first N by id, which is *not* a stratified
-  sample across families.
+  is `--limit`; the selection round-robins across families, so every family
+  appears before any family repeats. It is not a random sample — within a
+  family it takes the lowest ids.
 - **Static.** It shows the run that built it. Re-run `make dashboard` after new
   results; there is no live reload and no server.
 - **WebGL required.** The metrics, tables and charts render without it; only the
