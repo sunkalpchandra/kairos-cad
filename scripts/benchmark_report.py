@@ -37,6 +37,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runs", type=Path, default=Path("runs/benchmark_core"))
     parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument("--metric", default="progress_score")
     args = parser.parse_args()
 
     traces = sorted(args.runs.glob("*_traces.jsonl"))
@@ -90,6 +91,30 @@ def main() -> int:
             values = families[policy].get(family, [])
             cells.append(f"{sum(values) / len(values):.2f}" if values else "—")
         lines.append(f"| `{policy}` | " + " | ".join(cells) + " |")
+
+    # Paired comparisons: every policy faced identical tasks, so the per-task
+    # difference is the right statistic and an interval spanning zero is the
+    # honest answer rather than a ranking.
+    from kairos.benchmark.statistics import compare_all
+
+    by_policy: dict[str, list[dict]] = defaultdict(list)
+    for path in traces:
+        for line in path.read_text().splitlines():
+            if line.strip():
+                row = json.loads(line)
+                by_policy[row["policy"]].append(row)
+
+    lines += ["", "## paired comparisons (95% bootstrap CI on the per-task difference)", ""]
+    lines += ["| comparison | difference | 95% CI | W/L/T | separates? |",
+              "| --- | --- | --- | --- | --- |"]
+    for c in compare_all(by_policy, metric=args.metric):
+        if not c.n_pairs:
+            continue
+        lines.append(
+            f"| `{c.policy_a}` vs `{c.policy_b}` | {c.mean_difference:+.3f} | "
+            f"[{c.ci_low:+.3f}, {c.ci_high:+.3f}] | "
+            f"{c.wins}/{c.losses}/{c.ties} | {'yes' if c.separates else '**no**'} |"
+        )
 
     report = "\n".join(lines)
     print(report)

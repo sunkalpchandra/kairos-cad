@@ -81,9 +81,26 @@ the same rung the scripted baseline does: holes to constraints (0.84 → 0.31).
 Getting the right holes in the right places is the binding failure for every
 policy tested, which is a far more actionable diagnosis than "success 0.000".
 
-BC edges PPO (0.445 vs 0.413) while PPO holds slightly better constraint
-satisfaction (0.477 vs 0.453). At 32 tasks these are within noise of each
-other; the gap that is *not* noise is both against `scripted-spec` at 0.224.
+BC appears to edge PPO (0.445 vs 0.413), **but the paired test says the
+benchmark cannot separate them**: the per-task difference is +0.031 with a 95%
+interval of [−0.008, +0.091] over 32 paired tasks, 5 wins to 1 loss with 26
+ties. Reporting "BC beats PPO" from those point estimates would have been
+exactly the error Phase 5 made when a 6-episode evaluation produced 0.500 for a
+policy that scored 0.286.
+
+What *does* separate, with intervals excluding zero:
+
+| comparison | difference | 95% CI | W/L/T |
+| --- | --- | --- | --- |
+| `bc` vs `legal-random` | +0.298 | [+0.204, +0.402] | 27/2/3 |
+| `bc` vs `scripted-spec` | +0.220 | [+0.126, +0.323] | 21/2/9 |
+| `ppo` vs `scripted-spec` | +0.189 | [+0.098, +0.291] | 18/3/11 |
+| `bc` vs `oracle-replay` | −0.149 | [−0.276, −0.035] | 7/10/15 |
+| `bc` vs `ppo` | +0.031 | [−0.008, +0.091] | 5/1/26 |
+
+Both learned policies clear the scripted null hypothesis and the random floor,
+and BC's remaining gap to the oracle is small (−0.149) — most of the headroom on
+these tasks is the codec ceiling, not the policy.
 
 ## The compounding-error curve
 
