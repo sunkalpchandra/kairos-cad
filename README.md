@@ -82,14 +82,30 @@ Development proceeds in phases (see `docs/`):
       thickness is now *measured* (ray casting), and a surrogate-driven search
       found a 54% lighter plate that a verification build confirms is
       manufacturable ([docs/phase6.md](docs/phase6.md)).
-- [~] **Phase 7 — KAIROS-CAD benchmark**: frozen three-way split, milestone
-      progress metrics that discriminate at zero success, and four baselines.
-      An oracle replaying the expert scores **0.431** on BUILD, so that — not
-      1.0 — is the ceiling any policy can reach through the action codec
-      ([docs/phase7.md](docs/phase7.md)). Ablations and learned-policy
-      adapters pending.
-- [ ] Phase 8 — Interactive Three.js dashboard
-- [ ] Phase 9 — Paper (NeurIPS 2026 format)
+- [x] **Phase 7 — KAIROS-CAD benchmark**: frozen three-way split, milestone
+      progress metrics that discriminate at zero success, six baselines,
+      requirement/mask ablations, and paired bootstrap intervals. An oracle
+      replaying the expert through the action codec sets the **ceiling** — not
+      1.0 — and BC and PPO **do not separate** from each other on it
+      ([docs/phase7.md](docs/phase7.md)).
+- [x] **Phase 8 — Interactive dashboard**: one standalone HTML file with a
+      WebGL viewer over the real tessellated solids, the leaderboard, the
+      success(k) curve and the ablations, built from committed artifacts by
+      `make dashboard` ([docs/phase8.md](docs/phase8.md)).
+- [x] **Phase 9 — Paper**: six pages in NeurIPS layout, every table and inline
+      figure generated from run artifacts rather than typed
+      ([docs/phase9.md](docs/phase9.md), [paper/main.tex](paper/main.tex)).
+
+### What the pipeline audits about itself
+
+Three defects, each of which produced a plausible and wrong number, are now
+covered by automated checks (`make audit-codec`):
+
+| defect | scale before the fix |
+| --- | --- |
+| expert steps the action codec could not express | 7.81% of steps, 829/1080 designs |
+| out-of-range parameters silently clipped to the boundary | 260 steps, 206/1080 designs |
+| requirements stating a bound the ground truth cannot meet | 139/1080 designs |
 
 ## Policy
 
