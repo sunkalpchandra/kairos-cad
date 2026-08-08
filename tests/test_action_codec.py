@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from kairos.actions.parameters import ActionValidationError, validate_action
-from kairos.actions.schema import Operation
+from kairos.actions.schema import Action, Operation
 from kairos.rl.action_space import (
     NUM_OPERATIONS,
     OPERATIONS,
@@ -82,11 +82,18 @@ def test_target_index_wraps_pool():
 
 
 def test_param_ranges_denormalize():
+    """The endpoints must be the declared range, not a copy of it.
+
+    Asserting literals here is what let encode and decode drift apart: the
+    numbers were repeated in three places and only two were kept in step.
+    """
+    from kairos.rl.action_space import _LENGTH
+
     idx = OPERATIONS.index(Operation.PAD)
     low = decode(idx, np.zeros(PARAM_SLOTS), 0, {})
     high = decode(idx, np.ones(PARAM_SLOTS), 0, {})
-    assert low.parameters["length"] == pytest.approx(1.0)
-    assert high.parameters["length"] == pytest.approx(100.0)
+    assert low.parameters["length"] == pytest.approx(_LENGTH[0])
+    assert high.parameters["length"] == pytest.approx(_LENGTH[1])
     assert low.parameters["midplane"] is False and high.parameters["midplane"] is True
 
 
@@ -96,7 +103,67 @@ def test_pocket_through_all_vs_depth():
     assert through.parameters["through_all"] is True and "depth" not in through.parameters
     depth = decode(idx, np.array([0.1, 0.5, 0.0, 0, 0, 0]), 0, {})
     assert depth.parameters["through_all"] is False
-    assert 1.0 <= depth.parameters["depth"] <= 50.0
+    from kairos.rl.action_space import _DEPTH
+
+    assert _DEPTH[0] <= depth.parameters["depth"] <= _DEPTH[1]
+
+
+class TestOutOfRangeRefusesToClip:
+    """Encoding must raise on overflow, never clip.
+
+    A clipped value is a *different action* that executes cleanly and reports
+    ok: True. That is how 260 expert steps across 19.1% of designs were being
+    corrupted while every audit called the trajectory fully representable: a
+    sketch offset of 89.9 mm encoded against a ±50 mm range and decoded back as
+    50 mm, so the oracle built the feature 40 mm from where the expert put it.
+    """
+
+    def test_offset_beyond_range_raises(self):
+        from kairos.rl.action_space import _OFFSET, UnrepresentableAction, encode
+
+        action = Action(
+            Operation.CREATE_SKETCH,
+            parameters={"plane": "XY", "offset": _OFFSET[1] + 10.0},
+        )
+        with pytest.raises(UnrepresentableAction, match="outside the codec"):
+            encode(action)
+
+    def test_coordinate_beyond_range_raises(self):
+        from kairos.rl.action_space import _COORD, UnrepresentableAction, encode
+
+        action = Action(
+            Operation.ADD_CIRCLE,
+            parameters={"cx": _COORD[1] + 1.0, "cy": 0.0, "radius": 3.0},
+        )
+        with pytest.raises(UnrepresentableAction):
+            encode(action)
+
+    def test_value_below_the_floor_raises(self):
+        """The old 0.5 chamfer floor silently rounded 0.404 mm legs *up*."""
+        from kairos.rl.action_space import _SMALL, UnrepresentableAction, encode
+
+        action = Action(Operation.CHAMFER, target="Edge1",
+                        parameters={"size": _SMALL[0] / 2})
+        with pytest.raises(UnrepresentableAction):
+            encode(action)
+
+    def test_the_boundary_itself_still_encodes(self):
+        """Float noise at an endpoint must not be mistaken for overflow."""
+        from kairos.rl.action_space import _OFFSET, encode
+
+        for edge in _OFFSET:
+            encode(Action(Operation.CREATE_SKETCH,
+                          parameters={"plane": "XY", "offset": edge}))
+
+    @pytest.mark.parametrize("parameter", ["length"])
+    def test_pad_length_round_trips_at_both_ends(self, parameter):
+        from kairos.rl.action_space import _LENGTH, decode, encode
+
+        for value in _LENGTH:
+            action = Action(Operation.PAD, parameters={
+                parameter: value, "midplane": False, "reversed": False})
+            decoded = decode(*encode(action))
+            assert decoded.parameters[parameter] == pytest.approx(value, abs=1e-3)
 
 
 def test_encode_decode_round_trip_core_ops():
