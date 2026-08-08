@@ -114,4 +114,4 @@ learning tests skip there (no torch) and run under the system interpreter
 
 - Multimodal fusion / VLA training (Phase 4) and PPO training (Phase 5).
 - Minimum-wall-thickness measurement (Phase 6).
-- Benchmark runs, baselines, ablations (Phase 7); UI (8); paper (9).
+- Benchmark runs, baselines, ablations (Phase 7); dashboard (Phase 8).

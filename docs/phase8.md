@@ -39,7 +39,7 @@ actually decides this dashboard's shape is that it must be a single file that
 opens offline. What the viewer needs is to orbit a static mesh and shade it.
 
 **No charting library**, for the same arithmetic. The charts are SVG strings,
-which also means they lift straight into the paper figures.
+which keeps them crisp at any zoom.
 
 **Meshes come from the STLs**, not from re-meshing FCStd files. Every generated
 design already ships `model.stl`, so the whole dashboard builds under the torch

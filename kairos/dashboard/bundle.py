@@ -1,14 +1,11 @@
 """Bundle run artifacts into one self-contained payload for the dashboard.
 
 The dashboard is a single HTML file with the data inlined, not a server reading
-the repo. Two reasons: a static file can be opened from disk, mailed, or
-attached to a paper without anything running, and inlining forces the bundle to
-be **derived from the artifacts on disk** rather than from whatever a live
-process happens to hold in memory, the same discipline that keeps
-`benchmark_report.py` reading only traces.
+the repo, so it opens from disk with nothing running. Inlining also forces the
+bundle to come from artifacts on disk rather than from a live process, the same
+rule benchmark_report.py follows.
 
-Everything here is pure python, so the bundle can be built under either
-interpreter.
+Pure python, so it builds under either interpreter.
 """
 
 from __future__ import annotations
