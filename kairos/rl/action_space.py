@@ -54,8 +54,12 @@ _COORD = (-150.0, 150.0)
 _OFFSET = (-120.0, 120.0)
 #: Rectangle side lengths (mm). Data 4.1 .. 129.9. Never clipped; unchanged.
 _SIDE = (1.0, 150.0)
-#: Circle and arc radii (mm). Data 1.5 .. 4.0. Never clipped; unchanged.
-_RADIUS = (0.5, 25.0)
+#: Circle and arc radii (mm). Data 1.5 .. 4.0, i.e. 3-8 mm fastener holes.
+#: A (0.5, 25) span put ten times more resolution than needed behind a slot the
+#: benchmark shows is decisive: every policy dies at the holes -> constraints
+#: rung, and hole diameter is what that check reads. 2-16 mm covers every
+#: family with headroom; anything larger raises and gets widened deliberately.
+_RADIUS = (1.0, 8.0)
 #: Regular-polygon circumradius (mm). Never clipped; unchanged.
 _POLY_RADIUS = (1.0, 100.0)
 #: Pad / revolve extrusion length (mm). Data 3.1 .. 62.5. Never clipped.
