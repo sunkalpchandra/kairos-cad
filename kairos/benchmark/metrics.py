@@ -87,8 +87,15 @@ class EpisodeOutcome:
 
         Only meaningful among episodes that reached the same milestone, so the
         aggregate reports it separately rather than folding it into the score.
+
+        None unless a valid solid exists, because a ratio of steps is not an
+        efficiency when nothing was built. `immediate-finish` quits in one step
+        and scored a perfect 1.000 here, on a metric its own contract says it
+        must lose: a policy that builds nothing is not efficient at building.
         """
         if not self.expert_steps or self.steps <= 0:
+            return None
+        if not self.solid_is_valid:
             return None
         return min(1.0, self.expert_steps / self.steps)
 

@@ -72,10 +72,21 @@ def test_validity_rate_reflects_rejected_actions():
 
 
 def test_efficiency_needs_an_expert_reference():
-    assert _outcome(steps=10).efficiency() is None
-    assert _outcome(steps=10, expert_steps=5).efficiency() == pytest.approx(0.5)
+    assert _outcome(steps=10, solid_is_valid=True).efficiency() is None
+    assert _outcome(steps=10, expert_steps=5,
+                    solid_is_valid=True).efficiency() == pytest.approx(0.5)
     # Beating the expert is capped: fewer steps is not unboundedly better.
-    assert _outcome(steps=4, expert_steps=8).efficiency() == pytest.approx(1.0)
+    assert _outcome(steps=4, expert_steps=8,
+                    solid_is_valid=True).efficiency() == pytest.approx(1.0)
+
+
+def test_efficiency_is_none_when_nothing_was_built():
+    """immediate-finish quit in one step and scored a perfect 1.000 here.
+
+    A ratio of steps is not an efficiency when no solid exists, and the
+    baseline's contract is that it must lose every column.
+    """
+    assert _outcome(steps=1, expert_steps=13, solid_is_valid=False).efficiency() is None
 
 
 def test_score_policy_aggregates_and_reports_milestone_rates():

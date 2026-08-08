@@ -219,6 +219,30 @@ def _check_invariants(scores, by_type: dict) -> dict:
             f"{quitter.progress_score:.3f} on BUILD, the lowest of {len(builds)} "
             "policies (any metric it wins there is a broken metric)"
         )
+
+        # "Bottom on every metric" is the contract in baselines.py, and checking
+        # progress_score alone let it hold a perfect 1.000 efficiency for
+        # quitting in one step. validity_rate is excluded on purpose: it is the
+        # fraction of actions the engine accepted, and one accepted FINISH is
+        # honestly 1.000. It is reported alongside precisely because it rewards
+        # something other than building.
+        for column in ("success_rate", "satisfaction_rate", "efficiency"):
+            values = {
+                name: getattr(score, column)
+                for name, score in builds.items()
+                if getattr(score, column, None) is not None
+            }
+            mine = values.get("immediate-finish")
+            if mine is None or len(values) < 2:
+                continue
+            beaten = sorted(n for n, v in values.items() if n != "immediate-finish" and v < mine)
+            if beaten:
+                ok = False
+                messages.append(
+                    f"FAIL  immediate-finish leads on {column} ({mine:.3f}) "
+                    f"against {beaten}. It builds nothing, so that column is "
+                    "crediting something other than building."
+                )
     if not messages:
         messages.append("no auditing baseline was run; invariants unchecked")
     return {"ok": ok, "messages": messages}

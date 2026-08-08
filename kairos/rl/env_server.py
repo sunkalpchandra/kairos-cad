@@ -63,6 +63,11 @@ def _observation_payload(env, observation: dict[str, Any], info: dict | None = N
         },
         "feature_history": [str(f) for f in summary.get("feature_history", [])],
         "has_solid": bool(summary.get("has_solid", False)),
+        # Counted geometry, not inferred. The benchmark's has_any_hole
+        # milestone used to be awarded from satisfaction_rate > 0, so a
+        # satisfied mounting_angle (true of any prismatic solid) bought credit
+        # for holes that were never drilled.
+        "hole_count": len((info or {}).get("observation", {}).get("holes", []) or []),
         "valid": bool(summary.get("valid", False)),
         "mass_g": float(summary.get("mass_g") or 0.0),
     }

@@ -168,11 +168,13 @@ def _absorb(
     rate = info.get("satisfaction_rate")
     if rate is not None:
         outcome.satisfaction_rate = float(rate)
+    # Holes are counted from the geometry. Inferring them from a nonzero
+    # satisfaction rate credited any part whose only satisfied constraint was
+    # mounting_angle, which every prismatic solid satisfies.
+    if int(state.get("hole_count", 0)) > 0:
+        outcome.has_any_hole = True
     if info.get("all_satisfied") and outcome.solid_is_valid:
         outcome.all_constraints_met = True
-        outcome.has_any_hole = True
-    elif float(info.get("satisfaction_rate", 0.0)) > 0.0 and outcome.solid_is_valid:
-        outcome.has_any_hole = True
 
 
 _SKETCH_GEOMETRY_OPS = {
