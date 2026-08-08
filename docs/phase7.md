@@ -136,6 +136,35 @@ against it rather than against 1.0.
 This is exactly what an auditing baseline is for. It was cheap, it ran first,
 and it changed the interpretation of every number downstream.
 
+## Ablations
+
+Each ablation wraps the policy, so the perturbed and unperturbed runs share
+every other condition and the difference is the ablation alone. Run on BC over
+the same 32 tasks:
+
+| run | progress | Δ | success | validity | constraints |
+| --- | --- | --- | --- | --- | --- |
+| `bc` | 0.445 | — | 0.281 | 0.957 | 0.453 |
+| `bc+blank-req` | 0.374 | −15.9% | 0.188 | 1.000 | 0.487 |
+| `bc+shuffled-req` | 0.343 | **−22.9%** | 0.156 | 0.955 | 0.372 |
+| `bc+no-mask` | 0.339 | −23.9% | 0.281 | **0.407** | 0.385 |
+
+**The policy does read the requirement.** Handed another task's requirement it
+loses 23% of its progress and nearly half its success (0.281 → 0.156). I
+expected the opposite — that a policy trained on eight families with near-fixed
+recipes would have learned a build prior and ignored the text — and the
+experiment refuted it. Blanking the requirement costs less (−15.9%) than
+swapping in a wrong one, which is the right ordering: absent information is
+less damaging than misleading information.
+
+**But the low invalid-action rate is mostly the mask, not the policy.** Strip
+the legality mask and BC's validity collapses from 0.957 to **0.407** — while
+its success rate does not move at all (0.281 either way). So the mask is doing
+the work of keeping actions legal, and the policy is doing the work of choosing
+*which* legal action. That directly qualifies Phase 5's headline PPO gain
+(invalid actions 0.018 → 0.000): a large part of that number belongs to the
+environment's masking, not to what PPO learned.
+
 ## Reproducibility
 
 Two contaminated comparisons have already shipped in this project, both because
@@ -161,7 +190,7 @@ make benchmark PRESET=core      # run the baselines
 
 ## Still out of scope
 
-- Ablations: requirement blanking (does the policy read the requirement at
-  all?), masking on/off, and a `bc_kl_coef` sweep with multiple seeds.
+- A `bc_kl_coef` sweep with multiple seeds. Phase 5's single-seed anchored /
+  unanchored comparison remains suggestive rather than conclusive.
 - Paired statistics. Every policy faces identical tasks, which makes paired
   bootstrap CIs the correct test; the current tables report point estimates.
