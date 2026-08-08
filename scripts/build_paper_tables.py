@@ -90,6 +90,7 @@ def comparison_table(comparisons: dict, limit: int = 8) -> str:
     """
     lines = [
         r"\small",
+        r"\setlength{\tabcolsep}{4pt}",
         r"\begin{tabular}{lcccc}",
         r"\toprule",
         r"Comparison & $\Delta$ progress & 95\% CI & W/L/T & Separates \\",
