@@ -92,6 +92,32 @@ def test_limit_caps_embedded_designs(tmp_path):
     assert len(collect_designs(tmp_path, limit=2)) == 2
 
 
+def test_selection_covers_every_family_before_repeating(tmp_path):
+    """Slicing the first N by id looks balanced and is not.
+
+    Design ids cycle through families, so a naive slice at limit=12 dropped
+    reinforced_plate entirely -- and a family the viewer never shows reads as a
+    family that does not exist.
+    """
+    families = ["plate", "flange", "spacer", "u_bracket"]
+    for index in range(12):
+        directory = _design(tmp_path, f"design_{index:06d}")
+        requirement = json.loads((directory / "requirements.json").read_text())
+        requirement["spec"]["kind"] = families[index % len(families)]
+        (directory / "requirements.json").write_text(json.dumps(requirement))
+
+    picked = collect_designs(tmp_path, limit=4)
+    assert {d["family"] for d in picked} == set(families)
+
+
+def test_selection_stays_sorted_by_id(tmp_path):
+    """Round-robin picks them out of order; the list must still read in order."""
+    for index in range(6):
+        _design(tmp_path, f"design_{index:06d}")
+    ids = [d["design_id"] for d in collect_designs(tmp_path, limit=6)]
+    assert ids == sorted(ids)
+
+
 class TestBucket:
     """`complete-k4-design_x` must bucket as "4", not as a build task."""
 

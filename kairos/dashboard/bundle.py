@@ -44,10 +44,33 @@ def _measured(results: list[dict[str, Any]], kind: str) -> float | None:
     return None
 
 
+def _stratify(designs: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    """Take `limit` designs spread evenly across families, not the first N.
+
+    Design ids cycle through families, so slicing the first N *looks* balanced
+    and is not: at limit=12 it silently dropped `reinforced_plate` entirely, and
+    a viewer that never shows a family reads as a family that does not exist.
+    Round-robin guarantees every family appears before any family repeats.
+    """
+    by_family: dict[str, list[dict[str, Any]]] = {}
+    for design in designs:
+        by_family.setdefault(design["family"], []).append(design)
+
+    picked: list[dict[str, Any]] = []
+    families = sorted(by_family)
+    for rank in range(max(len(v) for v in by_family.values()) if by_family else 0):
+        for family in families:
+            if rank < len(by_family[family]) and len(picked) < limit:
+                picked.append(by_family[family][rank])
+        if len(picked) >= limit:
+            break
+    return sorted(picked, key=lambda d: d["design_id"])
+
+
 def collect_designs(root: str | Path, limit: int = MAX_DESIGNS) -> list[dict[str, Any]]:
     """Design summaries with their requirement and constraint outcome."""
     designs: list[dict[str, Any]] = []
-    for path in sorted(Path(root).glob("designs/design_*/state.json"))[:limit]:
+    for path in sorted(Path(root).glob("designs/design_*/state.json")):
         state = _read_json(path)
         requirement = _read_json(path.parent / "requirements.json") or {}
         trajectory = _read_json(path.parent / "trajectory.json") or {}
@@ -87,7 +110,7 @@ def collect_designs(root: str | Path, limit: int = MAX_DESIGNS) -> list[dict[str
             ],
             "operations": [a.get("operation") for a in trajectory.get("actions", [])],
         })
-    return designs
+    return _stratify(designs, limit)
 
 
 def _traces_by_policy(runs: Path) -> dict[str, list[dict[str, Any]]]:
