@@ -31,7 +31,7 @@ kairos/
     └── generator.py     validated dataset writer (renders, STEP/STL, JSON)
 ```
 
-## Design decisions that matter later
+## Design decisions
 
 **Transactional features.** Every feature builder validates the recompute; on
 failure the feature is removed and the previous body tip restored before a
@@ -69,7 +69,7 @@ trajectories replay through the same executor the agent will use.
   `generation_stats.json`. First 30-design run: 30 written / 33 attempted
   (2 infeasible parameter draws, 1 hole-count validation reject).
 
-## Known limitations (deliberate for Phase 1)
+## Known limitations
 
 - Minimum-wall-thickness measurement is not yet implemented (Phase 6 per the
   project plan); requirements record the parametric wall thickness instead.

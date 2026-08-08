@@ -30,7 +30,7 @@ and rates per iteration.
 **Ablations.** Each corrupted-input condition as a delta against the intact
 policy, since the absolute score of `bc+shuffled-req` means little alone.
 
-## Three deliberate deviations from the plan
+## Deviations from the plan
 
 **No Three.js.** The plan named it; this ships a ~250-line WebGL renderer
 instead. Three.js minified is ~600 KB, six times the size of every part,
@@ -45,7 +45,7 @@ which also means they lift straight into the paper figures.
 design already ships `model.stl`, so the whole dashboard builds under the torch
 interpreter with no FreeCAD subprocess.
 
-## Making 24 parts fit in one file
+## Mesh budget
 
 | step | effect |
 | --- | --- |
@@ -57,7 +57,7 @@ The 0.01 mm quantum sits an order of magnitude below the 0.1 mm tolerance every
 constraint check in this repo uses, so it cannot change what the viewer shows
 about a part that passed or failed.
 
-## Four bugs the screenshots caught that lint could not
+## Bugs the screenshots caught
 
 Everything below typechecked, linted, and produced a page that looked finished.
 
@@ -87,13 +87,13 @@ one curve that proves nothing.
 axis as `x_len`/`y_len`/`z_len`, and wall thickness is never stored at all, the
 constraint checker measures it, so it has to be lifted back out of the result.
 
-There is a pattern here worth naming: **this pipeline never raises on a missing
+The pattern: **this pipeline never raises on a missing
 field.** It renders a dash, drops a series, or flattens a curve, and the page
 still looks complete. That is why `tests/test_dashboard_bundle.py` pins every
 field name the bundle reads, and why the headless capture is part of the
 workflow rather than a nicety.
 
-## Verifying it renders
+## Verifying the render
 
 Lint cannot see any of the above. Screenshot it:
 

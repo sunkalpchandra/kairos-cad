@@ -1,4 +1,4 @@
-# Phases 2-3, Dataset scale-up and CAD representation
+# Phases 2-3: Dataset scale-up and CAD representation
 
 Phase 2 delivers the procedural dataset at benchmark scale; Phase 3 delivers
 the state representation the learning stack consumes. Alongside them this
@@ -110,7 +110,7 @@ Full suite under FreeCAD 1.1.3: **251 tests** (`make test-all`), including
 learning tests skip there (no torch) and run under the system interpreter
 (**330 tests**), where the CAD tests skip instead. Lint: `ruff` clean.
 
-## Still deliberately out of scope here
+## Out of scope
 
 - Multimodal fusion / VLA training (Phase 4) and PPO training (Phase 5).
 - Minimum-wall-thickness measurement (Phase 6).

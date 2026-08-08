@@ -111,7 +111,7 @@ optimum was 98.9%** (0.32 g predicted against 29.16 g built). The result is
 still correct, because the winner is always built and measured rather than
 reported from prediction. That is the entire argument for verifying.
 
-## Still out of scope
+## Out of scope
 
 - The surrogate is fitted per run rather than shipped; a persisted per-family
   surrogate would remove the sampling cost from every optimization.

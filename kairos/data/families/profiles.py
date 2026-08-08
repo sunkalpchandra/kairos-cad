@@ -12,10 +12,9 @@ prescribe the fix in their docstrings, "expand those into ADD_LINE actions", and
 that expansion. One `ADD_LINE` per edge, closing back to the first
 vertex, each of which round-trips through the codec exactly.
 
-The cost is honest and worth stating: a 6-vertex L profile becomes 6 actions
-instead of 1, so expert trajectories get longer. That is the point. The policy
-now sees every edge it must draw, in an action it can actually emit, rather than
-one atomic step it can never reproduce.
+A 6-vertex L profile becomes 6 actions instead of 1, so expert trajectories
+get longer. That is the tradeoff: the policy sees every edge it must draw in an
+action it can emit, instead of one atomic step it can never reproduce.
 """
 
 from __future__ import annotations

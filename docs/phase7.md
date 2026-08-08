@@ -5,7 +5,7 @@ and a legal-random baseline all completed exactly zero held-out designs. A
 benchmark whose headline metric is 0.000 for every entrant ranks nothing and
 directs nothing, so Phase 7's first job is not to build an evaluation harness; it is to **manufacture signal**.
 
-## Metrics that discriminate when nothing succeeds
+## Metrics
 
 The headline is a **milestone progress score**, because `success` is a
 conjunction of four gates collapsed into one bit:
@@ -25,7 +25,7 @@ Validity, efficiency and constraint satisfaction are reported **alongside**, not
 folded in. Validity is where PPO actually beat BC in Phase 5 (0.000 invalid
 actions against 0.018), and a single success number hid it entirely.
 
-## Two baselines that audit the benchmark, not a policy
+## Harness baselines
 
 - **`oracle-replay`** re-executes the recorded expert actions. It should score
   1.000. Anything less is a fault in the harness, the environment or the
@@ -100,7 +100,7 @@ Both learned policies clear the scripted null hypothesis and the random floor,
 and BC's remaining gap to the oracle is small (-0.149), most of the headroom on
 these tasks is the codec ceiling, not the policy.
 
-## The compounding-error curve
+## Compounding error
 
 The `COMPLETE(k)` tasks exist to measure one thing: how fast a policy degrades
 as it must supply more of its own actions. It does, cleanly:
@@ -132,7 +132,7 @@ Per-family progress locates the difficulty: the oracle reaches 1.00 on `plate`,
 `reinforced_plate` and `support_bracket` and only 0.35-0.37 on `flange` and
 `corner_bracket`, the families whose profiles the codec cannot express.
 
-## The finding that recontextualizes Phase 5
+## The oracle ceiling
 
 **`oracle-replay` scores 0.431 on BUILD tasks, not 1.000.**
 
@@ -203,7 +203,7 @@ make benchmark-suite            # freeze the split (refuses to overwrite)
 make benchmark PRESET=core      # run the baselines
 ```
 
-## Still out of scope
+## Out of scope
 
 - A `bc_kl_coef` sweep with multiple seeds. Phase 5's single-seed anchored /
   unanchored comparison remains suggestive rather than conclusive.

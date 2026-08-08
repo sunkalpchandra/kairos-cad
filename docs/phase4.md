@@ -25,7 +25,7 @@ bundled interpreter, which has no torch and cannot get one.
 | `fusion.py` | three modality embeddings | self-attention over a 3-token sequence |
 | `policy.py` | fused embedding | operation / parameter / target heads |
 
-Three choices are worth stating because the obvious alternative is wrong:
+Three choices where the obvious alternative is wrong:
 
 - **Numbers are embedded, not tokenized.** `6 mm` and `60 mm` describe
   different parts. Each numeric literal becomes one `<num>` token plus its
@@ -43,7 +43,7 @@ cannot be sampled and contribute no gradient. The policy is never trained to
 pick an action the document forbids. The value is finite rather than `-inf` so
 a fully masked row softmaxes to uniform instead of NaN.
 
-## What the trajectories can and cannot supervise
+## Supervision coverage
 
 The dataset builder is where the honest limits live.
 
@@ -112,7 +112,7 @@ anything. Per-family accuracy runs from 0.868 (`u_bracket`) to 1.000
 (`corner_bracket`, `flange`, `plate`, `spacer`), so no single easy family is
 carrying the number.
 
-### Class weighting fixed a real failure
+### Class weighting
 
 The per-operation breakdown is what made the problem visible. The unweighted
 run **never once predicted `FILLET`**, recall 0.000 across its 14 held-out
@@ -149,7 +149,7 @@ it measures per-step agreement, not the compounding error a closed-loop rollout
 would expose. The gap between 0.96 next-action accuracy and whatever
 closed-loop success turns out to be is exactly what Phase 5 has to close.
 
-## Still out of scope here
+## Out of scope here
 
 - **Closed-loop rollout in `KairosCADEnv`.** It needs torch and FreeCAD in one
   interpreter; the environment runs under FreeCAD's python, which has no torch.

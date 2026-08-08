@@ -9,7 +9,7 @@ The answer, measured rather than assumed and then re-measured after an audit:
 accuracy and 0.000 closed-loop success; PPO fine-tuning does not change that,
 though it does eliminate invalid actions entirely.
 
-## The interpreter problem, and the bridge
+## The interpreter bridge
 
 The CAD stack runs under FreeCAD's bundled Python 3.11. torch lives in the
 system Python 3.12. Installing torch into FreeCAD's interpreter would need
@@ -65,7 +65,7 @@ the pieces this domain forces:
 - **Requirements are sampled per episode.** Training against one fixed
   requirement would teach one build and give the language encoder no signal.
 
-### A bug worth recording
+### Truncation bug
 
 The first live run reported `approx_kl = 1.18` after a single update at a 1e-4
 learning rate, implausible, and the signature of a real defect: collection ran
@@ -113,7 +113,7 @@ The random baseline is legal-random, not noise, and it still never finishes and
 produces a solid in only 14% of episodes. That is the floor these numbers sit
 above.
 
-### Ablation: does the BC anchor earn its place?
+### Ablation: BC anchor
 
 Run twice, identically, changing only `bc_kl_coef` (0.05 vs 0.0), then scored
 under the same 14-episode held-out protocol:
@@ -143,7 +143,7 @@ on that noisy estimate. `eval_episodes` is now defaulted higher for this
 reason, and the reported intervals (`[0.07, 0.50]` for a 0.286 point estimate)
 show how much room remains.
 
-### Baseline: does BC initialization actually matter?
+### Baseline: BC initialization
 
 Also tested rather than asserted, 12 iterations with `--from-scratch`,
 everything else identical:
@@ -189,7 +189,7 @@ make eval-ppo             # BC vs PPO vs random, closed loop
 `--from-scratch` skips BC initialization and `--resume` continues an
 interrupted run from `last.pt`, keeping its history and best-so-far.
 
-## Still out of scope
+## Out of scope
 
 - A `bc_kl_coef` sweep and multiple seeds. The single-seed ablation above is
   suggestive, not conclusive.
