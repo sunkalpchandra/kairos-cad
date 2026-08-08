@@ -145,7 +145,10 @@ tr.highlight td { background: rgba(107, 149, 220, 0.09); }
 .bar { height: 5px; border-radius: 3px; background: var(--accent); display: inline-block; vertical-align: middle; }
 
 .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-bottom: 24px; }
-.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* The SVG has a 720x260 viewBox. Left to `width:100%; height:auto` it scales
+   to ~480px tall on a wide screen, which turns a shallow accuracy curve into a
+   near-vertical cliff. Capping the width keeps the aspect ratio readable. */
+.chart svg { display: block; width: 100%; max-width: 860px; height: auto; overflow: visible; margin: 0 auto; }
 .chart .axis { stroke: var(--line); stroke-width: 1; }
 .chart .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; opacity: 0.6; }
 .chart text { fill: var(--muted); font-size: 10px; font-family: var(--mono); }
