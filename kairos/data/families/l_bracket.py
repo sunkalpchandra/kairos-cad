@@ -15,6 +15,7 @@ from kairos.actions.executor import ActionExecutor
 from kairos.actions.schema import Action, Operation
 from kairos.data.families.base import Family, register
 from kairos.data.families.profiles import draw_profile
+from kairos.data.families.wording import state_minimum, stated_minimum
 
 
 @dataclass
@@ -161,7 +162,7 @@ def _requirements(p: LBracketParams) -> dict:
     text = (
         f"Design a 90-degree L-bracket with {holes} mounting holes of "
         f"{p.hole_diameter:.0f} mm diameter ({p.holes_per_leg} per leg), wall thickness "
-        f"{p.thickness:.1f} mm, legs {p.leg1:.0f} mm and "
+        f"{state_minimum(p.thickness)} mm, legs {p.leg1:.0f} mm and "
         f"{p.leg2:.0f} mm, width {p.width:.0f} mm. Minimize mass."
     )
     return {
@@ -170,7 +171,7 @@ def _requirements(p: LBracketParams) -> dict:
             "kind": "l_bracket",
             "hole_count": holes,
             "hole_diameter": p.hole_diameter,
-            "min_wall_thickness": p.thickness,
+            "min_wall_thickness": stated_minimum(p.thickness),
             "mounting_angle": 90,
             "objective": "minimize_mass",
         },

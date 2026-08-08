@@ -17,6 +17,7 @@ from kairos.actions.executor import ActionExecutor
 from kairos.actions.schema import Action, Operation
 from kairos.data.families.base import Family, register
 from kairos.data.families.profiles import draw_profile
+from kairos.data.families.wording import state_minimum, stated_minimum
 
 
 @dataclass
@@ -169,13 +170,24 @@ def build_corner_bracket(executor: ActionExecutor, p: CornerBracketParams) -> li
     return actions
 
 
+def _min_wall(p: CornerBracketParams) -> float:
+    """The thinnest wall the part actually has.
+
+    The gusset rib is a wall. Declaring only ``thickness`` overstated the
+    minimum whenever ``rib_width`` was thinner, which the ray-cast measurement
+    then found and reported as a violation -- 75 of 144 corner brackets, by up
+    to 0.391 mm.
+    """
+    return min(p.thickness, p.rib_width)
+
+
 def _requirements(p: CornerBracketParams) -> dict:
     holes = 2 * p.holes_per_leg
     text = (
         f"Design a 90-degree corner bracket with a {p.gusset:.0f} mm triangular gusset "
         f"rib ({p.rib_width:.0f} mm wide) at the inner corner and {holes} mounting holes "
         f"of {p.hole_diameter:.0f} mm diameter ({p.holes_per_leg} per leg), wall thickness "
-        f"{p.thickness:.1f} mm, legs {p.leg1:.0f} mm and {p.leg2:.0f} mm, width "
+        f"{state_minimum(_min_wall(p))} mm, legs {p.leg1:.0f} mm and {p.leg2:.0f} mm, width "
         f"{p.width:.0f} mm. Minimize mass."
     )
     return {
@@ -184,7 +196,7 @@ def _requirements(p: CornerBracketParams) -> dict:
             "kind": "corner_bracket",
             "hole_count": holes,
             "hole_diameter": p.hole_diameter,
-            "min_wall_thickness": p.thickness,
+            "min_wall_thickness": stated_minimum(_min_wall(p)),
             "mounting_angle": 90,
             "objective": "minimize_mass",
         },
