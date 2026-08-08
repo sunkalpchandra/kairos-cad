@@ -24,12 +24,32 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from kairos.actions.schema import Action  # noqa: E402
-from kairos.rl.action_space import UnrepresentableAction, decode, encode  # noqa: E402
+from kairos.rl.action_space import (  # noqa: E402
+    TARGET_KIND,
+    UnrepresentableAction,
+    decode,
+    encode,
+)
 
 #: A round trip should only lose the 3-decimal rounding decode applies, so any
 #: error above this is a range problem, not quantization. The two failure modes
 #: separate cleanly by two orders of magnitude in practice (0.0005 vs 0.09+).
 DRIFT_TOLERANCE_MM = 0.01
+
+
+def _synthetic_pool(action: Action) -> dict[str, list[str]]:
+    """A target pool containing the action's own target, plus decoys.
+
+    The audit has no live engine, so it builds a pool the recorded name is
+    genuinely in. Decoys come first, so an unresolved index of 0 lands on the
+    wrong name and the loss is detected rather than passing by luck.
+    """
+    kind = TARGET_KIND.get(action.operation)
+    if kind is None or not action.target:
+        return {}
+    names = [n.strip() for n in str(action.target).split(",") if n.strip()]
+    decoys = [f"__decoy{i}__" for i in range(3)]
+    return {kind: decoys + names}
 
 
 def _round_trip_error(action: Action) -> tuple[float, str]:
@@ -38,17 +58,35 @@ def _round_trip_error(action: Action) -> tuple[float, str]:
     Encoding alone is not enough to trust: before slot ranges were unified,
     encode and decode disagreed about PAD length, so an in-range value came
     back 61.9 mm away having raised nothing.
+
+    Targets and list-valued parameters are compared too. Walking only the
+    numeric parameters left 286 target-bearing expert steps reported as
+    losslessly representable while a fillet moved from Edge30 to Edge1, and
+    that 0.00% is what the "codec is not the bottleneck" claim rests on.
     """
-    decoded = decode(*encode(action))
+    pool = _synthetic_pool(action)
+    decoded = decode(*encode(action, targets=pool), targets=pool)
     worst, where = 0.0, ""
+
     for key, value in (action.parameters or {}).items():
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
-            continue
         got = (decoded.parameters or {}).get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            # Vertex lists (ADD_POLYGON.points) are geometry too; a mismatch
+            # here is a different shape, so report it as a full failure rather
+            # than skipping it for not being a float.
+            if isinstance(value, (list, tuple)) and got != value:
+                return float("inf"), key
+            continue
         if isinstance(got, (int, float)) and not isinstance(got, bool):
             error = abs(float(got) - float(value))
             if error > worst:
                 worst, where = error, key
+
+    if action.target and pool:
+        # decode resolves one name; the expert may have named several.
+        wanted = str(action.target).split(",")[0].strip()
+        if (decoded.target or "") != wanted:
+            return float("inf"), "target"
     return worst, where
 
 
