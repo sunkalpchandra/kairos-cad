@@ -269,6 +269,28 @@ class TrajectoryDataset(Dataset):
 
 
 def collate(rows: list[dict[str, torch.Tensor]]) -> BCBatch:
-    """Stack per-row tensors into a :class:`BCBatch`."""
+    """Stack per-row tensors into a :class:`BCBatch`, trimmed to real length.
+
+    Requirements tokenize to at most 51 of the 64 padded positions (median 41),
+    and the language encoder is 38% of the model's parameters and most of its
+    forward cost. Trimming each batch to its own longest sequence cuts that
+    work by about a fifth.
+
+    Behaviour is unchanged, not approximated: padded positions are already
+    excluded as attention keys and zeroed by the masked-mean pooling, and the
+    position embedding is sized for `max_length` so any shorter L is valid.
+
+    Trimmed to the batch maximum, never to a constant. A hardcoded 51 would
+    silently truncate a longer requirement mid-specification and train against
+    a mangled target with nothing raising.
+    """
     stacked = {key: torch.stack([row[key] for row in rows]) for key in rows[0]}
+    mask = stacked.get("token_mask")
+    if mask is not None and mask.ndim == 2:
+        keep = int(mask.sum(dim=1).max().item())
+        keep = max(keep, 1)
+        if keep < mask.shape[1]:
+            for key in ("token_ids", "token_values", "token_mask"):
+                if key in stacked:
+                    stacked[key] = stacked[key][:, :keep].contiguous()
     return BCBatch(**stacked)
