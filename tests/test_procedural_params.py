@@ -46,9 +46,26 @@ def test_sampled_params_reproducible_by_seed():
     assert a == b
 
 
-def test_profile_actions_shape():
+def test_profile_is_drawn_with_actions_the_codec_can_express():
+    """The L profile is irregular, so it is drawn edge by edge.
+
+    A single ADD_POLYGON cannot be expressed by the action codec (it only
+    encodes regular n-gons), which made this step unrepresentable: BC dropped
+    it and an oracle replaying the expert could not rebuild the part.
+    """
     ops = [a.operation for a in l_bracket_profile_actions(LBracketParams())]
-    assert ops == [Operation.CREATE_SKETCH, Operation.ADD_POLYGON, Operation.PAD]
+    assert ops[0] is Operation.CREATE_SKETCH
+    assert ops[-1] is Operation.PAD
+    assert set(ops[1:-1]) == {Operation.ADD_LINE}
+    assert len(ops[1:-1]) == 6  # one per edge of the closed L profile
+
+
+def test_every_profile_action_round_trips_through_the_codec():
+    """The whole point of the expansion: no unrepresentable expert steps."""
+    from kairos.rl.action_space import encode
+
+    for action in l_bracket_profile_actions(LBracketParams()):
+        encode(action)  # must not raise UnrepresentableAction
 
 
 def test_hole_actions_count_matches_holes_per_leg():
