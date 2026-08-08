@@ -289,3 +289,28 @@ class TestTargetResolution:
         action = Action(Operation.PAD, parameters={
             "length": 10.0, "midplane": False, "reversed": False})
         assert encode(action, targets=self._pool())[2] == 0
+
+
+def test_every_integer_slot_value_round_trips():
+    """int(_lin(x, 0, n - 0.001)) is not the inverse of _inv(v, 0, n - 0.001).
+
+    Truncation landed a value short: geo index 7 of 12 decoded back as 6,
+    executed, and reported ok while referring to different geometry. Latent
+    only because no family emits the sketch-constraint operations that use
+    these slots, which is why the codec audit never saw it.
+    """
+    from kairos.rl.action_space import _int_slot, _int_slot_inv
+
+    for count in (2, 3, 4, 7, 12, 38):
+        for value in range(count):
+            assert _int_slot(_int_slot_inv(value, count), count) == value, (
+                f"index {value} of {count} did not survive the round trip"
+            )
+
+
+def test_integer_slots_stay_in_range_for_any_policy_output():
+    from kairos.rl.action_space import _int_slot
+
+    for count in (3, 12):
+        for x in (-1.0, 0.0, 0.5, 0.9999, 1.0, 2.0):
+            assert 0 <= _int_slot(x, count) <= count - 1

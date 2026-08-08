@@ -117,18 +117,29 @@ class EpisodeOutcome:
 def outcome_from_episode(episode, expert_steps: int | None = None) -> EpisodeOutcome:
     """Build an outcome from a :class:`kairos.rl.collect.EpisodeSummary`.
 
-    The RL collector records less than the benchmark wants, so the fields it
-    cannot supply stay False rather than being guessed at.
+    The collector records less than the benchmark wants, but the missing
+    milestones cannot be left False: credit is prefix-scored, so an unset early
+    rung discards every verified later one and a successful episode scores
+    0.000. A solid implies a sketch and geometry preceded it, the same
+    back-fill `runner._absorb` applies.
+
+    `has_any_hole` stays False when the collector does not report a hole count,
+    which understates rather than inflates.
     """
+    has_solid = bool(getattr(episode, "has_solid", False))
+    holes = int(getattr(episode, "hole_count", 0) or 0)
     return EpisodeOutcome(
         requirement=getattr(episode, "requirement", ""),
         steps=getattr(episode, "steps", 0),
         expert_steps=expert_steps,
         invalid_actions=getattr(episode, "invalid_actions", 0),
-        made_a_solid=bool(getattr(episode, "has_solid", False)),
-        solid_is_valid=bool(getattr(episode, "has_solid", False)),
+        opened_a_sketch=has_solid,
+        drew_geometry=has_solid,
+        made_a_solid=has_solid,
+        solid_is_valid=has_solid,
+        has_any_hole=holes > 0,
         all_constraints_met=bool(getattr(episode, "satisfaction_rate", 0.0) >= 1.0)
-        and bool(getattr(episode, "has_solid", False)),
+        and has_solid,
         finished_successfully=bool(getattr(episode, "finished_successfully", False)),
         satisfaction_rate=float(getattr(episode, "satisfaction_rate", 0.0)),
         mass_g=float(getattr(episode, "mass_g", 0.0)),

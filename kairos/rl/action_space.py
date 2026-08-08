@@ -98,6 +98,24 @@ def _inv(v: float, lo: float, hi: float) -> float:
     return float(np.clip((v - lo) / (hi - lo), 0.0, 1.0))
 
 
+def _int_slot(x: float, count: int) -> int:
+    """Decode a slot into one of `count` integer values, 0..count-1.
+
+    `int(_lin(x, 0, n - 0.001))` looks equivalent and is not: the inverse
+    `_inv(v, 0, n - 0.001)` maps v to v/(n - 0.001), and truncation then lands
+    a value short. Index 7 of 12 came back as 6, executed, and reported ok
+    while referring to different geometry. This is the bucketing `_choice`
+    already gets right, so it uses the same scheme.
+    """
+    return min(int(np.clip(x, 0.0, 0.9999) * count), count - 1)
+
+
+def _int_slot_inv(value: int, count: int) -> float:
+    """Midpoint of the bucket, so the round trip is exact."""
+    index = min(max(int(value), 0), count - 1)
+    return (index + 0.5) / count
+
+
 def _choice(x: float, options: tuple) -> object:
     index = min(int(np.clip(x, 0.0, 0.9999) * len(options)), len(options) - 1)
     return options[index]
@@ -234,37 +252,37 @@ def decode(
             ]
         }
     elif op is Operation.DELETE_GEOMETRY:
-        parameters = {"index": int(_lin(p[0], 0, 11.999))}
+        parameters = {"index": _int_slot(p[0], 12)}
     elif op is Operation.MOVE_GEOMETRY:
         parameters = {
-            "index": int(_lin(p[0], 0, 11.999)),
+            "index": _int_slot(p[0], 12),
             "dx": round(_lin(p[1], -20, 20), 3), "dy": round(_lin(p[2], -20, 20), 3),
         }
     elif op in (Operation.ADD_HORIZONTAL, Operation.ADD_VERTICAL):
-        parameters = {"geo": int(_lin(p[0], 0, 11.999))}
+        parameters = {"geo": _int_slot(p[0], 12)}
     elif op in (
         Operation.ADD_PARALLEL, Operation.ADD_PERPENDICULAR,
         Operation.ADD_TANGENT, Operation.ADD_EQUAL,
     ):
-        parameters = {"geo1": int(_lin(p[0], 0, 11.999)), "geo2": int(_lin(p[1], 0, 11.999))}
+        parameters = {"geo1": _int_slot(p[0], 12), "geo2": _int_slot(p[1], 12)}
     elif op is Operation.ADD_DISTANCE:
         parameters = {
-            "geo1": int(_lin(p[0], 0, 11.999)), "pos1": int(_lin(p[1], 0, 3.999)),
-            "geo2": int(_lin(p[2], 0, 11.999)), "pos2": int(_lin(p[3], 0, 3.999)),
+            "geo1": _int_slot(p[0], 12), "pos1": _int_slot(p[1], 4),
+            "geo2": _int_slot(p[2], 12), "pos2": _int_slot(p[3], 4),
             "value": round(_lin(p[4], *_DIMENSION), 3),
         }
     elif op in (Operation.ADD_RADIUS, Operation.ADD_DIAMETER):
-        parameters = {"geo": int(_lin(p[0], 0, 11.999)), "value": round(_lin(p[1], *_SMALL), 3)}
+        parameters = {"geo": _int_slot(p[0], 12), "value": round(_lin(p[1], *_SMALL), 3)}
     elif op is Operation.ADD_COINCIDENT:
         parameters = {
-            "geo1": int(_lin(p[0], 0, 11.999)), "pos1": 1 + int(_lin(p[1], 0, 2.999)),
-            "geo2": int(_lin(p[2], 0, 11.999)), "pos2": 1 + int(_lin(p[3], 0, 2.999)),
+            "geo1": _int_slot(p[0], 12), "pos1": 1 + _int_slot(p[1], 3),
+            "geo2": _int_slot(p[2], 12), "pos2": 1 + _int_slot(p[3], 3),
         }
     elif op is Operation.ADD_SYMMETRY:
         parameters = {
-            "geo1": int(_lin(p[0], 0, 11.999)), "pos1": 1 + int(_lin(p[1], 0, 2.999)),
-            "geo2": int(_lin(p[2], 0, 11.999)), "pos2": 1 + int(_lin(p[3], 0, 2.999)),
-            "axis_geo": int(_lin(p[4], 0, 11.999)),
+            "geo1": _int_slot(p[0], 12), "pos1": 1 + _int_slot(p[1], 3),
+            "geo2": _int_slot(p[2], 12), "pos2": 1 + _int_slot(p[3], 3),
+            "axis_geo": _int_slot(p[4], 12),
         }
     elif op is Operation.PAD:
         parameters = {
@@ -293,13 +311,13 @@ def decode(
         parameters = {
             "axis": _choice(p[0], _AXES),
             "length": round(_lin(p[1], *_SPAN), 3),
-            "count": 2 + int(_lin(p[2], 0, 6.999)),
+            "count": 2 + _int_slot(p[2], 7),
         }
     elif op is Operation.CIRCULAR_PATTERN:
         parameters = {
             "axis": _choice(p[0], _AXES),
             "angle": round(_lin(p[1], 30, 360), 2),
-            "count": 2 + int(_lin(p[2], 0, 6.999)),
+            "count": 2 + _int_slot(p[2], 7),
         }
     elif op is Operation.MEASURE_DISTANCE:
         parameters = {"sub_a": "Face1", "sub_b": "Face2"}  # v0 placeholder pair
@@ -396,39 +414,39 @@ def encode(
         p[3] = _inv(prm.get("start_deg", 0.0), 0, 360)
         p[4] = _inv(prm.get("end_deg", 360.0), 0, 360)
     elif op is Operation.DELETE_GEOMETRY:
-        p[0] = _inv(prm["index"], 0, 11.999)
+        p[0] = _int_slot_inv(prm["index"], 12)
     elif op is Operation.MOVE_GEOMETRY:
-        p[0] = _inv(prm["index"], 0, 11.999)
+        p[0] = _int_slot_inv(prm["index"], 12)
         p[1] = _inv(prm.get("dx", 0.0), -20, 20)
         p[2] = _inv(prm.get("dy", 0.0), -20, 20)
     elif op in (Operation.ADD_HORIZONTAL, Operation.ADD_VERTICAL):
-        p[0] = _inv(prm["geo"], 0, 11.999)
+        p[0] = _int_slot_inv(prm["geo"], 12)
     elif op in (
         Operation.ADD_PARALLEL, Operation.ADD_PERPENDICULAR,
         Operation.ADD_TANGENT, Operation.ADD_EQUAL,
     ):
-        p[0] = _inv(prm["geo1"], 0, 11.999)
-        p[1] = _inv(prm["geo2"], 0, 11.999)
+        p[0] = _int_slot_inv(prm["geo1"], 12)
+        p[1] = _int_slot_inv(prm["geo2"], 12)
     elif op is Operation.ADD_DISTANCE:
-        p[0] = _inv(prm["geo1"], 0, 11.999)
-        p[1] = _inv(prm.get("pos1", 0), 0, 3.999)
-        p[2] = _inv(prm["geo2"], 0, 11.999)
-        p[3] = _inv(prm.get("pos2", 0), 0, 3.999)
+        p[0] = _int_slot_inv(prm["geo1"], 12)
+        p[1] = _int_slot_inv(prm.get("pos1", 0), 4)
+        p[2] = _int_slot_inv(prm["geo2"], 12)
+        p[3] = _int_slot_inv(prm.get("pos2", 0), 4)
         p[4] = _inv(prm["value"], *_DIMENSION)
     elif op in (Operation.ADD_RADIUS, Operation.ADD_DIAMETER):
-        p[0] = _inv(prm["geo"], 0, 11.999)
+        p[0] = _int_slot_inv(prm["geo"], 12)
         p[1] = _inv(prm["value"], *_SMALL)
     elif op is Operation.ADD_COINCIDENT:
-        p[0] = _inv(prm["geo1"], 0, 11.999)
-        p[1] = _inv(prm.get("pos1", 1) - 1, 0, 2.999)
-        p[2] = _inv(prm["geo2"], 0, 11.999)
-        p[3] = _inv(prm.get("pos2", 1) - 1, 0, 2.999)
+        p[0] = _int_slot_inv(prm["geo1"], 12)
+        p[1] = _int_slot_inv(prm.get("pos1", 1) - 1, 3)
+        p[2] = _int_slot_inv(prm["geo2"], 12)
+        p[3] = _int_slot_inv(prm.get("pos2", 1) - 1, 3)
     elif op is Operation.ADD_SYMMETRY:
-        p[0] = _inv(prm["geo1"], 0, 11.999)
-        p[1] = _inv(prm.get("pos1", 1) - 1, 0, 2.999)
-        p[2] = _inv(prm["geo2"], 0, 11.999)
-        p[3] = _inv(prm.get("pos2", 1) - 1, 0, 2.999)
-        p[4] = _inv(prm["axis_geo"], 0, 11.999)
+        p[0] = _int_slot_inv(prm["geo1"], 12)
+        p[1] = _int_slot_inv(prm.get("pos1", 1) - 1, 3)
+        p[2] = _int_slot_inv(prm["geo2"], 12)
+        p[3] = _int_slot_inv(prm.get("pos2", 1) - 1, 3)
+        p[4] = _int_slot_inv(prm["axis_geo"], 12)
     elif op is Operation.RENDER_VIEW:
         p[0] = _choice_inv(prm.get("view", "iso"), _VIEWS)
     elif op is Operation.PAD:
@@ -454,11 +472,11 @@ def encode(
     elif op is Operation.CIRCULAR_PATTERN:
         p[0] = _choice_inv(prm.get("axis", "Z"), _AXES)
         p[1] = _inv(prm.get("angle", 360.0), 30, 360)
-        p[2] = _inv(prm["count"] - 2, 0, 6.999)
+        p[2] = _int_slot_inv(prm["count"] - 2, 7)
     elif op is Operation.LINEAR_PATTERN:
         p[0] = _choice_inv(prm.get("axis", "X"), _AXES)
         p[1] = _inv(prm.get("length", 50.0), *_SPAN)
-        p[2] = _inv(prm["count"] - 2, 0, 6.999)
+        p[2] = _int_slot_inv(prm["count"] - 2, 7)
     # Every remaining operation genuinely carries no continuous parameters.
     # This used to be a catch-all that silently returned zeros for sixteen
     # operations decode() fully supports, and _slots_used_by_operation()
