@@ -60,6 +60,10 @@ def main() -> int:
     parser.add_argument("--runs", type=Path, default=Path("runs/benchmark_core"))
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--metric", default="progress_score")
+    parser.add_argument(
+        "--baseline", default="",
+        help="report every policy as a delta against this one (ablation runs)",
+    )
     args = parser.parse_args()
 
     traces = sorted(args.runs.glob("*_traces.jsonl"))
@@ -122,13 +126,37 @@ def main() -> int:
     )
 
     lines: list[str] = ["## leaderboard", ""]
-    lines += [
-        "| policy | " + " | ".join(f.replace("_", " ") for f in LEADERBOARD_FIELDS) + " |",
-        "| --- |" + " --- |" * len(LEADERBOARD_FIELDS),
-    ]
-    for policy in ranked:
-        cells = " | ".join(mean(policy, field) for field in LEADERBOARD_FIELDS)
-        lines.append(f"| `{policy}` | {cells} |")
+    if args.baseline:
+        # An ablation's absolute score means little; what it answers is how far
+        # the policy falls when one input is corrupted.
+        base_values = columns.get(args.baseline, {}).get("progress_score", [])
+        base = sum(base_values) / len(base_values) if base_values else None
+        lines = ["## ablation", ""]
+        lines += [
+            "| condition | progress | delta | " +
+            " | ".join(f.replace("_", " ") for f in LEADERBOARD_FIELDS[1:]) + " |",
+            "| --- | --- |" + " --- |" * len(LEADERBOARD_FIELDS),
+        ]
+        for policy in ranked:
+            values = columns[policy].get("progress_score", [])
+            score = sum(values) / len(values) if values else None
+            if base and score is not None:
+                delta = f"{(score - base) / base * 100:+.1f}%"
+            else:
+                delta = "-"
+            rest = " | ".join(mean(policy, f) for f in LEADERBOARD_FIELDS[1:])
+            lines.append(
+                f"| `{policy}` | {score:.3f} | {delta} | {rest} |"
+                if score is not None else f"| `{policy}` | - | - | {rest} |"
+            )
+    else:
+        lines += [
+            "| policy | " + " | ".join(f.replace("_", " ") for f in LEADERBOARD_FIELDS) + " |",
+            "| --- |" + " --- |" * len(LEADERBOARD_FIELDS),
+        ]
+        for policy in ranked:
+            cells = " | ".join(mean(policy, field) for field in LEADERBOARD_FIELDS)
+            lines.append(f"| `{policy}` | {cells} |")
 
     lines += ["", "## milestone ladder (fraction of episodes reaching each rung)", ""]
     lines += [

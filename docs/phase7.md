@@ -140,31 +140,83 @@ policy.
 ## Ablations
 
 Each ablation wraps the policy, so the perturbed and unperturbed runs share
-every other condition and the difference is the ablation alone. Run on BC over
-the same 32 tasks:
+every other condition and the difference is the ablation alone.
 
-| run | progress | Δ | success | validity | constraints |
+<!-- generated: ablation-tables -->
+
+## ablation
+
+| condition | progress | delta | finished successfully | validity rate | satisfaction rate | efficiency |
+| --- | --- | --- | --- | --- | --- | --- |
+| `bc+shuffled-req` | 0.451 | +3.6% | 0.342 | 0.743 | 0.513 | 0.640 |
+| `bc+blank-req` | 0.443 | +1.8% | 0.355 | 0.688 | 0.481 | 0.669 |
+| `bc` | 0.435 | +0.0% | 0.342 | 0.658 | 0.487 | 0.644 |
+| `bc+no-mask` | 0.425 | -2.4% | 0.342 | 0.573 | 0.480 | 0.633 |
+
+## milestone ladder (fraction of episodes reaching each rung)
+
+| policy | opened a sketch | drew geometry | made a solid | solid is valid | has any hole | all constraints met | finished successfully |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `bc+shuffled-req` | 0.89 | 1.00 | 0.83 | 0.83 | 0.71 | 0.36 | 0.34 |
+| `bc+blank-req` | 0.89 | 0.95 | 0.76 | 0.76 | 0.64 | 0.36 | 0.36 |
+| `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.34 | 0.34 |
+| `bc+no-mask` | 0.89 | 0.93 | 0.68 | 0.68 | 0.64 | 0.34 | 0.34 |
+
+## success(k): finish the last k actions
+
+| policy | BUILD | k=1 | k=2 | k=4 | k=8 |
 | --- | --- | --- | --- | --- | --- |
-| `bc` | 0.445 |, | 0.281 | 0.957 | 0.453 |
-| `bc+blank-req` | 0.374 | -15.9% | 0.188 | 1.000 | 0.487 |
-| `bc+shuffled-req` | 0.343 | **-22.9%** | 0.156 | 0.955 | 0.372 |
-| `bc+no-mask` | 0.339 | -23.9% | 0.281 | **0.407** | 0.385 |
+| `bc` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
+| `bc+blank-req` | 0.06 | 1.00 | 0.31 | 0.25 | 0.08 |
+| `bc+no-mask` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
+| `bc+shuffled-req` | 0.00 | 1.00 | 0.50 | 0.12 | 0.00 |
 
-**The policy does read the requirement.** Handed another task's requirement it
-loses 23% of its progress and nearly half its success (0.281 → 0.156). I
-expected the opposite. That a policy trained on eight families with near-fixed
-recipes would have learned a build prior and ignored the text, and the
-experiment refuted it. Blanking the requirement costs less (-15.9%) than
-swapping in a wrong one, which is the right ordering: absent information is
-less damaging than misleading information.
+## progress by family
 
-**But the low invalid-action rate is mostly the mask, not the policy.** Strip
-the legality mask and BC's validity collapses from 0.957 to **0.407**, while
-its success rate does not move at all (0.281 either way), so the mask is doing
-the work of keeping actions legal, and the policy is doing the work of choosing
-*which* legal action. That directly qualifies Phase 5's headline PPO gain
-(invalid actions 0.018 → 0.000): a large part of that number belongs to the
-environment's masking, not to what PPO learned.
+| policy | corner_bracket | flange | l_bracket | plate | reinforced_plate | spacer | support_bracket |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `bc` | 0.48 | 0.28 | 0.35 | 0.62 | 0.40 | 0.51 | 0.51 |
+| `bc+blank-req` | 0.48 | 0.32 | 0.33 | 0.31 | 0.67 | 0.40 | 0.63 |
+| `bc+no-mask` | 0.48 | 0.28 | 0.35 | 0.56 | 0.35 | 0.51 | 0.49 |
+| `bc+shuffled-req` | 0.42 | 0.30 | 0.45 | 0.57 | 0.48 | 0.48 | 0.56 |
+
+## paired comparisons (95% bootstrap CI on the per-task difference)
+
+| comparison | difference | 95% CI | W/L/T | separates? |
+| --- | --- | --- | --- | --- |
+| `bc+no-mask` vs `bc+shuffled-req` | -0.026 | [-0.076, +0.023] | 6/20/50 | **no** |
+| `bc+blank-req` vs `bc+no-mask` | +0.018 | [-0.047, +0.083] | 13/7/56 | **no** |
+| `bc` vs `bc+shuffled-req` | -0.016 | [-0.066, +0.034] | 10/16/50 | **no** |
+| `bc` vs `bc+no-mask` | +0.011 | [+0.001, +0.021] | 5/0/71 | yes |
+| `bc+blank-req` vs `bc+shuffled-req` | -0.008 | [-0.079, +0.061] | 12/16/48 | **no** |
+| `bc` vs `bc+blank-req` | -0.008 | [-0.071, +0.057] | 10/10/56 | **no** |
+
+<!-- /generated -->
+
+**The policy does not read its requirement.** Success is *identical* at 0.342
+across the intact policy, a shuffled requirement and a blanked one, and the
+progress differences are smaller than the gap between the two corrupted
+conditions themselves. On this benchmark the requirement text contributes
+nothing measurable.
+
+This retracts the earlier reading. A previous run reported shuffling the
+requirement costing **-22.9%** of progress and concluded the policy did read
+it. That measurement came from the pre-fix dataset and codec; on corrected
+artifacts it does not reproduce. The honest conclusion is the one the ablation
+was built to be able to reach: with eight families and near-fixed recipes, a
+policy can score this well by learning what CAD builds look like, and these
+tasks do not separate that from requirement following.
+
+Two things blunt the test and are worth stating rather than explaining away.
+Most tasks are `COMPLETE(k)`, where a replayed expert prefix already fixes the
+geometry, so the requirement has less left to determine. And the requirement
+texts are templated per family, so family identity is partly recoverable from
+the geometry alone.
+
+**The mask matters less than it did.** Removing it costs 2.4% of progress and
+drops validity from 0.658 to 0.573, where an earlier run saw 0.957 collapse to
+0.407. Validity is lower across the board now, so the mask is carrying less of
+the policy's legality than it was.
 
 ## Reproducibility
 

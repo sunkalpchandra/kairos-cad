@@ -52,24 +52,24 @@ The dataset builder is where the honest limits live.
   `actions[i]`. Step `i` is supervised from `states[i-1]`, pairing them as
   recorded would let the model read "a pad exists" and predict `PAD`. Step 0
   reads the encoding of an empty document.
-- **8% of steps are dropped.** The codec expresses `ADD_POLYGON` only as a
-  regular n-gon, while six families sketch irregular profiles. Those steps are
-  dropped and counted rather than fitted to the nearest hexagon, which would
-  train the policy toward a shape the expert never drew. Coverage on the
-  1,080-design dataset is **92.2%** (12,461 steps seen, 11,488 kept,
-  973 dropped).
-- **Targets are not supervised.** `encode` cannot recover a target *index*
-  without the live edge/face list, which trajectories do not record.
-  Supervising the recorded `0` would teach "always pick the first edge", so the
-  target head is left to RL in Phase 5.
-- **Vision is not yet exercised in training.** Only final-design renders exist,
-  not per-step ones, so BC currently trains on language + state. The visual
-  path is implemented and tested, and a learned placeholder stands in when
-  views are absent, so one checkpoint stays valid either way.
+- **No steps are dropped.** Coverage on the 1,080-design dataset is **1.000**
+  (16,452 steps seen, 16,452 kept). It was 92.2% while the codec expressed
+  `ADD_POLYGON` only as a regular n-gon and six families sketched irregular
+  profiles; `kairos/data/families/profiles.py` now emits those outlines as
+  `ADD_LINE` edges, which the codec round-trips exactly. Verify with
+  `make audit-codec`, which fails above 0%.
+- **Targets are not supervised.** `encode` can resolve a target index when
+  handed the live pool, but trajectories do not record the pool the expert
+  chose from, so BC still trains with index 0 and target selection is left to
+  RL. Supervising the recorded 0 would teach "always pick the first edge".
+- **Vision is not exercised at all.** No training or rollout path passes
+  `views`, so the encoder is not built by default (`VLAConfig.use_vision`).
+  Only final-design renders exist, not per-step ones. BC trains on language
+  plus state.
 
 Legality masks are rebuilt from the frozen numeric vector rather than a live
 engine. On the full dataset the expert's own action is legal under that
-reconstruction in **11,488 of 11,488 steps**, which is what makes the
+reconstruction in **16,452 of 16,452 steps**, which is what makes the
 reconstruction trustworthy.
 
 ## Training
@@ -155,5 +155,6 @@ closed-loop success turns out to be is exactly what Phase 5 has to close.
   interpreter; the environment runs under FreeCAD's python, which has no torch.
   Phase 5 resolves this (a policy server, or numpy-exported weights).
 - PPO training on top of the BC initialization (Phase 5).
-- Per-step rendering to activate the vision path, and re-emitting irregular
-  profiles as `ADD_LINE` sequences to recover the dropped 8%.
+- Per-step rendering to activate the vision path. The `ADD_LINE` re-emission
+  that recovered the dropped 8% has shipped; see
+  `kairos/data/families/profiles.py`.
