@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark demo clean
+.PHONY: setup setup-learn test test-cad test-all lint generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -74,6 +74,19 @@ benchmark-suite:
 benchmark:
 	$(PYTHON) scripts/run_benchmark.py --preset $(or $(PRESET),smoke) \
 		--suite benchmark/kairos-cad-v1 --out runs/benchmark
+
+## Audit what fraction of expert steps the action codec can express.
+## This is the ceiling on every learned policy; it must stay at 0.
+audit-codec:
+	$(PYTHON) scripts/audit_codec.py --root dataset --json runs/codec_audit.json --max-rate 0.0
+
+## Phase 8: build the standalone dashboard from artifacts on disk.
+dashboard:
+	$(PYTHON) scripts/build_dashboard.py --dataset dataset \
+		--benchmark runs/benchmark_core --ablation runs/ablation --runs runs \
+		--out docs/dashboard.html --stamp "$(SUITE_VERSION)"
+
+SUITE_VERSION := kairos-cad-v1
 
 ## End-to-end demo: requirement → spec → build → rewards → exports (spec §50).
 demo:
