@@ -39,10 +39,6 @@ class TaskResult:
     outcome: EpisodeOutcome
     aborted: bool = False
     abort_reason: str = ""
-    #: True when the episode was cut for repeating a rejected action. The
-    #: episode is still SCORED (aborted stays False); only the wasted round
-    #: trips are skipped, so this can never move a number.
-    stalled: bool = False
     operations: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -52,7 +48,6 @@ class TaskResult:
             "repeat": self.repeat,
             "aborted": self.aborted,
             "abort_reason": self.abort_reason,
-            "stalled": self.stalled,
             "operations": self.operations,
             **self.outcome.to_dict(),
         }
@@ -107,7 +102,6 @@ def run_task(
 
     policy.begin_episode(task, seed=seed)
     budget = min(task.max_steps, max(1, task.expert_steps * 3))
-    stalled = 0
 
     for step in range(budget):
         try:
@@ -131,23 +125,6 @@ def run_task(
         if info.get("crashed"):
             outcome.crashed = True
             break
-
-        # A rejected action leaves the document exactly as it was: features.py
-        # restores body.Tip and removes the failed feature, and the observation
-        # carries no last-action-success signal, so a deterministic policy sees
-        # the same input and re-emits the same action forever. Measured at 81%
-        # of BC's BUILD steps. Each one is a full FreeCAD round trip that
-        # cannot change the outcome.
-        if not info.get("ok", True):
-            stalled += 1
-            if stalled >= STALL_LIMIT:
-                result.stalled = True
-                result.abort_reason = (
-                    f"stalled: {stalled} consecutive rejected actions"
-                )
-                break
-        else:
-            stalled = 0
 
         if terminated or truncated:
             outcome.finished_successfully = bool(
@@ -199,12 +176,6 @@ def _absorb(
         outcome.has_any_hole = True
     if info.get("all_satisfied") and outcome.solid_is_valid:
         outcome.all_constraints_met = True
-
-
-#: Consecutive rejected actions after which an episode is provably absorbing.
-#: Not an abort: the episode is scored on what it achieved, exactly as if the
-#: step budget had run out, so cutting it cannot inflate or deflate a score.
-STALL_LIMIT = 8
 
 
 _SKETCH_GEOMETRY_OPS = {

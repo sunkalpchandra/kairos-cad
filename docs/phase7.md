@@ -50,7 +50,7 @@ right, it scores **0.000** exactly as it must.
 
 | policy | progress score | finished successfully | validity rate | satisfaction rate | efficiency |
 | --- | --- | --- | --- | --- | --- |
-| `oracle-replay` | 0.896 | 0.895 | 0.961 | 0.895 | 1.000 |
+| `oracle-replay` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
 | `ppo` | 0.485 | 0.395 | 0.704 | 0.508 | 0.739 |
 | `bc` | 0.435 | 0.342 | 0.658 | 0.487 | 0.644 |
 | `immediate-finish` | 0.318 | 0.237 | 1.000 | 0.404 | 1.000 |
@@ -61,7 +61,7 @@ right, it scores **0.000** exactly as it must.
 
 | policy | opened a sketch | drew geometry | made a solid | solid is valid | has any hole | all constraints met | finished successfully |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `oracle-replay` | 0.95 | 1.00 | 0.89 | 0.89 | 0.89 | 0.89 | 0.89 |
+| `oracle-replay` | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 | `ppo` | 0.89 | 1.00 | 0.75 | 0.75 | 0.70 | 0.42 | 0.39 |
 | `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.34 | 0.34 |
 | `immediate-finish` | 0.64 | 0.64 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
@@ -75,7 +75,7 @@ right, it scores **0.000** exactly as it must.
 | `bc` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
 | `immediate-finish` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
 | `legal-random` | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
-| `oracle-replay` | 1.00 | 1.00 | 1.00 | 0.75 | 0.67 |
+| `oracle-replay` | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 | `ppo` | 0.00 | 1.00 | 0.56 | 0.31 | 0.00 |
 | `scripted-spec` | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 
@@ -86,7 +86,7 @@ right, it scores **0.000** exactly as it must.
 | `bc` | 0.48 | 0.28 | 0.35 | 0.62 | 0.40 | 0.51 | 0.51 |
 | `immediate-finish` | 0.32 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
 | `legal-random` | 0.22 | 0.19 | 0.17 | 0.18 | 0.17 | 0.18 | 0.23 |
-| `oracle-replay` | 1.00 | 0.76 | 1.00 | 1.00 | 1.00 | 0.75 | 1.00 |
+| `oracle-replay` | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 | `ppo` | 0.55 | 0.28 | 0.49 | 0.62 | 0.55 | 0.51 | 0.57 |
 | `scripted-spec` | 0.24 | 0.24 | 0.24 | 0.21 | 0.19 | 0.26 | 0.24 |
 
@@ -94,11 +94,11 @@ right, it scores **0.000** exactly as it must.
 
 | comparison | difference | 95% CI | W/L/T | separates? |
 | --- | --- | --- | --- | --- |
-| `legal-random` vs `oracle-replay` | -0.702 | [-0.765, -0.634] | 1/71/4 | yes |
-| `oracle-replay` vs `scripted-spec` | +0.655 | [+0.585, +0.720] | 68/8/0 | yes |
-| `immediate-finish` vs `oracle-replay` | -0.578 | [-0.672, -0.479] | 0/54/22 | yes |
-| `bc` vs `oracle-replay` | -0.461 | [-0.552, -0.367] | 0/46/30 | yes |
-| `oracle-replay` vs `ppo` | +0.411 | [+0.314, +0.505] | 42/0/34 | yes |
+| `legal-random` vs `oracle-replay` | -0.806 | [-0.845, -0.765] | 0/76/0 | yes |
+| `oracle-replay` vs `scripted-spec` | +0.759 | [+0.724, +0.792] | 76/0/0 | yes |
+| `immediate-finish` vs `oracle-replay` | -0.682 | [-0.766, -0.593] | 0/58/18 | yes |
+| `bc` vs `oracle-replay` | -0.565 | [-0.658, -0.472] | 0/50/26 | yes |
+| `oracle-replay` vs `ppo` | +0.515 | [+0.419, +0.608] | 46/0/30 | yes |
 | `legal-random` vs `ppo` | -0.291 | [-0.363, -0.222] | 2/53/21 | yes |
 | `ppo` vs `scripted-spec` | +0.244 | [+0.173, +0.318] | 43/19/14 | yes |
 | `bc` vs `legal-random` | +0.241 | [+0.175, +0.310] | 45/2/29 | yes |
@@ -148,48 +148,48 @@ every other condition and the difference is the ablation alone.
 
 | condition | progress | delta | finished successfully | validity rate | satisfaction rate | efficiency |
 | --- | --- | --- | --- | --- | --- | --- |
-| `bc+shuffled-req` | 0.451 | +3.6% | 0.342 | 0.743 | 0.513 | 0.640 |
-| `bc+blank-req` | 0.443 | +1.8% | 0.355 | 0.688 | 0.481 | 0.669 |
-| `bc` | 0.435 | +0.0% | 0.342 | 0.658 | 0.487 | 0.644 |
-| `bc+no-mask` | 0.425 | -2.4% | 0.342 | 0.573 | 0.480 | 0.633 |
+| `bc+shuffled-req` | 0.321 | +0.0% | 0.237 | 0.961 | 0.391 | 0.856 |
+| `bc` | 0.321 | +0.0% | 0.237 | 0.930 | 0.383 | 0.824 |
+| `bc+no-mask` | 0.320 | -0.2% | 0.237 | 0.772 | 0.364 | 0.568 |
+| `bc+blank-req` | 0.319 | -0.5% | 0.237 | 1.000 | 0.384 | 0.844 |
 
 ## milestone ladder (fraction of episodes reaching each rung)
 
 | policy | opened a sketch | drew geometry | made a solid | solid is valid | has any hole | all constraints met | finished successfully |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `bc+shuffled-req` | 0.89 | 1.00 | 0.83 | 0.83 | 0.71 | 0.36 | 0.34 |
-| `bc+blank-req` | 0.89 | 0.95 | 0.76 | 0.76 | 0.64 | 0.36 | 0.36 |
-| `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.34 | 0.34 |
-| `bc+no-mask` | 0.89 | 0.93 | 0.68 | 0.68 | 0.64 | 0.34 | 0.34 |
+| `bc+shuffled-req` | 1.00 | 0.64 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
+| `bc` | 1.00 | 0.64 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
+| `bc+no-mask` | 0.78 | 0.86 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
+| `bc+blank-req` | 1.00 | 0.64 | 0.64 | 0.64 | 0.49 | 0.24 | 0.24 |
 
 ## success(k): finish the last k actions
 
 | policy | BUILD | k=1 | k=2 | k=4 | k=8 |
 | --- | --- | --- | --- | --- | --- |
-| `bc` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
-| `bc+blank-req` | 0.06 | 1.00 | 0.31 | 0.25 | 0.08 |
-| `bc+no-mask` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
-| `bc+shuffled-req` | 0.00 | 1.00 | 0.50 | 0.12 | 0.00 |
+| `bc` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
+| `bc+blank-req` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
+| `bc+no-mask` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
+| `bc+shuffled-req` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
 
 ## progress by family
 
 | policy | corner_bracket | flange | l_bracket | plate | reinforced_plate | spacer | support_bracket |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `bc` | 0.48 | 0.28 | 0.35 | 0.62 | 0.40 | 0.51 | 0.51 |
-| `bc+blank-req` | 0.48 | 0.32 | 0.33 | 0.31 | 0.67 | 0.40 | 0.63 |
-| `bc+no-mask` | 0.48 | 0.28 | 0.35 | 0.56 | 0.35 | 0.51 | 0.49 |
-| `bc+shuffled-req` | 0.42 | 0.30 | 0.45 | 0.57 | 0.48 | 0.48 | 0.56 |
+| `bc` | 0.32 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
+| `bc+blank-req` | 0.32 | 0.27 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
+| `bc+no-mask` | 0.33 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
+| `bc+shuffled-req` | 0.32 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
 
 ## paired comparisons (95% bootstrap CI on the per-task difference)
 
 | comparison | difference | 95% CI | W/L/T | separates? |
 | --- | --- | --- | --- | --- |
-| `bc+no-mask` vs `bc+shuffled-req` | -0.026 | [-0.076, +0.023] | 6/20/50 | **no** |
-| `bc+blank-req` vs `bc+no-mask` | +0.018 | [-0.047, +0.083] | 13/7/56 | **no** |
-| `bc` vs `bc+shuffled-req` | -0.016 | [-0.066, +0.034] | 10/16/50 | **no** |
-| `bc` vs `bc+no-mask` | +0.011 | [+0.001, +0.021] | 5/0/71 | yes |
-| `bc+blank-req` vs `bc+shuffled-req` | -0.008 | [-0.079, +0.061] | 12/16/48 | **no** |
-| `bc` vs `bc+blank-req` | -0.008 | [-0.071, +0.057] | 10/10/56 | **no** |
+| `bc` vs `bc+blank-req` | +0.002 | [+0.000, +0.005] | 1/0/75 | **no** |
+| `bc+blank-req` vs `bc+shuffled-req` | -0.002 | [-0.005, +0.000] | 0/1/75 | **no** |
+| `bc+blank-req` vs `bc+no-mask` | -0.001 | [-0.005, +0.002] | 17/6/53 | **no** |
+| `bc` vs `bc+no-mask` | +0.001 | [-0.001, +0.002] | 17/5/54 | **no** |
+| `bc+no-mask` vs `bc+shuffled-req` | -0.001 | [-0.002, +0.001] | 5/17/54 | **no** |
+| `bc` vs `bc+shuffled-req` | +0.000 | [+0.000, +0.000] | 0/0/76 | **no** |
 
 <!-- /generated -->
 

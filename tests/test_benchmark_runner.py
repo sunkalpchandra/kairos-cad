@@ -98,16 +98,27 @@ def test_env_server_payload_reports_hole_count():
     assert payload["hole_count"] == 6
 
 
-def test_a_stalled_episode_is_scored_not_dropped():
-    """A rejected action leaves the document unchanged and the observation
-    carries no last-action-success signal, so a deterministic policy re-emits
-    the same action forever. Cutting the loop must not change the score.
-    """
-    from kairos.benchmark.runner import STALL_LIMIT, TaskResult
+def test_a_rejected_action_does_not_freeze_the_observation():
+    """Why cutting an episode on repeated rejections is not safe.
 
-    result = TaskResult(task_id="t", policy="p", repeat=0,
-                        outcome=EpisodeOutcome(requirement="r", family="plate"))
-    result.stalled = True
-    assert not result.aborted, "a stalled episode must still be scored"
-    assert result.to_dict()["stalled"] is True
-    assert STALL_LIMIT >= 2
+    A rejected action leaves the geometry untouched, which looks absorbing, but
+    step_fraction advances every step, so the policy's input keeps drifting and
+    the argmax eventually flips. Cutting after 8 consecutive rejections cost BC
+    0.435 -> 0.321 progress and 0.342 -> 0.237 success, measured on the same 76
+    tasks: the policies genuinely recover.
+    """
+    import numpy as np
+
+    from kairos.language import parse_requirement
+    from kairos.representation.numerical_encoder import FEATURE_NAMES, encode_numeric
+
+    assert "step_fraction" in FEATURE_NAMES
+    observation = {"summary": {"has_solid": False, "valid": False}, "holes": [],
+                   "faces": [], "sketch": None, "edge_count": 0}
+    spec = parse_requirement("Design a rectangular plate 40 x 40 x 5 mm")
+    early = encode_numeric(observation, spec, step=1, max_steps=40)
+    late = encode_numeric(observation, spec, step=20, max_steps=40)
+    assert not np.allclose(early, late), (
+        "identical geometry must still yield a changing observation, or the "
+        "episode really would be absorbing"
+    )
