@@ -34,6 +34,11 @@ def main() -> int:
     parser.add_argument("--bc", type=Path, default=Path("runs/bc/checkpoint.pt"))
     parser.add_argument("--ppo", type=Path, default=Path("runs/ppo/best.pt"))
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--ablate", default="",
+        help="comma-separated policies to also run ablated (shuffled/blank "
+             "requirement, no action mask)",
+    )
     args = parser.parse_args()
 
     from kairos.benchmark import SUITE_VERSION, SplitSet, format_scores, score_policy
@@ -57,6 +62,18 @@ def main() -> int:
 
     policies = registry(seed=args.seed)
     _add_learned_policies(policies, args)
+    # Ablations are wrappers, so the perturbed and unperturbed runs share
+    # every other condition and the difference is the ablation alone.
+    for name in [a.strip() for a in args.ablate.split(",") if a.strip()]:
+        if name not in policies:
+            print(f"error: cannot ablate unknown policy {name!r}", file=sys.stderr)
+            return 1
+        from kairos.benchmark.ablations import build_ablations
+
+        policies.update(
+            build_ablations(policies[name], [t.requirement for t in tasks], args.seed)
+        )
+
     wanted = [p.strip() for p in args.policies.split(",") if p.strip()] or list(policies)
     missing = [w for w in wanted if w not in policies]
     if missing:
