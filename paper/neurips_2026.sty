@@ -73,8 +73,9 @@
 
 \if@neuripsnatbib
   \RequirePackage[numbers,sort&compress]{natbib}
-  \renewcommand{\bibsection}{\subsubsection*{\bibname}}
-  \newcommand{\bibname}{References}
+  % `article` already defines \refname (and some classes \bibname), so define
+  % neither: point \bibsection at whichever the class provides.
+  \renewcommand{\bibsection}{\subsubsection*{\refname}}
 \fi
 
 % ------------------------------------------------------------------ typeface

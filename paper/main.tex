@@ -1,0 +1,366 @@
+\documentclass{article}
+
+\usepackage[preprint]{neurips_2026}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+
+\hypersetup{colorlinks=true, linkcolor=black, citecolor=black, urlcolor=blue!60!black}
+
+% Numbers generated from run artifacts; never typed by hand.
+\input{generated/facts}
+
+\title{KAIROS: Measuring What Caps a Reinforcement-Learning Agent\\
+       That Drives Parametric CAD}
+
+\author{%
+  Sunkalp Chandra \\
+  \texttt{sunkalp.chandra@gmail.com} \\
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present KAIROS, an agent that builds parametric CAD models by emitting
+structured operations into a live FreeCAD kernel from a natural-language
+requirement, together with a benchmark that measures how far such an agent
+actually gets. Our central finding is methodological: on a task of this shape,
+\emph{the headline score is usually measuring the harness rather than the
+policy}. We make that concrete. An oracle that replays the ground-truth expert
+through the agent's own action codec scores \OracleCeiling{} progress and
+\OracleSuccess{} full-build success --- not $1.0$ --- so every learned number
+must be read against that ceiling rather than against perfection. Behavioural
+cloning reaches \BCHeldOutAccuracy{} held-out next-action accuracy yet only
+\BCProgress{} progress in closed loop, and a PPO stage anchored to it reaches
+\PPOProgress{}; a paired bootstrap over identical tasks puts their difference at
+\BCvsPPODelta{} with a 95\% interval of $\BCvsPPOCI$
+(\BCvsPPOWLT{} win/loss/tie), so the benchmark \emph{cannot separate them}.
+Ablations show the policy does read its requirement, and that much of its low
+invalid-action rate belongs to the action mask rather than to the policy.
+Along the way we report four defects that each produced a plausible, publishable,
+wrong number, and the audits that now prevent them.
+\end{abstract}
+
+\section{Introduction}
+
+Computer-aided design is an attractive target for sequential decision making. A
+part is built by an ordered sequence of discrete, parameterised operations ---
+sketch a profile, pad it, pocket a hole, fillet an edge --- and the result is
+checkable: mass, wall thickness, hole count and angles are all measurable
+against a written requirement. That combination, a discrete action space with a
+programmatic reward, is rare outside of games.
+
+It is also a setting where it is unusually easy to report a number that is not
+about the policy. A CAD agent sits behind several layers of machinery --- an
+action codec, a geometry kernel, a constraint checker, a requirement parser ---
+and each layer can fail \emph{silently} and \emph{plausibly}. The agent still
+runs, the kernel still returns valid solids, the checker still reports
+satisfaction, and the resulting score looks like a result.
+
+This paper is organised around that hazard. We describe the system
+(Section~\ref{sec:system}), the benchmark (Section~\ref{sec:benchmark}), and the
+results (Section~\ref{sec:results}). We then devote Section~\ref{sec:pitfalls}
+to four defects we found in our own pipeline, each of which had already produced
+a number we believed. We think this is the most transferable part of the work.
+
+\paragraph{Contributions.}
+\begin{enumerate}\itemsep2pt
+\item A CAD environment exposing \textbf{38 structured operations} against a
+      live FreeCAD kernel, with a JSON bridge that lets a PyTorch policy drive
+      an interpreter that cannot import PyTorch.
+\item \textbf{KAIROS-CAD-v1}, a benchmark of BUILD and COMPLETE($k$) tasks over
+      a frozen three-way split, scored by a prefix-ordered milestone ladder
+      rather than by success alone.
+\item An \textbf{oracle-replay baseline} that measures the ceiling the action
+      codec imposes. We argue this belongs in any agent benchmark whose action
+      space is a lossy encoding of the demonstrations.
+\item A catalogue of \textbf{silent-failure modes} in evaluating such agents,
+      each with the measurement that exposes it, all now automated.
+\end{enumerate}
+
+\section{Related work}\label{sec:related}
+
+\paragraph{Learning CAD construction.} DeepCAD~\citep{wu2021deepcad} and
+Computer-Aided Design as Language~\citep{ganin2021computer} model construction
+sequences generatively, and the Fusion 360 Gallery~\citep{willis2021fusion}
+supplies human design sequences with a reconstruction environment. These
+generate or reconstruct sequences; KAIROS instead executes actions against a
+live kernel and scores the resulting solid against a written requirement, which
+is what makes the harness itself a measurement problem.
+
+\paragraph{Imitation and compounding error.} Behavioural
+cloning~\citep{pomerleau1988alvinn} degrades under its own state
+distribution, the failure DAgger~\citep{ross2011dagger} addresses. Our
+COMPLETE($k$) family measures that degradation directly rather than inferring it
+from a closed-loop gap: sweeping how many trailing actions the policy must
+supply turns compounding error into a curve. We fine-tune with
+PPO~\citep{schulman2017ppo} using GAE~\citep{schulman2016gae} and a KL anchor
+back to the cloned policy.
+
+\paragraph{Evaluation practice.} Our statistical treatment follows the
+reproducibility literature in deep RL~\citep{henderson2018deeprl,
+agarwal2021deeprl}, which documents how few-seed, few-episode comparisons
+produce differences that do not survive resampling. We use paired
+bootstrap intervals~\citep{efron1993bootstrap} because every policy faces
+identical tasks. The point we add is complementary and, we think,
+under-discussed: before asking whether two policies differ, one should ask what
+the harness would score \emph{given a perfect policy}, because that number is
+frequently not $1.0$.
+
+\section{System}\label{sec:system}
+
+\subsection{Action space and environment}
+
+The environment wraps FreeCAD's~\citep{freecad} PartDesign workbench, exposed
+through a Gym-style step interface~\citep{brockman2016gym}. A policy emits a triple
+$(o, \mathbf{p}, t)$: an operation index over 38 operations, six continuous
+parameters in $[0,1]^6$, and a target index selecting an edge, face or feature
+from the live document. A codec decodes this into a validated structured action;
+illegal actions are masked before sampling, and actions that pass the mask but
+fail in the kernel are returned as failures rather than exceptions, so the
+policy experiences them as negative outcomes rather than crashes.
+
+\paragraph{Two interpreters.} FreeCAD ships its own Python, which cannot install
+PyTorch. Rather than reimplement geometry, we split the system: the environment
+runs under FreeCAD's interpreter, the policy under the system interpreter, and
+they exchange newline-delimited JSON over a pipe. Everything in the environment
+package is import-clean under both.
+
+\subsection{Data}
+
+An expert procedural generator produces designs across eight parametric families
+(brackets, plates, flanges, spacers). Each design carries a natural-language
+requirement, the full action trajectory, the resulting solid, and measured
+properties. Requirements are generated \emph{from} the sampled parameters, so
+ground truth is exact rather than annotated.
+
+Crucially, expert trajectories are recorded as actions the codec can express.
+This is not automatic; Section~\ref{sec:pitfalls} describes what happened when it
+was not true. The current dataset round-trips \CodecSteps{} expert steps through
+the codec with \CodecUnusable{} unusable and a worst-case drift of
+\CodecWorstDrift{}~mm, two orders of magnitude below the $0.1$~mm tolerance every
+constraint check uses.
+
+\subsection{Policy and training}
+
+The policy is a 1.14M-parameter model mapping requirement text and current
+geometry to the next structured action, with separate heads for the operation,
+the parameters and the target. We train by behavioural cloning for \BCEpochs{}
+epochs, holding out by \emph{design} rather than by step --- a step-level split
+puts actions from the same trajectory on both sides and inflates accuracy. We
+then run PPO for \PPOIterations{} iterations with a clipped surrogate and a KL
+anchor to the cloned policy, on a dense milestone reward.
+
+\section{Benchmark}\label{sec:benchmark}
+
+\subsection{Tasks}
+
+KAIROS-CAD-v1 defines two task types over a frozen 70/15/15 split by design:
+
+\begin{itemize}\itemsep2pt
+\item \textbf{BUILD}: given only the requirement, build the part from an empty
+      document.
+\item \textbf{COMPLETE($k$)}: given the requirement and the expert's trajectory
+      with its last $k$ actions removed, supply those $k$ actions. Larger $k$ is
+      harder.
+\end{itemize}
+
+COMPLETE($k$) exists because BUILD alone is close to all-or-nothing at this scale
+and reports $0.000$ for policies that differ substantially. Sweeping $k$
+measures compounding error directly.
+
+\subsection{Scoring}
+
+Success rate alone cannot rank policies that all fail. We score a
+\emph{prefix-ordered milestone ladder} with strictly dominating weights: opened a
+sketch, drew geometry, made a solid, solid is valid, has a hole, all constraints
+met, finished successfully. Credit stops at the first milestone missed. The
+prefix rule is what stops a constraint check passing \emph{vacuously} on geometry
+that was never built and ranking an empty document above a real but imperfect
+part.
+
+\subsection{Baselines}
+
+Four baselines bound the task, and two of them audit the harness rather than
+compete:
+
+\begin{itemize}\itemsep2pt
+\item \textbf{Oracle replay} pushes the ground-truth expert actions through the
+      \emph{same codec} a policy uses. Its score is the ceiling.
+\item \textbf{Scripted from spec} builds the one shape a fixed script can build
+      from the parsed requirement: a plate with holes. It should nail flat
+      families and fail bent ones.
+\item \textbf{Immediate finish} terminates at once. Any policy below it is worse
+      than doing nothing.
+\item \textbf{Legal random} samples uniformly from the masked-legal actions.
+\end{itemize}
+
+\section{Results}\label{sec:results}
+
+\subsection{Main results}
+
+Table~\ref{tab:leaderboard} reports the leaderboard over the held-out test
+split.
+
+\begin{table}[t]
+\centering
+\input{generated/leaderboard}
+\caption{KAIROS-CAD-v1, held-out test split.
+$^\dagger$Oracle replay is not a policy: it replays the ground-truth expert
+through the action codec, so its score is the \emph{ceiling}, and the gap
+between it and $1.000$ measures what the codec and the target encoding cannot
+express.}
+\label{tab:leaderboard}
+\end{table}
+
+Two things are worth stating plainly. First, the oracle does not score
+$1.000$; it scores \OracleCeiling{}. Reading behavioural cloning's
+\BCProgress{} against $1.0$ overstates the shortfall by roughly a third of the
+scale. Second, behavioural cloning reaches \BCHeldOutAccuracy{} next-action
+accuracy on held-out designs while reaching \BCProgress{} in closed loop. The
+gap is compounding error, and Table~\ref{tab:curve} measures it directly.
+
+\begin{table}[t]
+\centering
+\input{generated/success_curve}
+\caption{Success against difficulty. $k$ is the number of trailing actions the
+policy must supply; the expert prefix is everything before it, so larger $k$ is
+harder. Behavioural cloning holds up when one action remains and has collapsed
+by eight.}
+\label{tab:curve}
+\end{table}
+
+\subsection{The comparison that does not hold}
+
+Behavioural cloning appears to edge PPO, \BCProgress{} against \PPOProgress{}.
+Every policy faces identical tasks in identical order, which makes the paired
+bootstrap the correct test: most of the variance at this sample size is
+\emph{between tasks}, and pairing removes exactly that.
+
+\begin{table}[t]
+\centering
+\input{generated/comparisons}
+\caption{Paired bootstrap on the per-task difference in progress score, 5{,}000
+resamples. An interval straddling zero means this benchmark cannot separate the
+two policies at this sample size.}
+\label{tab:comparisons}
+\end{table}
+
+The result (Table~\ref{tab:comparisons}) is that \textbf{BC and PPO do not
+separate}: \BCvsPPODelta{} with a 95\% interval of $\BCvsPPOCI$, and
+\BCvsPPOWLT{} in wins, losses and ties. Reporting ``BC beats PPO'' from the
+point estimates would repeat an error we had already made once, when a
+six-episode evaluation reported $0.500$ for a policy that scored $0.286$ over
+fourteen.
+
+\subsection{What the policy is actually using}
+
+\begin{table}[t]
+\centering
+\input{generated/ablations}
+\caption{Ablations. Each row corrupts one input and re-runs the identical suite.}
+\label{tab:ablations}
+\end{table}
+
+Table~\ref{tab:ablations} separates two claims that are easy to conflate.
+Shuffling the requirement --- pairing a design with a different design's text ---
+costs the policy substantially, so it is reading the requirement rather than
+memorising a family prior. But removing the action mask collapses validity,
+which means a large share of the policy's low invalid-action rate belongs to the
+mask and not to the policy. Both facts follow from the same experiment and only
+one of them is flattering.
+
+\section{Four ways to measure the harness instead of the policy}\label{sec:pitfalls}
+
+Each of the following produced a number we believed and reported. Each is now
+covered by an automated audit.
+
+\paragraph{1. An action space that cannot express its own demonstrations.}
+Six of eight families sketched their outline as a single polygon carrying an
+arbitrary vertex list. The codec can only express a polygon as a \emph{regular}
+$n$-gon, so those steps were unrepresentable: cloning silently dropped them
+(7.81\% of all expert steps, touching 829 of 1{,}080 designs) and an oracle
+replaying the expert could not rebuild the part. The measured ``ceiling'' was an
+artefact of the encoding, not a property of the task. Expanding each profile
+into one line segment per edge drove unrepresentable steps to zero.
+
+\paragraph{2. Normalisation that clips instead of failing.}
+The codec maps each parameter into a fixed range. Values outside that range were
+\emph{clipped}. A clipped value is not a rounding error; it is a different
+action. A sketch offset of $89.9$~mm against a $\pm 50$~mm range decoded back as
+$50$~mm, so the oracle built the feature $40$~mm from where the expert put it ---
+with every step reporting success and zero invalid actions. This silently
+corrupted 260 expert steps across 206 of 1{,}080 designs (19.1\%) while every
+audit still called the trajectory fully representable. Encoding now
+\emph{raises} on an out-of-range value, and ranges are named once and shared by
+both directions; they had drifted apart, so an in-range pad length round-tripped
+$61.9$~mm away having raised nothing at all.
+
+\paragraph{3. A requirement the ground truth cannot satisfy.}
+The constraint checker reads bounds from the requirement \emph{text}, not from
+the float the generator used. Rounding a minimum to nearest states a bound the
+part can miss: a $6.1866$~mm wall written as ``6.2~mm'' makes the expert violate
+its own requirement while having built exactly the right part. A second cause
+compounded it --- one family declared its minimum wall as the plate thickness
+while its gusset rib, also a wall, could be thinner. Together these marked 139 of
+1{,}080 designs (12.9\%) as failures. Minimums now round down, maximums round up,
+and the stated bound is derived from the thinnest feature.
+
+\paragraph{4. Model selection on the evaluation set.}
+An early PPO run selected its best checkpoint on the same pool the evaluation
+scored, and reported $0.286$ closed-loop success on requirements it had trained
+on. The frozen three-way split in Section~\ref{sec:benchmark} exists because of
+this. The corrected number was $0.000$ --- and the $0.000$ was itself misleading
+for a different reason, being measured only on full builds, which is why
+COMPLETE($k$) exists.
+
+\paragraph{The common shape.} None of these raised an exception. Each produced a
+plausible number, in the expected direction, of the expected magnitude. What
+caught them was not testing that the code runs but \emph{measuring the harness
+against a known answer}: replaying ground truth through the agent's own
+machinery and asking why the score was not perfect. We would suggest that any
+benchmark whose action space is a lossy encoding of its demonstrations should
+report an oracle-replay ceiling as a matter of course.
+
+\section{Limitations}\label{sec:limitations}
+
+The learned results here are weak in absolute terms, and we state the ceiling
+rather than the excuse. Full builds succeed rarely; the benchmark separates BC
+and PPO from the null baselines but not from each other. Target selection ---
+choosing which edge or face an operation applies to --- is not recoverable by the
+current encoder, which caps families whose recipes pattern a specific feature.
+The RL stage is single-seed. Families are procedural, so requirement language is
+templated rather than natural. Wall thickness is measured by ray casting, which
+gives an upper bound: failing it is conclusive, passing it is necessary but not
+sufficient.
+
+\section{Conclusion}
+
+We built a CAD agent and a benchmark, and the most durable result was neither the
+agent nor the score but the discipline of measuring the measuring apparatus. Four
+separate defects in our pipeline each produced a confident wrong number, and in
+every case the thing that exposed it was replaying a known-correct trajectory
+through the agent's own machinery and refusing to accept a score below perfect
+without an explanation. We release the environment, the dataset generator, the
+frozen benchmark, and the audits.
+
+\section*{Reproducibility}
+
+Code, dataset generator, frozen splits, and every audit in this paper are at
+\url{https://github.com/sunkalpchandra/kairos-cad}. Every number in every table
+is generated from committed run artifacts by
+\texttt{scripts/build\_paper\_tables.py}; none is typed by hand. The dataset is
+regenerated deterministically from seeds by \texttt{make generate-data}.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}
