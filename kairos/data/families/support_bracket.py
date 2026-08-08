@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from kairos.actions.executor import ActionExecutor
 from kairos.actions.schema import Action, Operation
 from kairos.data.families.base import Family, register
+from kairos.data.families.profiles import draw_profile
 
 
 def _spread(start: float, end: float, count: int) -> list[float]:
@@ -136,7 +137,7 @@ def support_bracket_profile_actions(p: SupportBracketParams) -> list[Action]:
         ),
         Action(Operation.PAD, parameters={"length": p.wall_width, "midplane": True}),
         Action(Operation.CREATE_SKETCH, parameters={"plane": "XZ"}),
-        Action(Operation.ADD_POLYGON, parameters={"points": [list(pt) for pt in rib]}),
+        *draw_profile(rib),
         Action(Operation.PAD, parameters={"length": p.rib_width, "midplane": True}),
     ]
 

@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from kairos.actions.executor import ActionExecutor
 from kairos.actions.schema import Action, Operation
 from kairos.data.families.base import Family, register
+from kairos.data.families.profiles import draw_profile
 
 
 @dataclass
@@ -66,7 +67,7 @@ def spacer_profile_actions(p: SpacerParams) -> list[Action]:
     ]
     return [
         Action(Operation.CREATE_SKETCH, parameters={"plane": "XZ"}),
-        Action(Operation.ADD_POLYGON, parameters={"points": [list(pt) for pt in profile]}),
+        *draw_profile(profile),
         Action(Operation.REVOLVE, parameters={"angle": 360.0, "axis": "V"}),
     ]
 

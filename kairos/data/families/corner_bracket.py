@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from kairos.actions.executor import ActionExecutor
 from kairos.actions.schema import Action, Operation
 from kairos.data.families.base import Family, register
+from kairos.data.families.profiles import draw_profile
 
 
 @dataclass
@@ -109,13 +110,10 @@ def corner_bracket_profile_actions(p: CornerBracketParams) -> list[Action]:
     gusset_triangle = [(t, t), (t + g, t), (t, t + g)]
     return [
         Action(Operation.CREATE_SKETCH, parameters={"plane": "XZ"}),
-        Action(Operation.ADD_POLYGON, parameters={"points": [list(pt) for pt in profile]}),
+        *draw_profile(profile),
         Action(Operation.PAD, parameters={"length": p.width, "midplane": True}),
         Action(Operation.CREATE_SKETCH, parameters={"plane": "XZ"}),
-        Action(
-            Operation.ADD_POLYGON,
-            parameters={"points": [list(pt) for pt in gusset_triangle]},
-        ),
+        *draw_profile(gusset_triangle),
         Action(Operation.PAD, parameters={"length": p.rib_width, "midplane": True}),
     ]
 
