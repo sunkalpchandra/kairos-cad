@@ -274,6 +274,9 @@ class RemoteCADEnv:
         return {
             "numeric": np.asarray(payload["numeric"], dtype=np.float32),
             "action_mask": np.asarray(payload["action_mask"], dtype=np.int64),
+            # Left as plain lists of strings: these are names to match against,
+            # not values to do arithmetic on.
+            "targets": payload.get("targets") or {},
             "feature_history": list(payload.get("feature_history", [])),
             "has_solid": bool(payload.get("has_solid", False)),
             "valid": bool(payload.get("valid", False)),

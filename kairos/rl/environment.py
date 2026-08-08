@@ -166,24 +166,39 @@ class KairosCADEnv(gym.Env):
 
     def _current_targets(self, op) -> dict[str, list[str]]:
         kind = TARGET_KIND.get(op)
-        if kind is None:
-            return {}
+        return {kind: self._target_pool(kind)} if kind else {}
+
+    def _target_pool(self, kind: str) -> list[str]:
+        """Names the engine currently offers for one target kind."""
         try:
             if kind == "edges" and self.engine.has_solid():
-                return {"edges": [e["name"] for e in self.engine.list_edges()]}
+                return [e["name"] for e in self.engine.list_edges()]
             if kind == "faces" and self.engine.has_solid():
-                return {"faces": [f["name"] for f in self.engine.list_faces()]}
+                return [f["name"] for f in self.engine.list_faces()]
             if kind == "features":
-                return {
-                    "features": [
-                        f["name"]
-                        for f in self.engine.feature_history()
-                        if not f["type"].startswith("Sketcher")
-                    ]
-                }
+                return [
+                    f["name"]
+                    for f in self.engine.feature_history()
+                    if not f["type"].startswith("Sketcher")
+                ]
         except Exception:
             pass
-        return {}
+        return []
+
+    def _all_targets(self) -> dict[str, list[str]]:
+        """Every target pool, for the observation.
+
+        A policy emits a target *index*, and until now nothing ever told it what
+        the indices referred to. Selection was necessarily blind, and the oracle
+        could not even reproduce the expert's own choice.
+
+        Capped at MAX_TARGETS because that is what decode() will index; sending
+        more would advertise choices the codec cannot address.
+        """
+        return {
+            kind: self._target_pool(kind)[:MAX_TARGETS]
+            for kind in ("edges", "faces", "features")
+        }
 
     def _encode_obs(self, observation: dict, report=None) -> dict[str, np.ndarray]:
         if report is None:
@@ -198,4 +213,4 @@ class KairosCADEnv(gym.Env):
         )
         flags = flags_from_engine(self.engine)
         mask = np.asarray(operation_mask(flags, list(OPERATIONS)), dtype=np.int8)
-        return {"numeric": numeric, "action_mask": mask}
+        return {"numeric": numeric, "action_mask": mask, "targets": self._all_targets()}

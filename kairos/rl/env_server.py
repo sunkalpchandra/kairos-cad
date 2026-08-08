@@ -54,6 +54,13 @@ def _observation_payload(env, observation: dict[str, Any], info: dict | None = N
     return {
         "numeric": [float(v) for v in observation["numeric"]],
         "action_mask": [int(v) for v in observation["action_mask"]],
+        # Target names, so a policy emitting a target INDEX can know what the
+        # indices refer to. Without these the choice is blind and the oracle
+        # cannot reproduce the expert's own edge.
+        "targets": {
+            kind: list(names)
+            for kind, names in (observation.get("targets") or {}).items()
+        },
         "feature_history": [str(f) for f in summary.get("feature_history", [])],
         "has_solid": bool(summary.get("has_solid", False)),
         "valid": bool(summary.get("valid", False)),

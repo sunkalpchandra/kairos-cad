@@ -121,7 +121,13 @@ class ExpertReplay(BenchmarkPolicy):
         try:
             index, params, target = encode(
                 Action(operation, target=raw.get("target"),
-                       parameters=raw.get("parameters") or {})
+                       parameters=raw.get("parameters") or {}),
+                # Resolve the expert's recorded target against the live pool.
+                # Without this the oracle emitted index 0 for every fillet,
+                # chamfer, shell and pattern, applying them to whichever
+                # feature happened to be listed first, and the resulting
+                # failures were charged to the codec rather than to the oracle.
+                targets=observation.get("targets") if observation else None,
             )
             return int(index), np.asarray(params, dtype=np.float64), int(target)
         except UnrepresentableAction:

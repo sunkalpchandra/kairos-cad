@@ -312,14 +312,54 @@ def decode(
     return Action(operation=op, target=target, parameters=parameters)
 
 
-def encode(action: Action) -> tuple[int, np.ndarray, int]:
-    """Best-effort inverse of ``decode`` for behavioral cloning targets.
+def _target_index(action: Action, targets: dict[str, list[str]] | None) -> int:
+    """Resolve a recorded target name to its index in the live pool.
+
+    Without `targets` there is nothing to resolve against and this returns 0,
+    which is what BC dataset building gets: target selection stays unsupervised
+    because trajectories do not record the pool the expert chose from.
+
+    Given a pool, an index of 0 is a real answer rather than a placeholder, and
+    for the oracle it is the difference between chamfering the rim the expert
+    chamfered and chamfering whichever edge happens to be listed first.
+    """
+    if not targets or not action.target:
+        return 0
+    kind = TARGET_KIND.get(action.operation)
+    if kind is None:
+        return 0
+    pool = targets.get(kind) or []
+    if not pool:
+        return 0
+
+    # Multi-target actions record their names comma-joined ("Edge3,Edge7"), and
+    # the codec indexes exactly one. Taking the first at least applies the
+    # feature to an edge the expert named; the rest are lost, which is a codec
+    # limit worth seeing in the ceiling rather than hiding behind index 0.
+    first = str(action.target).split(",")[0].strip()
+    try:
+        index = pool.index(first)
+    except ValueError:
+        return 0
+    if index >= MAX_TARGETS:
+        raise UnrepresentableAction(
+            f"target {first!r} sits at index {index}, beyond the codec's "
+            f"{MAX_TARGETS}-target limit; decode would wrap to a different one"
+        )
+    return index
+
+
+def encode(
+    action: Action, targets: dict[str, list[str]] | None = None
+) -> tuple[int, np.ndarray, int]:
+    """Inverse of ``decode``, for behavioral cloning targets and oracle replay.
 
     Returns (operation_index, params, target_index). Continuous values are
-    normalized back into their slot ranges; values outside a range clip (BC
-    loss then sees the boundary, which is the closest representable action).
-    The target index cannot be recovered without the live target list; 0 is
-    returned and BC treats target selection as unsupervised in v0.
+    normalized back into their slot ranges; anything outside one raises.
+
+    `targets` is the live pool by kind, as ``decode`` takes it. Pass it when the
+    caller has an engine to ask, and the recorded target name resolves to its
+    index. Omit it and the index is 0.
     """
     op = action.operation
     p = np.zeros(PARAM_SLOTS, dtype=np.float64)
@@ -426,4 +466,4 @@ def encode(action: Action) -> tuple[int, np.ndarray, int]:
     # all-zero encoding rather than the expert's value. Latent only because
     # no family emits them yet.
 
-    return OPERATIONS.index(op), p, 0
+    return OPERATIONS.index(op), p, _target_index(action, targets)

@@ -238,3 +238,54 @@ def test_encode_preserves_a_constraint_operations_values():
     restored = decode(index, params, 0, {}).parameters
     assert restored["geo1"] == 3 and restored["geo2"] == 5
     assert restored["value"] == pytest.approx(42.5, abs=0.1)
+
+
+class TestTargetResolution:
+    """encode() returned 0 for every target, so replaying an expert fillet
+    applied it to whichever edge the engine happened to list first.
+
+    The failures that caused were charged to the codec ceiling, which made the
+    action space look less capable than it is.
+    """
+
+    def _pool(self, n=40):
+        return {"edges": [f"Edge{i}" for i in range(1, n + 1)],
+                "faces": [f"Face{i}" for i in range(1, n + 1)],
+                "features": [f"Pad{i}" for i in range(1, n + 1)]}
+
+    def test_recorded_target_resolves_to_its_index(self):
+        action = Action(Operation.FILLET, target="Edge9", parameters={"radius": 2.0})
+        _, _, target = encode(action, targets=self._pool())
+        assert target == 8
+        assert decode(*encode(action, targets=self._pool()),
+                      targets=self._pool()).target == "Edge9"
+
+    def test_without_a_pool_the_index_is_zero(self):
+        """BC builds from trajectories, which do not record the live pool."""
+        action = Action(Operation.FILLET, target="Edge9", parameters={"radius": 2.0})
+        assert encode(action)[2] == 0
+
+    def test_multi_target_actions_resolve_to_their_first_name(self):
+        """A chamfer across two rims records 'Edge3,Edge7'; the codec indexes one."""
+        action = Action(Operation.CHAMFER, target="Edge3,Edge7", parameters={"size": 1.0})
+        _, _, target = encode(action, targets=self._pool())
+        assert target == 2
+
+    def test_a_target_missing_from_the_pool_falls_back_to_zero(self):
+        action = Action(Operation.FILLET, target="Edge999", parameters={"radius": 2.0})
+        assert encode(action, targets=self._pool())[2] == 0
+
+    def test_a_target_past_the_codec_limit_raises(self):
+        """decode() wraps modulo the pool, so a silent wrap picks a different edge."""
+        from kairos.rl.action_space import MAX_TARGETS, UnrepresentableAction
+
+        pool = {"edges": [f"Edge{i}" for i in range(1, MAX_TARGETS + 20)]}
+        action = Action(Operation.FILLET, target=f"Edge{MAX_TARGETS + 5}",
+                        parameters={"radius": 2.0})
+        with pytest.raises(UnrepresentableAction, match="beyond the codec"):
+            encode(action, targets=pool)
+
+    def test_operations_without_targets_are_unaffected(self):
+        action = Action(Operation.PAD, parameters={
+            "length": 10.0, "midplane": False, "reversed": False})
+        assert encode(action, targets=self._pool())[2] == 0
