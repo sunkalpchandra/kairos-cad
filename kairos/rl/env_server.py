@@ -67,7 +67,12 @@ def _observation_payload(env, observation: dict[str, Any], info: dict | None = N
         # milestone used to be awarded from satisfaction_rate > 0, so a
         # satisfied mounting_angle (true of any prismatic solid) bought credit
         # for holes that were never drilled.
-        "hole_count": len((info or {}).get("observation", {}).get("holes", []) or []),
+        #
+        # Read from `summary`, which every path here computes. Reading it from
+        # info["observation"]["holes"] instead left RESET and REPLAY at zero,
+        # and since credit is prefix-scored a zero here also zeroed every later
+        # milestone: the oracle finished 94% of tasks and scored 0.111.
+        "hole_count": int(summary.get("hole_count", 0) or 0),
         "valid": bool(summary.get("valid", False)),
         "mass_g": float(summary.get("mass_g") or 0.0),
     }

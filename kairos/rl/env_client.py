@@ -279,6 +279,7 @@ class RemoteCADEnv:
             "targets": payload.get("targets") or {},
             "feature_history": list(payload.get("feature_history", [])),
             "has_solid": bool(payload.get("has_solid", False)),
+            "hole_count": int(payload.get("hole_count", 0) or 0),
             "valid": bool(payload.get("valid", False)),
             "mass_g": float(payload.get("mass_g", 0.0)),
         }
