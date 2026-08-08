@@ -47,9 +47,22 @@ _VIEWS = ("iso", "front", "top", "right")
 # than clipping, so the next overflow is a failed audit and not silent damage.
 #
 # Widening costs almost nothing numerically: decode rounds to 3 decimals in mm,
-# so resolution is 0.001 mm regardless of span. It does ask more of a learned
-# policy, whose parameter error is relative to the span -- which is the honest
-# trade, and it is reported rather than hidden.
+# so resolution is 0.001 mm regardless of span.
+#
+# It costs a learned policy real accuracy, and the measurement is worth stating
+# because of how it presents. Retraining BC across the change:
+#
+#     held-out operation accuracy   0.983  ->  0.987
+#     parameter MAE (normalized)    0.035  ->  0.023   (better)
+#     parameter MAE (mm, approx)     ~6.9  ->   ~9.3   (worse)
+#
+# The normalized metric improves while the physical error degrades, because the
+# span those units cover roughly doubled. Anyone reading only the normalized
+# number would conclude the change helped. It is the same reporting trap this
+# codec already produced once by clipping silently, in a different costume.
+#
+# The right long-term fix is not a wider global span but a per-operation or
+# relative encoding, so precision does not have to be traded against range.
 # --------------------------------------------------------------------------
 
 #: Sketch-plane coordinates (mm). Data reaches 122.9.
