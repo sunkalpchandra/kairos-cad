@@ -82,8 +82,14 @@ def leaderboard_table(benchmark: dict) -> str:
 
 
 def comparison_table(comparisons: dict, limit: int = 8) -> str:
-    """Paired bootstrap intervals, strongest separation first."""
+    """Paired bootstrap intervals, strongest separation first.
+
+    Set in \\small: policy names are long and five columns of them overflow the
+    5.5in NeurIPS column, which LaTeX reports only as an overfull hbox warning
+    while happily printing text into the margin.
+    """
     lines = [
+        r"\small",
         r"\begin{tabular}{lcccc}",
         r"\toprule",
         r"Comparison & $\Delta$ progress & 95\% CI & W/L/T & Separates \\",
@@ -168,7 +174,7 @@ def facts(benchmark: dict, training: dict, comparisons: dict, codec: dict | None
         "PPOProgress": score("ppo"),
         "PPOSuccess": score("ppo", "success_rate"),
         "RandomProgress": score("legal-random"),
-        "BenchmarkTasks": str(benchmark.get("tasks") or len(scores) and "--"),
+        "BenchmarkTasks": str(benchmark.get("tasks") or "--"),
         "BCHeldOutAccuracy": _fmt(training["bc"].get("best_held_out_accuracy")),
         "BCEpochs": str(len(training["bc"].get("history", []))),
         "PPOIterations": str(len(training["ppo"].get("history", []))),
