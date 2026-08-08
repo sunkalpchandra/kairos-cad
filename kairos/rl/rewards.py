@@ -111,7 +111,14 @@ class RewardTracker:
         ):
             breakdown.add("valid_sketch", w.valid_sketch)
 
-        if sketch.get("fully_constrained") and self._award("fully_constrained_sketch"):
+        # An empty sketch reports fully_constrained: it has no free degrees of
+        # freedom because it has no geometry. Without the geometry guard this
+        # paid out in every episode, including ones that drew nothing.
+        if (
+            sketch.get("fully_constrained")
+            and sketch.get("geometry_count", 0) > 0
+            and self._award("fully_constrained_sketch")
+        ):
             breakdown.add("fully_constrained_sketch", w.fully_constrained_sketch)
 
         has_solid = bool(summary.get("has_solid"))
