@@ -71,17 +71,21 @@ function selectDesign(index) {
 
   el('detail-requirement').textContent = design.requirement || '(no requirement text)';
 
-  const bbox = design.bounding_box || {};
-  const dims = bbox.length != null
-    ? `${fmt(bbox.length, 1)} × ${fmt(bbox.width, 1)} × ${fmt(bbox.height, 1)} mm`
+  const extent = design.extent_mm || [];
+  const dims = extent[0] != null
+    ? `${fmt(extent[0], 1)} × ${fmt(extent[1], 1)} × ${fmt(extent[2], 1)}`
     : '—';
+  const wall = design.min_wall_thickness_mm;
   el('detail-kv').innerHTML = `
     <dt>family</dt><dd>${esc(design.family)}</dd>
+    <dt>material</dt><dd>${esc(design.material || '—')}</dd>
     <dt>mass</dt><dd>${fmt(design.mass_g, 2)} g</dd>
     <dt>volume</dt><dd>${fmt(design.volume_mm3, 0)} mm³</dd>
-    <dt>bounding box</dt><dd>${dims}</dd>
+    <dt>surface area</dt><dd>${fmt(design.surface_area_mm2, 0)} mm²</dd>
+    <dt>extent (mm)</dt><dd>${dims}</dd>
+    <dt>faces</dt><dd>${design.faces == null ? '—' : design.faces}</dd>
     <dt>holes</dt><dd>${design.hole_count == null ? '—' : design.hole_count}</dd>
-    <dt>min wall</dt><dd>${fmt(design.min_wall_thickness_mm, 2)} mm</dd>
+    <dt>min wall</dt><dd>${wall == null ? 'not measured' : fmt(wall, 2) + ' mm'}</dd>
     <dt>expert steps</dt><dd>${design.steps == null ? '—' : design.steps}</dd>
     <dt>constraints met</dt><dd>${design.satisfaction_rate == null ? '—' : fmt(design.satisfaction_rate * 100, 0) + '%'}</dd>`;
 

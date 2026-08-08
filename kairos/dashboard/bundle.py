@@ -36,6 +36,14 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
         return []
 
 
+def _measured(results: list[dict[str, Any]], kind: str) -> float | None:
+    """The measured value of a named constraint, if it was measured at all."""
+    for result in results:
+        if (result.get("constraint") or {}).get("kind") == kind:
+            return result.get("measured")
+    return None
+
+
 def collect_designs(root: str | Path, limit: int = MAX_DESIGNS) -> list[dict[str, Any]]:
     """Design summaries with their requirement and constraint outcome."""
     designs: list[dict[str, Any]] = []
@@ -47,15 +55,24 @@ def collect_designs(root: str | Path, limit: int = MAX_DESIGNS) -> list[dict[str
             continue
         metrics = trajectory.get("final_metrics", {})
         constraints = metrics.get("constraints", {})
+        results = constraints.get("results", [])
+        box = state.get("bounding_box") or {}
         designs.append({
             "design_id": path.parent.name,
             "family": (requirement.get("spec") or {}).get("kind", "unknown"),
             "requirement": requirement.get("text", ""),
             "mass_g": state.get("mass_g"),
             "volume_mm3": state.get("volume_mm3"),
-            "bounding_box": state.get("bounding_box"),
+            "surface_area_mm2": state.get("surface_area_mm2"),
+            "material": state.get("material"),
+            # The state stores span per axis as *_len; there is no
+            # length/width/height, and reading those names yields silent nulls.
+            "extent_mm": [box.get("x_len"), box.get("y_len"), box.get("z_len")],
+            "faces": (state.get("topology") or {}).get("faces"),
             "hole_count": state.get("hole_count"),
-            "min_wall_thickness_mm": state.get("min_wall_thickness_mm"),
+            # Wall thickness is measured by the constraint checker, not stored
+            # on the state, so it has to be lifted back out of the result.
+            "min_wall_thickness_mm": _measured(results, "min_wall_thickness"),
             "steps": metrics.get("steps"),
             "total_reward": metrics.get("total_reward"),
             "satisfaction_rate": constraints.get("satisfaction_rate"),
