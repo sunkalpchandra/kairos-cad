@@ -1,31 +1,18 @@
-"""Benchmark metrics that still discriminate when nothing succeeds.
+"""Benchmark metrics that discriminate when no policy succeeds.
 
-Closed-loop success is currently **0.000 for every policy**, BC, PPO, and a
-legal-random baseline alike. A benchmark reporting only success rate would rank
-a policy that builds a valid solid and gets its hole count right identically
-with one that emits nothing but invalid actions. That is useless for measuring
-progress, and it is the situation this module exists for, so the headline is a **progress score**: a weighted sum of milestones a design
-passes through on the way to being finished, each one independently verifiable
-from the environment's own reports.
+Success rate alone ranks a policy that builds a valid solid with the right hole
+count identically with one that emits only invalid actions. The headline metric
+here is instead a progress score over milestones:
 
-    sketch → geometry → solid → valid solid → holes → constraints → finished
+    sketch -> geometry -> solid -> valid solid -> holes -> constraints -> finished
 
-The weights are deliberately monotone and increasing: reaching a later
-milestone always scores more than any combination of earlier ones, so the score
-can never reward a policy for skipping ahead by luck. Partial credit stops at
-the first milestone missed, a policy that produces a valid solid with the
-wrong hole count does not get constraint credit because a later check happened
-to pass on empty geometry.
+Weights increase monotonically, so reaching a later milestone always scores more
+than any combination of earlier ones. Credit stops at the first milestone missed:
+a constraint check passes vacuously on geometry that was never built.
 
-The other axes are reported alongside, never folded in:
-
-- **efficiency**: steps taken against the expert's step count for the same
-  family. A policy that reaches the same milestone in fewer actions is better,
-  but only among policies that reached it.
-- **validity**: the fraction of actions the engine accepted. This is where PPO
-  actually beat BC (0.000 against 0.018), and a single success number hid it.
-- **constraint satisfaction**: fraction of *measured* constraints met, which
-  after Phase 6 includes wall thickness.
+Efficiency, validity and constraint satisfaction are reported alongside, never
+folded in. Validity is where PPO beat BC in Phase 5 (0.000 invalid against
+0.018) and a single success number hid it.
 """
 
 from __future__ import annotations
