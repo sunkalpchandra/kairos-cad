@@ -80,6 +80,14 @@ def main() -> int:
         print(f"error: unknown policies {missing}; have {sorted(policies)}", file=sys.stderr)
         return 1
 
+    # `--ablate bc --policies bc` builds the wrappers and then filters them all
+    # back out, producing a run that looks like an ablation study and contains
+    # no ablation. Adding them is what the user meant.
+    dropped = [name for name in policies if "+" in name and name not in wanted]
+    if args.ablate and dropped:
+        print(f"note: --policies omitted the ablations it built; adding {dropped}")
+        wanted = wanted + dropped
+
     try:
         from kairos.rl.env_client import RemoteCADEnv
 
