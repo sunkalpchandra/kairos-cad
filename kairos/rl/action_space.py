@@ -21,6 +21,22 @@ import numpy as np
 
 from kairos.actions.schema import Action, Operation
 
+#: Decimal places decode keeps on a millimetre value.
+#:
+#: Was 3, which is 5e-4 mm of quantization: five thousand times FreeCAD's
+#: Precision::Confusion (1e-7 mm). That is invisible on a standalone build,
+#: where every coordinate is rounded the same way, and fatal across a
+#: COMPLETE(k) seam: the benchmark replays the expert prefix at RAW precision
+#: and the policy supplies the suffix through the codec, so a line chain does
+#: not close and the following REVOLVE fails. All 8 oracle failures in the
+#: 76-task run were ADD_LINE chains followed by a failed REVOLVE.
+#:
+#: 6 would leave 5e-7, still above Confusion. 9 leaves 5e-10, and float64 over
+#: a 300 mm span resolves ~1e-13, so this costs nothing.
+MM_DECIMALS = 9
+#: Angles in degrees; a coarser quantum is harmless and keeps them readable.
+DEG_DECIMALS = 6
+
 #: Number of continuous parameter slots the policy emits.
 PARAM_SLOTS = 6
 #: Cap on enumerable targets (edges/faces/features) the codec will index.
@@ -211,27 +227,27 @@ def decode(
             target = pool[int(target_index) % min(len(pool), MAX_TARGETS)]
 
     if op is Operation.CREATE_SKETCH:
-        parameters = {"plane": _choice(p[0], _PLANES), "offset": round(_lin(p[1], *_OFFSET), 3)}
+        parameters = {"plane": _choice(p[0], _PLANES), "offset": round(_lin(p[1], *_OFFSET), MM_DECIMALS)}
     elif op is Operation.ADD_LINE:
         parameters = {
-            "x1": round(_lin(p[0], *_COORD), 3), "y1": round(_lin(p[1], *_COORD), 3),
-            "x2": round(_lin(p[2], *_COORD), 3), "y2": round(_lin(p[3], *_COORD), 3),
+            "x1": round(_lin(p[0], *_COORD), MM_DECIMALS), "y1": round(_lin(p[1], *_COORD), MM_DECIMALS),
+            "x2": round(_lin(p[2], *_COORD), MM_DECIMALS), "y2": round(_lin(p[3], *_COORD), MM_DECIMALS),
         }
     elif op is Operation.ADD_RECTANGLE:
         parameters = {
-            "x": round(_lin(p[0], *_COORD), 3), "y": round(_lin(p[1], *_COORD), 3),
-            "width": round(_lin(p[2], *_SIDE), 3), "height": round(_lin(p[3], *_SIDE), 3),
+            "x": round(_lin(p[0], *_COORD), MM_DECIMALS), "y": round(_lin(p[1], *_COORD), MM_DECIMALS),
+            "width": round(_lin(p[2], *_SIDE), MM_DECIMALS), "height": round(_lin(p[3], *_SIDE), MM_DECIMALS),
         }
     elif op is Operation.ADD_CIRCLE:
         parameters = {
-            "cx": round(_lin(p[0], *_COORD), 3), "cy": round(_lin(p[1], *_COORD), 3),
-            "radius": round(_lin(p[2], *_RADIUS), 3),
+            "cx": round(_lin(p[0], *_COORD), MM_DECIMALS), "cy": round(_lin(p[1], *_COORD), MM_DECIMALS),
+            "radius": round(_lin(p[2], *_RADIUS), MM_DECIMALS),
         }
     elif op is Operation.ADD_ARC:
         parameters = {
-            "cx": round(_lin(p[0], *_COORD), 3), "cy": round(_lin(p[1], *_COORD), 3),
-            "radius": round(_lin(p[2], *_RADIUS), 3),
-            "start_deg": round(_lin(p[3], 0, 360), 2), "end_deg": round(_lin(p[4], 0, 360), 2),
+            "cx": round(_lin(p[0], *_COORD), MM_DECIMALS), "cy": round(_lin(p[1], *_COORD), MM_DECIMALS),
+            "radius": round(_lin(p[2], *_RADIUS), MM_DECIMALS),
+            "start_deg": round(_lin(p[3], 0, 360), DEG_DECIMALS), "end_deg": round(_lin(p[4], 0, 360), DEG_DECIMALS),
         }
     elif op is Operation.ADD_POLYGON:
         # A regular n-gon: the codec's continuous slots cannot express an
@@ -245,8 +261,10 @@ def decode(
         parameters = {
             "points": [
                 [
-                    round(cx + radius * math.cos(rotation + 2 * math.pi * i / sides), 3),
-                    round(cy + radius * math.sin(rotation + 2 * math.pi * i / sides), 3),
+                    round(cx + radius * math.cos(rotation + 2 * math.pi * i / sides),
+                          MM_DECIMALS),
+                    round(cy + radius * math.sin(rotation + 2 * math.pi * i / sides),
+                          MM_DECIMALS),
                 ]
                 for i in range(sides)
             ]
@@ -256,7 +274,7 @@ def decode(
     elif op is Operation.MOVE_GEOMETRY:
         parameters = {
             "index": _int_slot(p[0], 12),
-            "dx": round(_lin(p[1], -20, 20), 3), "dy": round(_lin(p[2], -20, 20), 3),
+            "dx": round(_lin(p[1], -20, 20), MM_DECIMALS), "dy": round(_lin(p[2], -20, 20), MM_DECIMALS),
         }
     elif op in (Operation.ADD_HORIZONTAL, Operation.ADD_VERTICAL):
         parameters = {"geo": _int_slot(p[0], 12)}
@@ -269,10 +287,10 @@ def decode(
         parameters = {
             "geo1": _int_slot(p[0], 12), "pos1": _int_slot(p[1], 4),
             "geo2": _int_slot(p[2], 12), "pos2": _int_slot(p[3], 4),
-            "value": round(_lin(p[4], *_DIMENSION), 3),
+            "value": round(_lin(p[4], *_DIMENSION), MM_DECIMALS),
         }
     elif op in (Operation.ADD_RADIUS, Operation.ADD_DIAMETER):
-        parameters = {"geo": _int_slot(p[0], 12), "value": round(_lin(p[1], *_SMALL), 3)}
+        parameters = {"geo": _int_slot(p[0], 12), "value": round(_lin(p[1], *_SMALL), MM_DECIMALS)}
     elif op is Operation.ADD_COINCIDENT:
         parameters = {
             "geo1": _int_slot(p[0], 12), "pos1": 1 + _int_slot(p[1], 3),
@@ -286,31 +304,31 @@ def decode(
         }
     elif op is Operation.PAD:
         parameters = {
-            "length": round(_lin(p[0], *_LENGTH), 3),
+            "length": round(_lin(p[0], *_LENGTH), MM_DECIMALS),
             "reversed": bool(p[1] > 0.5), "midplane": bool(p[2] > 0.5),
         }
     elif op is Operation.POCKET:
         through_all = bool(p[0] > 0.5)
         parameters = {"through_all": through_all, "reversed": bool(p[2] > 0.5)}
         if not through_all:
-            parameters["depth"] = round(_lin(p[1], *_DEPTH), 3)
+            parameters["depth"] = round(_lin(p[1], *_DEPTH), MM_DECIMALS)
     elif op is Operation.REVOLVE:
         parameters = {
-            "angle": round(_lin(p[0], 10, 360), 2),
+            "angle": round(_lin(p[0], 10, 360), DEG_DECIMALS),
             "axis": _choice(p[1], ("V", "H")),
         }
     elif op is Operation.FILLET:
-        parameters = {"radius": round(_lin(p[0], *_SMALL), 3)}
+        parameters = {"radius": round(_lin(p[0], *_SMALL), MM_DECIMALS)}
     elif op is Operation.CHAMFER:
-        parameters = {"size": round(_lin(p[0], *_SMALL), 3)}
+        parameters = {"size": round(_lin(p[0], *_SMALL), MM_DECIMALS)}
     elif op is Operation.SHELL:
-        parameters = {"thickness": round(_lin(p[0], *_SMALL), 3)}
+        parameters = {"thickness": round(_lin(p[0], *_SMALL), MM_DECIMALS)}
     elif op is Operation.MIRROR:
         parameters = {"plane": _choice(p[0], _PLANES)}
     elif op is Operation.LINEAR_PATTERN:
         parameters = {
             "axis": _choice(p[0], _AXES),
-            "length": round(_lin(p[1], *_SPAN), 3),
+            "length": round(_lin(p[1], *_SPAN), MM_DECIMALS),
             "count": 2 + _int_slot(p[2], 7),
         }
     elif op is Operation.CIRCULAR_PATTERN:
