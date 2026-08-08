@@ -39,8 +39,13 @@ def reward_weights_from(config: dict[str, Any]) -> RewardWeights:
     return RewardWeights(**{k: float(v) for k, v in section.items()})
 
 
+#: Sections a config may declare. A section listed here but read by nothing
+#: is worse than an unknown one: `dataset:` sat here while
+#: scripts/generate_dataset.sh took its counts from argv, so a config
+#: restricting families passed validation and generated the default dataset
+#: anyway.
 KNOWN_SECTIONS = frozenset(
-    {"seed", "environment", "reward", "dataset", "model", "behavioral_cloning", "ppo", "optimization"}
+    {"seed", "environment", "reward", "model", "behavioral_cloning", "ppo", "optimization"}
 )
 _ENVIRONMENT_KEYS = frozenset({"requirement", "max_steps", "material"})
 

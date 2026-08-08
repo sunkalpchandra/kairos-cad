@@ -234,18 +234,31 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - entry poin
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--max-steps", type=int, default=40)
-    parser.add_argument("--material", default="aluminum")
-    parser.add_argument("--config", default=None, help="YAML supplying reward weights")
+    parser.add_argument("--max-steps", type=int, default=None)
+    parser.add_argument("--material", default=None)
+    parser.add_argument("--config", default=None,
+                        help="YAML supplying reward weights and environment settings")
     args = parser.parse_args(argv)
 
-    env_kwargs = {"max_steps": args.max_steps, "material": args.material}
+    env_kwargs: dict[str, Any] = {}
     if args.config:
-        # The reward weights live on this side of the bridge, so the config
-        # has to be read here or the `reward:` section is inert.
-        from kairos.config import load_config, reward_weights_from
+        # Both sections have to be read here: the reward weights and the
+        # environment live on this side of the bridge, so a config-only run
+        # would otherwise apply neither. `environment:` used to be read by
+        # nothing at all, making max_steps, material and requirement silent
+        # no-ops for anyone configuring a run through YAML.
+        from kairos.config import environment_kwargs_from, load_config
 
-        env_kwargs["reward_weights"] = reward_weights_from(load_config(args.config))
+        # environment_kwargs_from already folds in the reward weights.
+        env_kwargs.update(environment_kwargs_from(load_config(args.config)))
+
+    # Explicit flags beat the config file.
+    if args.max_steps is not None:
+        env_kwargs["max_steps"] = args.max_steps
+    if args.material is not None:
+        env_kwargs["material"] = args.material
+    env_kwargs.setdefault("max_steps", 40)
+    env_kwargs.setdefault("material", "aluminum")
 
     # FreeCAD writes banners to stdout on import; anything landing there would
     # be parsed as a response. Hand the real stdout to the protocol only.

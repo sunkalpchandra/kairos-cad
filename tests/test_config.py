@@ -94,3 +94,27 @@ def test_optimization_section_is_known_and_complete():
     assert section["surrogate_degree"] == 3  # a quadratic gets thickness wrong
     assert section["min_thickness"] > 0
     assert section["samples"] >= 8  # the surrogate needs at least this many
+
+
+def test_dataset_section_is_rejected_now_that_nothing_reads_it():
+    """A whitelisted section read by nothing is worse than an unknown one.
+
+    `dataset:` validated fine while scripts/generate_dataset.sh took its counts
+    from argv, so a config restricting families would pass and then generate the
+    default dataset anyway.
+    """
+    import pytest
+
+    from kairos.config import validate_sections
+
+    with pytest.raises(ValueError, match="unknown config sections"):
+        validate_sections({"dataset": {"designs": 10}})
+
+
+def test_shipped_config_has_no_section_nothing_reads():
+    from pathlib import Path
+
+    from kairos.config import load_config, validate_sections
+
+    root = Path(__file__).resolve().parent.parent
+    validate_sections(load_config(root / "configs" / "default.yaml"))

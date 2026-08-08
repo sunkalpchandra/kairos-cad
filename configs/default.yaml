@@ -25,12 +25,6 @@ reward:
   complexity: -0.02
   action_cost: -0.01
 
-dataset:
-  designs: 1080
-  shards: 8
-  out_dir: dataset/designs
-  families: null  # null = all registered families
-
 # Phase 4: multimodal VLA and behavioral cloning. Requires the 'learn' extra.
 model:
   embed_dim: 128
