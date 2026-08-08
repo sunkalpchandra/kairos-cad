@@ -20,6 +20,14 @@ _MATERIALS = ("aluminum", "steel", "titanium", "abs", "pla")
 _METRIC_THREADS = {"M3": 3.0, "M4": 4.0, "M5": 5.0, "M6": 6.0, "M8": 8.0, "M10": 10.0}
 
 _NUM = r"(\d+(?:\.\d+)?)"
+#: Dimension separator. Requirements are written by humans and by the family
+#: generators, so both the ASCII "x" and the multiplication sign have to match.
+#: Spelled as an escape to keep this file pure ASCII: a repo-wide sweep that
+#: replaced unicode punctuation collapsed the literal class [x*] to [xx], which
+#: still matched "x" and silently stopped matching the other, so a requirement
+#: written with it lost its envelope constraint and was scored as satisfying a
+#: bound nothing had checked.
+_TIMES = r"[x\u00d7*]"
 
 #: Features that add material on top of a stated block of dimensions, so a
 #: "A x B x C mm" triple in the same sentence sizes a sub-component rather than
@@ -56,7 +64,7 @@ def _find_hole_spec(text: str) -> tuple[int | None, float | None]:
 
     # "4 x M5 holes", "4 M5 mounting holes", thread designations carry the
     # diameter, so they are matched before the generic count pattern.
-    threaded = re.search(r"(\d+)\s*[xx]?\s*(M\d+)\s+(?:mounting\s+)?holes?", text, re.I)
+    threaded = re.search(rf"(\d+)\s*{_TIMES}?\s*(M\d+)\s+(?:mounting\s+)?holes?", text, re.I)
     if threaded:
         count = int(threaded.group(1))
         diameter = _METRIC_THREADS.get(threaded.group(2).upper())
@@ -125,13 +133,13 @@ def parse_requirement(text: str) -> EngineeringSpec:
     # plate stiffened by ribs 8 mm tall"), the triple sizes a sub-component and
     # the real envelope is larger; emitting it as the part envelope would invent
     # a requirement the part is meant to violate, so it is left unextracted.
-    m = re.search(rf"{_NUM}\s*[xx]\s*{_NUM}\s*[xx]\s*{_NUM}\s*mm", text, re.I)
+    m = re.search(rf"{_NUM}\s*{_TIMES}\s*{_NUM}\s*{_TIMES}\s*{_NUM}\s*mm", text, re.I)
     if m and not _STACKED_FEATURE_RE.search(text):
         dims = [float(m.group(i)) for i in (1, 2, 3)]
         spec.constraints.append(Constraint("bounding_box_exact", dims, tolerance=1.0))
 
     # "fit within 80 x 60 x 20 mm"
-    m = re.search(rf"(?:within|max(?:imum)?\s+envelope)\s+{_NUM}\s*[xx]\s*{_NUM}\s*[xx]\s*{_NUM}\s*mm", text, re.I)
+    m = re.search(rf"(?:within|max(?:imum)?\s+envelope)\s+{_NUM}\s*{_TIMES}\s*{_NUM}\s*{_TIMES}\s*{_NUM}\s*mm", text, re.I)
     if m:
         dims = [float(m.group(i)) for i in (1, 2, 3)]
         # Replace the exact-box reading: "within" is an upper bound.

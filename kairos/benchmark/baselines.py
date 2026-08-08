@@ -23,9 +23,15 @@ from __future__ import annotations
 
 import numpy as np
 
-from kairos.actions.schema import Operation
+from kairos.actions.schema import Action, Operation
 from kairos.language import parse_requirement
-from kairos.rl.action_space import NUM_OPERATIONS, OPERATIONS, PARAM_SLOTS, encode
+from kairos.rl.action_space import (
+    NUM_OPERATIONS,
+    OPERATIONS,
+    PARAM_SLOTS,
+    UnrepresentableAction,
+    encode,
+)
 
 #: Slot values are normalized to [0, 1]; this is the codec's midpoint.
 _MID = 0.5
@@ -105,9 +111,6 @@ class ExpertReplay(BenchmarkPolicy):
         self._cursor = 0
 
     def act(self, observation: dict, task, step: int) -> tuple[int, np.ndarray, int]:
-        from kairos.actions.schema import Action
-        from kairos.rl.action_space import UnrepresentableAction
-
         if self._cursor >= len(self._remaining):
             return _index(Operation.FINISH_DESIGN), _blank(), 0
 
@@ -149,6 +152,9 @@ class ScriptedSpec(BenchmarkPolicy):
 
     name = "scripted-spec"
 
+    def __init__(self) -> None:
+        self.unrepresentable = 0
+
     def begin_episode(self, task, seed: int = 0) -> None:
         spec = parse_requirement(task.requirement)
         box = spec.get("bounding_box_exact")
@@ -159,57 +165,58 @@ class ScriptedSpec(BenchmarkPolicy):
         self._plan = self._make_plan()
         self._cursor = 0
 
-    def _make_plan(self) -> list[tuple[Operation, dict]]:
-        plan: list[tuple[Operation, dict]] = [
-            (Operation.CREATE_SKETCH, {"plane": 0.0, "offset": _MID}),
-            (Operation.ADD_RECTANGLE, {
-                "x": _MID, "y": _MID,
-                "width": _norm(self._length, 1, 150), "height": _norm(self._width, 1, 150),
+    def _make_plan(self) -> list[Action]:
+        """The recipe as real Actions, so the codec stays the only range table.
+
+        This used to emit normalized slot values directly, with its own copy of
+        every range and its own copy of decode's slot order. Both drifted:
+        narrowing _RADIUS left `_norm(radius, 0.5, 25)` here, so a 5 mm hole
+        requirement was drilled at 3.1 mm and every hole check failed for
+        bookkeeping reasons rather than because a script cannot do the task.
+        """
+        half = self._length / 3.0
+        plan: list[Action] = [
+            Action(Operation.CREATE_SKETCH, parameters={"plane": "XY", "offset": 0.0}),
+            Action(Operation.ADD_RECTANGLE, parameters={
+                "x": 0.0, "y": 0.0, "width": self._length, "height": self._width,
             }),
-            (Operation.PAD, {"length": _norm(self._thickness, 1, 100)}),
+            Action(Operation.PAD, parameters={
+                "length": self._thickness, "reversed": False, "midplane": False,
+            }),
         ]
         if self._holes:
-            plan.append((Operation.CREATE_SKETCH, {"plane": 0.0, "offset": _MID}))
+            plan.append(
+                Action(Operation.CREATE_SKETCH, parameters={"plane": "XY", "offset": 0.0})
+            )
             for i in range(min(self._holes, 12)):
                 # Spread hole centres across the plate rather than stacking them.
                 fraction = (i + 1) / (self._holes + 1)
-                plan.append((Operation.ADD_CIRCLE, {
-                    "cx": _norm(-self._length / 3 + fraction * self._length * 2 / 3, -100, 100),
-                    "cy": _MID,
-                    "radius": _norm(self._diameter / 2.0, 0.5, 25),
+                plan.append(Action(Operation.ADD_CIRCLE, parameters={
+                    "cx": -half + fraction * self._length * 2 / 3,
+                    "cy": 0.0,
+                    "radius": self._diameter / 2.0,
                 }))
-            plan.append((Operation.POCKET, {"through_all": 1.0}))
-        plan.append((Operation.FINISH_DESIGN, {}))
+            plan.append(Action(Operation.POCKET, parameters={"through_all": True}))
+        plan.append(Action(Operation.FINISH_DESIGN))
         return plan
 
     def act(self, observation: dict, task, step: int) -> tuple[int, np.ndarray, int]:
         if self._cursor >= len(self._plan):
             return _index(Operation.FINISH_DESIGN), _blank(), 0
-        operation, slots = self._plan[self._cursor]
+        action = self._plan[self._cursor]
         self._cursor += 1
-
-        params = _blank()
-        for position, key in enumerate(_SLOT_ORDER.get(operation, ())):
-            if key in slots:
-                params[position] = float(slots[key])
-        return _index(operation), params, 0
-
-
-#: Which named slot each operation's parameters occupy, mirroring `decode`.
-_SLOT_ORDER: dict[Operation, tuple[str, ...]] = {
-    Operation.CREATE_SKETCH: ("plane", "offset"),
-    Operation.ADD_RECTANGLE: ("x", "y", "width", "height"),
-    Operation.ADD_CIRCLE: ("cx", "cy", "radius"),
-    Operation.PAD: ("length", "reversed", "midplane"),
-    Operation.POCKET: ("through_all", "depth", "reversed"),
-}
+        try:
+            index, params, _ = encode(action)
+        except UnrepresentableAction:
+            # The parsed requirement asks for geometry outside a slot range.
+            # Emitting default parameters keeps the baseline running and keeps
+            # the shortfall countable instead of crashing the suite.
+            self.unrepresentable += 1
+            return _index(action.operation), _blank(), 0
+        return int(index), np.asarray(params, dtype=np.float64), 0
 
 
-def _norm(value: float, low: float, high: float) -> float:
-    """Map a real dimension into the codec's [0, 1] slot range."""
-    if high == low:
-        return 0.0
-    return float(min(1.0, max(0.0, (value - low) / (high - low))))
+
 
 
 def registry(seed: int = 0) -> dict[str, BenchmarkPolicy]:
