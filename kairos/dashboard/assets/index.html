@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAIROS — CAD agent dashboard</title>
+<style>/*__STYLE__*/</style>
+</head>
+<body>
+
+<header>
+  <h1>KAIROS</h1>
+  <span class="sub">a reinforcement-learning agent that drives parametric CAD</span>
+  <span class="stamp" id="stamp"></span>
+</header>
+
+<nav>
+  <button data-tab="designs" aria-selected="true">Designs</button>
+  <button data-tab="benchmark" aria-selected="false">Benchmark</button>
+  <button data-tab="training" aria-selected="false">Training</button>
+  <button data-tab="ablations" aria-selected="false">Ablations</button>
+</nav>
+
+<main>
+
+<section id="tab-designs">
+  <h2>Expert designs</h2>
+  <p class="note">
+    Each part below was built by a procedural expert from a natural-language
+    requirement, then measured. The geometry is the real tessellated solid, not
+    a render — orbit it by dragging.
+  </p>
+  <div class="explorer">
+    <div class="design-list" id="design-list"></div>
+    <div class="stage">
+      <canvas id="viewer-canvas"></canvas>
+      <div class="stage-bar">
+        <span id="stage-info"></span>
+        <label style="display:flex;gap:6px;align-items:center">
+          colour <input type="color" id="color-picker" value="#6b95dc">
+        </label>
+        <span class="hint">drag to orbit · scroll to zoom</span>
+      </div>
+      <p class="callout" id="viewer-error" hidden style="margin:0;border-radius:0"></p>
+    </div>
+    <div class="details">
+      <div class="requirement" id="detail-requirement"></div>
+      <dl class="kv" id="detail-kv"></dl>
+      <h2 style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Constraints</h2>
+      <div id="detail-constraints"></div>
+      <h2 style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:16px">Expert trajectory</h2>
+      <div class="ops" id="detail-ops"></div>
+    </div>
+  </div>
+</section>
+
+<section id="tab-benchmark" hidden>
+  <h2>Leaderboard</h2>
+  <p class="note">
+    Every policy faces the <strong>same enumerated tasks in the same order</strong>.
+    <code>oracle-replay</code> is not a policy — it replays the expert through the
+    action codec, so its score is the <strong>ceiling</strong> any policy could
+    reach, and the gap between it and 1.000 measures what the codec cannot express.
+  </p>
+  <div id="leaderboard"></div>
+
+  <h2>Success against task difficulty</h2>
+  <p class="note">
+    Compounding error, measured directly: the policy is handed an expert prefix
+    and must supply the last <em>k</em> actions itself. Behavioural cloning holds
+    up when one action is left and collapses by eight.
+  </p>
+  <div class="chart" id="success-curve"></div>
+
+  <h2>Paired comparisons</h2>
+  <p class="note">
+    Bootstrap intervals on the <strong>per-task</strong> difference, recomputed
+    from the traces in this bundle. Pairing matters at this sample size: most
+    of the variance is between tasks, and pairing removes it. An interval that
+    straddles zero means the benchmark cannot separate the two policies — which
+    is the honest answer more often than not here.
+  </p>
+  <div id="comparisons"></div>
+</section>
+
+<section id="tab-training" hidden>
+  <h2>Behavioural cloning</h2>
+  <p class="note">
+    Held out by <strong>design</strong>, not by step. Splitting on steps would put
+    an action from the same trajectory on both sides and inflate the number.
+  </p>
+  <div class="chart" id="bc-chart"></div>
+
+  <h2>PPO</h2>
+  <p class="note">
+    Clipped surrogate with a KL anchor back to the cloned policy. Reward is
+    dense over milestones; success is the full-build rate on the training pool,
+    which is why it sits well above the held-out benchmark score.
+  </p>
+  <div class="chart" id="ppo-reward-chart"></div>
+  <div class="chart" id="ppo-rate-chart"></div>
+</section>
+
+<section id="tab-ablations" hidden>
+  <h2>What the policy is actually using</h2>
+  <p class="note">
+    Each row corrupts one input and re-runs the identical suite.
+    <code>shuffled-req</code> pairs a design with another design's requirement;
+    <code>blank-req</code> removes the text entirely; <code>no-mask</code> drops
+    the action-legality mask.
+  </p>
+  <div id="ablations"></div>
+  <p class="callout">
+    <strong>Read these together.</strong> The requirement ablations confirm the
+    policy reads its requirement rather than memorising a family prior. The mask
+    ablation is less flattering: much of the low invalid-action rate belongs to
+    the mask, not the policy.
+  </p>
+</section>
+
+</main>
+
+<script>window.KAIROS_DATA=/*__DATA__*/null;</script>
+<script>/*__VIEWER__*/</script>
+<script>/*__CHARTS__*/</script>
+<script>/*__APP__*/</script>
+</body>
+</html>
