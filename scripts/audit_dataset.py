@@ -24,14 +24,18 @@ REQUIRED_FILES = (
     "model.FCStd",
     "model.step",
     "model.stl",
-    "iso.png",
-    "front.png",
-    "top.png",
-    "right.png",
     "state.json",
     "requirements.json",
     "trajectory.json",
 )
+
+#: Rendered views. Optional, and deliberately NOT in REQUIRED_FILES: nothing
+#: downstream reads the pixels (BC builds from trajectory.json, the dashboard
+#: reads model.stl, and the vision encoder is off), while rendering them is
+#: roughly 46% of generation CPU. Treating them as required would make every
+#: design from a --no-render run audit as incomplete, and `--fix` deletes
+#: incomplete designs, so the dataset would be destroyed by a passing audit.
+OPTIONAL_RENDERS = ("iso.png", "front.png", "top.png", "right.png")
 
 
 def audit_design(design_dir: Path) -> list[str]:
@@ -78,6 +82,10 @@ def main() -> int:
     backups = list(designs_dir.glob("design_*/*.FCBak")) + list(
         designs_dir.glob("design_*/*.FCStd1")
     )
+    rendered = sum(
+        1 for d in designs_dir.glob("design_*")
+        if all((d / name).exists() for name in OPTIONAL_RENDERS)
+    )
     # trajectories/ held a byte-identical copy of every
     # designs/*/trajectory.json (30 MB, read by nothing). The generator no
     # longer writes it; this reports any left over from an older run.
@@ -92,6 +100,7 @@ def main() -> int:
     for name, problems in sorted(broken.items())[:15]:
         print(f"  {name}: {problems[0]}" + (f" (+{len(problems) - 1} more)" if len(problems) > 1 else ""))
     print(f"backup files:         {len(backups)}")
+    print(f"with rendered views:  {rendered}/{len(complete) + len(broken)} (optional)")
     if legacy_trajectories:
         print(f"legacy trajectories/: {len(legacy_trajectories)} files "
               f"(duplicates of designs/*/trajectory.json; --fix removes them)")

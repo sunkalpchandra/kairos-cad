@@ -24,6 +24,11 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--start-id", type=int, default=0, help="design id offset for sharding")
     parser.add_argument("--kinds", nargs="+", default=None, help="family names (default: all registered)")
+    parser.add_argument(
+        "--render", action="store_true",
+        help="also write the four PNG views (~46%% of generation time; nothing "
+             "in training or evaluation reads them)",
+    )
     args = parser.parse_args()
 
     from kairos.cad.backend import freecad_available, freecad_version
@@ -34,7 +39,7 @@ def main() -> int:
 
     from kairos.data.generator import generate_dataset
 
-    print(f"FreeCAD {freecad_version()}, generating {args.count} designs → {args.out}")
+    print(f"FreeCAD {freecad_version()}, generating {args.count} designs -> {args.out}")
     start = time.time()
     stats = generate_dataset(
         args.out,
@@ -42,6 +47,7 @@ def main() -> int:
         seed=args.seed,
         kinds=tuple(args.kinds) if args.kinds else None,
         start_id=args.start_id,
+        render=args.render,
     )
     elapsed = time.time() - start
     print(

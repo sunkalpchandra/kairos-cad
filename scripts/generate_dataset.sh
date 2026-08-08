@@ -12,6 +12,11 @@ set -euo pipefail
 
 ROOT="${1:-dataset}"
 PER_SHARD="${2:-135}"
+# Rendering the four PNG views is ~46% of generation CPU and nothing in
+# training, evaluation or the dashboard reads the pixels. Set KAIROS_RENDER=1
+# to write them anyway (sample images for docs).
+RENDER_FLAG=""
+[ "${KAIROS_RENDER:-0}" = "1" ] && RENDER_FLAG="--render"
 CONCURRENCY=4
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY="${KAIROS_PYTHON:-/Applications/FreeCAD.app/Contents/Resources/bin/python}"
@@ -37,7 +42,8 @@ for i in "${!SEEDS[@]}"; do
   fi
   echo "shard $((i + 1))/${#SEEDS[@]}: seed=$seed start_id=$start_id count=$PER_SHARD"
   PYTHONPATH="$REPO" "$PY" scripts/generate_brackets.py \
-    --count "$PER_SHARD" --out "$ROOT/designs" --seed "$seed" --start-id "$start_id" &
+    --count "$PER_SHARD" --out "$ROOT/designs" --seed "$seed" --start-id "$start_id" \
+    $RENDER_FLAG &
   pids="$pids $!"
   if (( $(echo $pids | wc -w) >= CONCURRENCY )); then
     for pid in $pids; do wait "$pid"; done

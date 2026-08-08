@@ -3,7 +3,7 @@
 For each sampled design: execute the family recipe, validate the result, and
 write the dataset layout from the project spec, designs/design_NNNNNN/
         model.FCStd  model.step  model.stl
-        iso.png  front.png  top.png  right.png
+        iso.png front.png top.png right.png   (only with render=True)
         state.json  requirements.json  trajectory.json
 
 Invalid or infeasible designs are rejected (with a recorded reason), never
@@ -61,8 +61,16 @@ def generate_design(
     out_dir: Path,
     design_id: int,
     stats: GenerationStats,
+    render: bool = False,
 ) -> bool:
-    """Generate one validated design of the given family; True if written."""
+    """Generate one validated design of the given family; True if written.
+
+    ``render`` writes the four PNG views. Off by default because nothing
+    downstream reads the pixels (BC builds every example from trajectory.json,
+    the dashboard tessellates model.stl, and the vision encoder is not built)
+    while the four rasterizations are roughly 46% of generation CPU. Turn it on
+    for sample images.
+    """
     family = get_family(kind)
     stats.attempted += 1
     params = family.params_cls.sample(rng)
@@ -97,7 +105,8 @@ def generate_design(
 
         design_dir = out_dir / f"design_{design_id:06d}"
         design_dir.mkdir(parents=True, exist_ok=True)
-        engine.render(design_dir)
+        if render:
+            engine.render(design_dir)
         engine.export_step(design_dir / "model.step")
         engine.export_stl(design_dir / "model.stl")
         engine.save(design_dir / "model.FCStd")
@@ -128,6 +137,7 @@ def generate_dataset(
     kinds: tuple[str, ...] | None = None,
     max_attempts_factor: int = 8,
     start_id: int = 0,
+    render: bool = False,
 ) -> GenerationStats:
     """Generate ``count`` validated designs, cycling families, seeded.
 
@@ -142,7 +152,7 @@ def generate_dataset(
     design_id = start_id
     while stats.written < count and stats.attempted < count * max_attempts_factor:
         kind = kinds[design_id % len(kinds)]
-        generate_design(kind, rng, out_dir, design_id, stats)
+        generate_design(kind, rng, out_dir, design_id, stats, render=render)
         design_id += 1
     stats_path = out_dir / (
         "generation_stats.json" if start_id == 0 else f"generation_stats_{start_id:06d}.json"
