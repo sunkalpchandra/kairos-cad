@@ -209,5 +209,13 @@ make benchmark PRESET=core      # run the baselines
 
 - A `bc_kl_coef` sweep with multiple seeds. Phase 5's single-seed anchored /
   unanchored comparison remains suggestive rather than conclusive.
-- Paired statistics. Every policy faces identical tasks, which makes paired
-  bootstrap CIs the correct test; the current tables report point estimates.
+- **Target selection.** `encode()` cannot recover which edge, face or feature an
+  expert action pointed at — it returns index 0 — so any recipe that patterns a
+  *specific* feature is replayed against the wrong one. This is now the largest
+  single item under the oracle ceiling: it is why the flange family scores 0.000
+  satisfaction on replay while its expert scores 1.000.
+- Multi-body booleans. `UNION`/`CUT`/`INTERSECTION` decode and validate, but the
+  executor cannot perform them, so a policy emitting one always fails.
+
+(Paired bootstrap statistics were listed here and are now implemented — see the
+interval table above and `kairos/benchmark/statistics.py`.)
