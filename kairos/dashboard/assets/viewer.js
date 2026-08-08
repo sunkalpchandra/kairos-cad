@@ -31,16 +31,39 @@ void main() {
 /* Two-light rig in view space: a key light over the camera's shoulder and a
  * dim fill from below, so faces turned away from the key are still readable
  * rather than solid black. Plus a rim term to separate the part from the
- * background at grazing angles. */
+ * background at grazing angles.
+ *
+ * Shading is FLAT, from screen-space derivatives of the view position, not from
+ * the interpolated vertex normal. Welding is what makes the mesh compact, but
+ * averaging normals across a welded 90-degree edge is exactly wrong for a
+ * machined part: every corner shades as if it were filleted, and the
+ * tessellation's diagonals show up as creases across faces that are dead flat.
+ * A per-fragment face normal renders the part the way the geometry actually is.
+ *
+ * `vNormal` stays as the fallback for contexts without OES_standard_derivatives.
+ */
 const FRAGMENT_SHADER = `
+#ifdef GL_OES_standard_derivatives
+#extension GL_OES_standard_derivatives : enable
+#endif
 precision mediump float;
 varying vec3 vNormal;
 varying vec3 vViewPosition;
 uniform vec3 uColor;
+uniform bool uFlat;
 void main() {
+  vec3 viewDir = normalize(-vViewPosition);
   vec3 normal = normalize(vNormal);
   if (!gl_FrontFacing) normal = -normal;
-  vec3 viewDir = normalize(-vViewPosition);
+#ifdef GL_OES_standard_derivatives
+  if (uFlat) {
+    normal = normalize(cross(dFdx(vViewPosition), dFdy(vViewPosition)));
+    // The derivative cross product's sign follows screen orientation, not
+    // winding, so gl_FrontFacing cannot correct it. Every visible fragment of
+    // a closed solid faces the camera, so orient it against the view ray.
+    if (dot(normal, viewDir) < 0.0) normal = -normal;
+  }
+#endif
   vec3 keyDir = normalize(vec3(0.4, 0.7, 1.0));
   vec3 fillDir = normalize(vec3(-0.5, -0.6, 0.4));
 
@@ -185,6 +208,9 @@ class Viewer {
     // Meshes exceeding 65535 vertices need 32-bit indices; without the
     // extension they would silently wrap and render as confetti.
     this.uint32Indices = !!gl.getExtension('OES_element_index_uint');
+    // Must be requested before the shader that #extension-enables it is
+    // compiled, or the directive fails to link.
+    this.derivatives = !!gl.getExtension('OES_standard_derivatives');
     this.program = linkProgram(gl);
     this.attributes = {
       position: gl.getAttribLocation(this.program, 'aPosition'),
@@ -195,7 +221,9 @@ class Viewer {
       projection: gl.getUniformLocation(this.program, 'uProjection'),
       normalMatrix: gl.getUniformLocation(this.program, 'uNormalMatrix'),
       color: gl.getUniformLocation(this.program, 'uColor'),
+      flat: gl.getUniformLocation(this.program, 'uFlat'),
     };
+    this.flatShading = this.derivatives;
     this.buffers = {
       position: gl.createBuffer(),
       normal: gl.createBuffer(),
@@ -293,6 +321,7 @@ class Viewer {
     gl.uniformMatrix4fv(this.uniforms.projection, false, projection);
     gl.uniformMatrix3fv(this.uniforms.normalMatrix, false, upperLeft3x3(modelView));
     gl.uniform3fv(this.uniforms.color, this.color);
+    gl.uniform1i(this.uniforms.flat, this.flatShading ? 1 : 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
     gl.enableVertexAttribArray(this.attributes.position);
