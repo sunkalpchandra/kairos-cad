@@ -61,7 +61,6 @@ def generate_design(
     out_dir: Path,
     design_id: int,
     stats: GenerationStats,
-    trajectories_dir: Path | None = None,
 ) -> bool:
     """Generate one validated design of the given family; True if written."""
     family = get_family(kind)
@@ -115,11 +114,6 @@ def generate_design(
         trajectory["family"] = kind
         trajectory["recipe_actions"] = [a.to_dict() for a in actions]
         (design_dir / "trajectory.json").write_text(json.dumps(trajectory, indent=2))
-        if trajectories_dir is not None:
-            trajectories_dir.mkdir(parents=True, exist_ok=True)
-            (trajectories_dir / f"trajectory_{design_id:06d}.json").write_text(
-                json.dumps(trajectory, indent=2)
-            )
         stats.written += 1
         stats.by_family[kind] = stats.by_family.get(kind, 0) + 1
         return True
@@ -142,14 +136,13 @@ def generate_dataset(
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    trajectories_dir = out_dir.parent / "trajectories"
     kinds = tuple(kinds) if kinds else tuple(family_names())
     rng = random.Random(seed)
     stats = GenerationStats()
     design_id = start_id
     while stats.written < count and stats.attempted < count * max_attempts_factor:
         kind = kinds[design_id % len(kinds)]
-        generate_design(kind, rng, out_dir, design_id, stats, trajectories_dir)
+        generate_design(kind, rng, out_dir, design_id, stats)
         design_id += 1
     stats_path = out_dir / (
         "generation_stats.json" if start_id == 0 else f"generation_stats_{start_id:06d}.json"

@@ -78,11 +78,12 @@ def main() -> int:
     backups = list(designs_dir.glob("design_*/*.FCBak")) + list(
         designs_dir.glob("design_*/*.FCStd1")
     )
-    orphan_trajectories = [
-        p
-        for p in (trajectories_dir.glob("trajectory_*.json") if trajectories_dir.is_dir() else [])
-        if not (designs_dir / p.stem.replace("trajectory_", "design_")).is_dir()
-    ]
+    # trajectories/ held a byte-identical copy of every
+    # designs/*/trajectory.json (30 MB, read by nothing). The generator no
+    # longer writes it; this reports any left over from an older run.
+    legacy_trajectories = list(
+        trajectories_dir.glob("trajectory_*.json") if trajectories_dir.is_dir() else []
+    )
 
     print(f"complete designs:     {len(complete)}")
     for family, count in sorted(by_family.items()):
@@ -91,7 +92,9 @@ def main() -> int:
     for name, problems in sorted(broken.items())[:15]:
         print(f"  {name}: {problems[0]}" + (f" (+{len(problems) - 1} more)" if len(problems) > 1 else ""))
     print(f"backup files:         {len(backups)}")
-    print(f"orphan trajectories:  {len(orphan_trajectories)}")
+    if legacy_trajectories:
+        print(f"legacy trajectories/: {len(legacy_trajectories)} files "
+              f"(duplicates of designs/*/trajectory.json; --fix removes them)")
 
     if args.fix:
         for name in broken:
@@ -109,17 +112,19 @@ def main() -> int:
                 path.unlink()
                 removed_backups += 1
 
-        removed_orphans = 0
+        # Every file here duplicates designs/*/trajectory.json exactly, so the
+        # whole directory goes rather than only the orphans.
+        removed_legacy = 0
         if trajectories_dir.is_dir():
             for path in trajectories_dir.glob("trajectory_*.json"):
-                design = designs_dir / path.stem.replace("trajectory_", "design_")
-                if not design.is_dir():
-                    path.unlink()
-                    removed_orphans += 1
+                path.unlink()
+                removed_legacy += 1
+            if not any(trajectories_dir.iterdir()):
+                trajectories_dir.rmdir()
 
         print(
             f"fixed: removed {len(broken)} dirs, {removed_backups} backups, "
-            f"{removed_orphans} orphan trajectories"
+            f"{removed_legacy} legacy trajectory copies"
         )
     return 0 if not broken or args.fix else 2
 
