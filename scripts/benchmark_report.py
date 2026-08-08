@@ -23,6 +23,28 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
+#: Columns of the headline table, in the order they are published.
+LEADERBOARD_FIELDS = (
+    "progress_score",
+    "finished_successfully",
+    "validity_rate",
+    "satisfaction_rate",
+    "efficiency",
+)
+
+#: The milestone ladder, in ascending order. Kept in step with
+#: `kairos.benchmark.metrics.MILESTONES`; asserted below rather than trusted.
+MILESTONES = (
+    "opened_a_sketch",
+    "drew_geometry",
+    "made_a_solid",
+    "solid_is_valid",
+    "has_any_hole",
+    "all_constraints_met",
+    "finished_successfully",
+)
+
+
 def _suffix_of(task_id: str) -> int | None:
     """Suffix length from a task id, or None for BUILD tasks."""
     if not task_id.startswith("complete-k"):
@@ -45,9 +67,24 @@ def main() -> int:
         print(f"error: no traces under {args.runs}", file=sys.stderr)
         return 1
 
+    # A silently reordered or renamed ladder would publish a table whose columns
+    # do not mean what their headers say, which is worse than not publishing it.
+    from kairos.benchmark.metrics import MILESTONES as LADDER
+
+    if tuple(name for name, _ in LADDER) != MILESTONES:
+        print(
+            "error: the milestone ladder in kairos/benchmark/metrics.py no longer "
+            f"matches this report's columns:\n  metrics: {[n for n, _ in LADDER]}\n"
+            f"  report : {list(MILESTONES)}",
+            file=sys.stderr,
+        )
+        return 1
+
     curves: dict[str, dict[int, list[bool]]] = defaultdict(lambda: defaultdict(list))
     builds: dict[str, list[bool]] = defaultdict(list)
     families: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    # Column -> per-policy values, for the leaderboard and milestone tables.
+    columns: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
 
     for path in traces:
         for line in path.read_text().splitlines():
@@ -65,8 +102,44 @@ def main() -> int:
             families[policy][row.get("family", "unknown")].append(
                 float(row.get("progress_score", 0.0))
             )
+            for field in (*LEADERBOARD_FIELDS, *MILESTONES):
+                value = row.get(field)
+                if value is not None:
+                    columns[policy][field].append(float(value))
 
-    lines: list[str] = ["## success(k): finish the last k actions", ""]
+    def mean(policy: str, field: str) -> str:
+        values = columns[policy].get(field, [])
+        return f"{sum(values) / len(values):.3f}" if values else "—"
+
+    def rate(policy: str, field: str) -> str:
+        values = columns[policy].get(field, [])
+        return f"{sum(values) / len(values):.2f}" if values else "—"
+
+    ranked = sorted(
+        columns,
+        key=lambda p: -(sum(columns[p].get("progress_score", [0]))
+                        / max(1, len(columns[p].get("progress_score", [0])))),
+    )
+
+    lines: list[str] = ["## leaderboard", ""]
+    lines += [
+        "| policy | " + " | ".join(f.replace("_", " ") for f in LEADERBOARD_FIELDS) + " |",
+        "| --- |" + " --- |" * len(LEADERBOARD_FIELDS),
+    ]
+    for policy in ranked:
+        cells = " | ".join(mean(policy, field) for field in LEADERBOARD_FIELDS)
+        lines.append(f"| `{policy}` | {cells} |")
+
+    lines += ["", "## milestone ladder (fraction of episodes reaching each rung)", ""]
+    lines += [
+        "| policy | " + " | ".join(m.replace("_", " ") for m in MILESTONES) + " |",
+        "| --- |" + " --- |" * len(MILESTONES),
+    ]
+    for policy in ranked:
+        cells = " | ".join(rate(policy, milestone) for milestone in MILESTONES)
+        lines.append(f"| `{policy}` | {cells} |")
+
+    lines += ["", "## success(k): finish the last k actions", ""]
     ks = sorted({k for policy in curves.values() for k in policy})
     header = "| policy | BUILD | " + " | ".join(f"k={k}" for k in ks) + " |"
     lines += [header, "| --- |" + " --- |" * (len(ks) + 1)]
