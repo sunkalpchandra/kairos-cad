@@ -44,112 +44,98 @@ right, it scores **0.000** exactly as it must.
 
 ## Results
 
-32 tasks from the frozen held-out test split (`benchmark/kairos-cad-v1`, 756
-train / 162 dev / 162 test), every policy facing identical tasks in identical
-order:
+<!-- generated: benchmark-tables -->
 
-| policy | progress | success | valid | constraints | efficiency |
+## leaderboard
+
+| policy | progress score | finished successfully | validity rate | satisfaction rate | efficiency |
 | --- | --- | --- | --- | --- | --- |
-| `oracle-replay` (ceiling) | **0.594** | 0.500 | 0.924 | 0.656 | 1.000 |
-| `bc` | **0.445** | 0.281 | 0.957 | 0.453 | 0.620 |
-| `ppo` | 0.413 | 0.250 | 0.951 | 0.477 | 0.675 |
-| `scripted-spec` | 0.224 | 0.000 | 1.000 | 0.211 | 0.640 |
-| `immediate-finish` | 0.217 | 0.156 | 1.000 | 0.266 | 1.000 |
-| `legal-random` | 0.146 | 0.000 | 0.676 | 0.268 | 0.604 |
+| `oracle-replay` | 0.896 | 0.895 | 0.961 | 0.895 | 1.000 |
+| `ppo` | 0.485 | 0.395 | 0.704 | 0.508 | 0.739 |
+| `bc` | 0.435 | 0.342 | 0.658 | 0.487 | 0.644 |
+| `immediate-finish` | 0.318 | 0.237 | 1.000 | 0.404 | 1.000 |
+| `scripted-spec` | 0.241 | 0.000 | 1.000 | 0.264 | 0.573 |
+| `legal-random` | 0.194 | 0.000 | 0.668 | 0.356 | 0.464 |
 
-Milestone attainment shows where each dies:
+## milestone ladder (fraction of episodes reaching each rung)
 
-| policy | sketch | geometry | solid | valid | holes | constraints | finished |
+| policy | opened a sketch | drew geometry | made a solid | solid is valid | has any hole | all constraints met | finished successfully |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `oracle-replay` | 1.00 | 1.00 | 0.78 | 0.78 | 0.75 | 0.59 | 0.50 |
-| `bc` | 1.00 | 1.00 | **1.00** | **1.00** | 0.84 | 0.31 | 0.28 |
-| `ppo` | 1.00 | 1.00 | **1.00** | **1.00** | 0.72 | 0.31 | 0.25 |
-| `scripted-spec` | 1.00 | 1.00 | **1.00** | **1.00** | 0.47 | 0.19 | 0.00 |
-| `immediate-finish` | 0.44 | 0.44 | 0.44 | 0.44 | 0.38 | 0.16 | 0.16 |
-| `legal-random` | 0.66 | 0.69 | 0.47 | 0.47 | 0.38 | 0.16 | 0.00 |
+| `oracle-replay` | 0.95 | 1.00 | 0.89 | 0.89 | 0.89 | 0.89 | 0.89 |
+| `ppo` | 0.89 | 1.00 | 0.75 | 0.75 | 0.70 | 0.42 | 0.39 |
+| `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.34 | 0.34 |
+| `immediate-finish` | 0.64 | 0.64 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
+| `scripted-spec` | 1.00 | 1.00 | 1.00 | 1.00 | 0.50 | 0.24 | 0.00 |
+| `legal-random` | 0.78 | 0.87 | 0.66 | 0.64 | 0.50 | 0.21 | 0.00 |
 
-**BC and PPO succeed on 28% and 25% of tasks, not 0.000.** Phase 5 measured
-only full builds from an empty document and reported zero for everything. Given
-a partially built part to finish, both complete a quarter of the work. The
-capability was there; the Phase 5 task simply could not see it.
-
-Both also reach a valid solid on **every** task, beating the oracle's 0.78, because the oracle's codec-degraded polygon builds sometimes fail outright
-while a learned policy reaches *some* valid solid regardless. They then die at
-the same rung the scripted baseline does: holes to constraints (0.84 → 0.31).
-Getting the right holes in the right places is the binding failure for every
-policy tested, which is a far more actionable diagnosis than "success 0.000".
-
-BC appears to edge PPO (0.445 vs 0.413), **but the paired test says the
-benchmark cannot separate them**: the per-task difference is +0.031 with a 95%
-interval of [-0.008, +0.091] over 32 paired tasks, 5 wins to 1 loss with 26
-ties. Reporting "BC beats PPO" from those point estimates would repeat the
-Phase 5 error, where a 6-episode evaluation produced 0.500 for a policy that
-scored 0.286.
-
-What *does* separate, with intervals excluding zero:
-
-| comparison | difference | 95% CI | W/L/T |
-| --- | --- | --- | --- |
-| `bc` vs `legal-random` | +0.298 | [+0.204, +0.402] | 27/2/3 |
-| `bc` vs `scripted-spec` | +0.220 | [+0.126, +0.323] | 21/2/9 |
-| `ppo` vs `scripted-spec` | +0.189 | [+0.098, +0.291] | 18/3/11 |
-| `bc` vs `oracle-replay` | -0.149 | [-0.276, -0.035] | 7/10/15 |
-| `bc` vs `ppo` | +0.031 | [-0.008, +0.091] | 5/1/26 |
-
-Both learned policies clear the scripted null hypothesis and the random floor,
-and BC's remaining gap to the oracle is small (-0.149), most of the headroom on
-these tasks is the codec ceiling, not the policy.
-
-## Compounding error
-
-The `COMPLETE(k)` tasks exist to measure one thing: how fast a policy degrades
-as it must supply more of its own actions. It does, cleanly:
+## success(k): finish the last k actions
 
 | policy | BUILD | k=1 | k=2 | k=4 | k=8 |
 | --- | --- | --- | --- | --- | --- |
-| `oracle-replay` | 0.38 | 0.83 | 0.60 | 0.33 | 0.50 |
-| `bc` | 0.00 | **0.83** | **0.60** | **0.33** | 0.00 |
-| `ppo` | 0.00 | 0.83 | 0.60 | 0.00 | 0.00 |
-| `immediate-finish` | 0.00 | 0.83 | 0.00 | 0.00 | 0.00 |
-| `scripted-spec` | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| `bc` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
+| `immediate-finish` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
 | `legal-random` | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| `oracle-replay` | 1.00 | 1.00 | 1.00 | 0.75 | 0.67 |
+| `ppo` | 0.00 | 1.00 | 0.56 | 0.31 | 0.00 |
+| `scripted-spec` | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 
-BC decays 0.83 → 0.60 → 0.33 → 0.00. **This is the number Phase 4's 0.983
-teacher-forced accuracy and Phase 5's 0.000 closed-loop success were the two
-endpoints of**, and it took a task type that hands the policy a partially built
-part to see the middle of it at all.
+## progress by family
 
-BC matches the oracle exactly at k <= 4, which says the remaining gap on those
-tasks is the action codec, not the policy. PPO tracks BC to k=2 and then falls
-away faster, so its Phase 5 advantage (zero invalid actions) does not extend to
-multi-step planning.
+| policy | corner_bracket | flange | l_bracket | plate | reinforced_plate | spacer | support_bracket |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `bc` | 0.48 | 0.28 | 0.35 | 0.62 | 0.40 | 0.51 | 0.51 |
+| `immediate-finish` | 0.32 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
+| `legal-random` | 0.22 | 0.19 | 0.17 | 0.18 | 0.17 | 0.18 | 0.23 |
+| `oracle-replay` | 1.00 | 0.76 | 1.00 | 1.00 | 1.00 | 0.75 | 1.00 |
+| `ppo` | 0.55 | 0.28 | 0.49 | 0.62 | 0.55 | 0.51 | 0.57 |
+| `scripted-spec` | 0.24 | 0.24 | 0.24 | 0.21 | 0.19 | 0.26 | 0.24 |
 
-`immediate-finish` scoring 0.83 at k=1 is the control working: the expert's last
-action usually *is* FINISH_DESIGN, so a policy that only knows how to quit gets
-that one right. It collapses to 0.00 the moment k=2 asks for anything else.
+## paired comparisons (95% bootstrap CI on the per-task difference)
 
-Per-family progress locates the difficulty: the oracle reaches 1.00 on `plate`,
-`reinforced_plate` and `support_bracket` and only 0.35-0.37 on `flange` and
-`corner_bracket`, the families whose profiles the codec cannot express.
+| comparison | difference | 95% CI | W/L/T | separates? |
+| --- | --- | --- | --- | --- |
+| `legal-random` vs `oracle-replay` | -0.702 | [-0.765, -0.634] | 1/71/4 | yes |
+| `oracle-replay` vs `scripted-spec` | +0.655 | [+0.585, +0.720] | 68/8/0 | yes |
+| `immediate-finish` vs `oracle-replay` | -0.578 | [-0.672, -0.479] | 0/54/22 | yes |
+| `bc` vs `oracle-replay` | -0.461 | [-0.552, -0.367] | 0/46/30 | yes |
+| `oracle-replay` vs `ppo` | +0.411 | [+0.314, +0.505] | 42/0/34 | yes |
+| `legal-random` vs `ppo` | -0.291 | [-0.363, -0.222] | 2/53/21 | yes |
+| `ppo` vs `scripted-spec` | +0.244 | [+0.173, +0.318] | 43/19/14 | yes |
+| `bc` vs `legal-random` | +0.241 | [+0.175, +0.310] | 45/2/29 | yes |
+| `bc` vs `scripted-spec` | +0.194 | [+0.126, +0.264] | 36/19/21 | yes |
+| `immediate-finish` vs `ppo` | -0.167 | [-0.236, -0.104] | 0/40/36 | yes |
+| `immediate-finish` vs `legal-random` | +0.124 | [+0.072, +0.181] | 18/10/48 | yes |
+| `bc` vs `immediate-finish` | +0.117 | [+0.064, +0.178] | 32/0/44 | yes |
+| `immediate-finish` vs `scripted-spec` | +0.077 | [+0.025, +0.133] | 18/27/31 | yes |
+| `bc` vs `ppo` | -0.050 | [-0.108, +0.002] | 3/10/63 | **no** |
+| `legal-random` vs `scripted-spec` | -0.047 | [-0.063, -0.031] | 0/28/48 | yes |
+
+<!-- /generated -->
 
 ## The oracle ceiling
 
-**`oracle-replay` scores 0.431 on BUILD tasks, not 1.000.**
+`oracle-replay` replays the recorded expert actions through the same codec a
+policy must use, so its score is the ceiling for any policy on this action
+space. It now scores **1.000 on BUILD**, which is the first time the harness
+invariant in `baselines.py` has held.
 
-The oracle replays the recorded expert actions through the same action codec a
-policy must use. It cannot reproduce the expert's own build, because six of the
-eight families draw their profile with an irregular `ADD_POLYGON` that the
-codec can only express as a regular n-gon.
+Getting there took four fixes, and the sequence is the useful part:
 
-So **0.431 is the ceiling for any policy on BUILD tasks**. Phase 5 reported
-0.000 closed-loop success and attributed it to the policy. A substantial part
-of it is the action space: no policy, however good, can build those parts
-through this codec. That does not excuse 0.000, the ceiling is 0.431, not
-0.000, but any future claim about policy quality on BUILD has to be read
-against it rather than against 1.0.
+| ceiling on BUILD | what was wrong |
+| --- | --- |
+| 0.431 | six families drew their profile as one irregular `ADD_POLYGON`, which the codec can only express as a regular n-gon |
+| 0.594 | slot ranges narrower than the data, so `encode` clipped and `decode` returned the boundary |
+| 0.858 | requirement text rounded to nearest, so a 6.1866 mm wall stated as "6.2 mm" made the expert violate its own requirement |
+| 1.000 | `encode` returned target index 0, so replayed fillets and chamfers landed on whichever edge was listed first |
 
-This is exactly what an auditing baseline is for. It was cheap, it ran first,
-and it changed the interpretation of every number downstream.
+None of these raised. Each produced a plausible number in the expected
+direction, and each was found by asking why an oracle replaying ground truth
+scored below perfect rather than accepting the number as a codec limit.
+
+The consequence is that the action space is no longer an excuse. Phase 5
+reported 0.000 closed-loop success and attributed it to the policy; a large
+part was the encoding. That is now closed, and what remains on BUILD is the
+policy.
 
 ## Ablations
 
