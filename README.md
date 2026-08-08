@@ -106,11 +106,10 @@ covered by automated checks (`make audit-codec`):
 
 ## Policy
 
-A 1.14M-parameter vision-language-action model maps a requirement plus the
-current geometry to the next structured action. Behavioral cloning on the
-expert trajectories reaches **0.983** held-out next-action accuracy (majority
-baseline 0.277), held out by *design* rather than by step, see
-[docs/phase4.md](docs/phase4.md).
+A 1.02M-parameter language-action model maps a requirement plus the current
+geometry to the next structured action. Behavioral cloning on the expert
+trajectories reaches **0.987** held-out next-action accuracy, held out by
+*design* rather than by step, see [docs/phase4.md](docs/phase4.md).
 
 ```bash
 make setup-learn   # optional torch extra; not installable under FreeCAD's python
@@ -119,24 +118,31 @@ python3 scripts/evaluate_bc.py --checkpoint runs/bc/checkpoint.pt
 ```
 
 That number is *teacher forced*: the policy is scored one step at a time from
-the expert's state, so its errors never compound. Asked to drive a build on its
-own, **neither BC nor PPO completes a single held-out design**:
+the expert's state, so its errors never compound. The benchmark measures what
+happens when it has to drive:
 
-| policy | closed-loop success | solid | invalid actions |
-| --- | --- | --- | --- |
-| behavioral cloning | 0.000 | 1.000 | 0.018 |
-| PPO | 0.000 | 1.000 | **0.000** |
-| legal-random baseline | 0.000 | 0.143 | 0.265 |
+| policy | progress | success | validity | constraints |
+| --- | --- | --- | --- | --- |
+| `oracle-replay` (ceiling) | 0.896 | 0.895 | 0.961 | 0.895 |
+| `ppo` | 0.485 | 0.395 | 0.704 | 0.508 |
+| `bc` | 0.435 | 0.342 | 0.658 | 0.487 |
+| `immediate-finish` | 0.318 | 0.237 | 1.000 | 0.404 |
+| `scripted-spec` | 0.241 | 0.000 | 1.000 | 0.264 |
+| `legal-random` | 0.194 | 0.000 | 0.668 | 0.356 |
 
-An earlier version of this table reported 0.286 for PPO. That number was an
-artifact of a contaminated split, evaluation re-derived its own held-out pool
-and half of it had been trained on. On a genuinely held-out pool the success
-rate is zero. PPO's real, reproducible gain is elsewhere: it drives invalid
-actions to zero and shortens episodes, without ever finishing a design.
+76 tasks from the frozen test split. PPO leads BC on the point estimate, **but
+the paired bootstrap does not separate them**: the per-task difference is
+-0.050 with a 95% interval of [-0.108, +0.002] over 76 paired tasks. Both
+clearly beat the scripted null hypothesis and the random floor.
+
+Full builds from an empty document are still the hard case. Both learned
+policies succeed at k=1 and decay to zero by k=8, which is the compounding
+error Phase 4's teacher-forced number could not show; see
+[docs/phase7.md](docs/phase7.md).
 
 ```bash
 make train-ppo     # PPO against live FreeCAD, over the interpreter bridge
-make eval-ppo      # BC vs PPO vs random, closed loop
+make benchmark PRESET=core
 ```
 
 The learning stack and the CAD stack run in **different interpreters**, torch
@@ -144,35 +150,36 @@ is not installable under FreeCAD's Python, so the environment is served out of
 FreeCAD's process over a JSON bridge. See [docs/phase5.md](docs/phase5.md).
 
 
-## Audit status (2026-08-07)
+## Correctness
 
-A five-way audit of Phases 1-5 found defects that invalidate the published
-numbers. **The code is fixed; the artifacts are not yet regenerated**, so every
-result table in `docs/` is currently stale and flagged as such.
+Every defect this project has shipped had the same shape: **it produced a
+plausible number instead of an error.** Nothing raised, nothing failed a test,
+and the result pointed the expected way at the expected magnitude.
 
-What was wrong, in order of severity:
+| defect | scale | how it presented |
+| --- | --- | --- |
+| requirement parser matched nothing on a quarter of designs | 266/1080 | `satisfaction_rate: 1.0` having verified nothing |
+| expert steps the action codec could not express | 7.81% of steps, 829/1080 | BC dropped them; oracle could not rebuild the part |
+| out-of-range parameters clipped to the boundary | 260 steps, 206/1080 | feature built 40 mm off, `ok: True` every step |
+| requirements stating a bound the ground truth cannot meet | 139/1080 | expert violating its own requirement by 0.013 mm |
+| model selection on the evaluation set | 3 of 6 requirements leaked | 0.286 success that was really 0.000 |
+| `has_any_hole` inferred from satisfaction rate | every episode | credit for holes never drilled |
+| codec ranges 10x wider than the data | radius slot | normalized error *improved* while millimetre error worsened |
 
-- **The requirement parser read nothing from 266 of 1,080 designs.** Its count
-  pattern missed "6 bolt holes", "2 base mounting holes and 2 cross-wall
-  holes", and "through-bore" entirely, and `min_wall_thickness`, declared 940
-  times, was never extracted. Those designs then reported
-  `satisfaction_rate: 1.0` having verified nothing, so the dataset's "100%
-  satisfy every measurable constraint" headline covered a quarter of designs
-  where nothing was measured.
-- **`mounting_angle` was satisfied by any prismatic solid**, and it is the only
-  shape constraint 283 designs carry.
-- **Behavioral cloning saved its last epoch while reporting its best**, so the
-  shipped checkpoint scores 0.955 where the log claims 0.961.
-- **The PPO comparison was measured on requirements PPO trained on**, 3 of 6
-  "held-out" requirements leaked, because training and evaluation derived
-  different splits from different pool sizes.
-- **PPO's GAE treated collector-cut episodes as mid-episode steps**, chaining
-  advantage across episode boundaries on 9% of episodes.
-- **The bridge ignored `max_steps`**, so the client's episode cap was a no-op
-  and the policy was fed the wrong step fraction.
+The pipeline now checks itself, and the checks are the deliverable:
 
-To reproduce corrected results: regenerate the dataset (`scripts/generate_dataset.sh`),
-then `make train-bc`, `make train-ppo`, `make eval-ppo`.
+```bash
+make audit-codec                        # every expert step must round-trip, targets included
+python3 scripts/audit_dataset.py --root dataset
+python3 scripts/sync_docs.py --check    # fails if a doc disagrees with the artifacts
+make benchmark PRESET=core              # exits non-zero if a harness invariant breaks
+```
+
+Two baselines audit the benchmark rather than a policy. `oracle-replay` replays
+ground truth through the agent's own action space and **must score 1.000**;
+`immediate-finish` quits on step one and **must score bottom on every column**.
+Both invariants are asserted per run, and the oracle reaching 1.000 is what
+took four separate encoding bugs to achieve.
 
 ## Requirements
 
