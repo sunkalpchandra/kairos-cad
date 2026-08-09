@@ -438,6 +438,43 @@ def collect_families(runs: str | Path) -> dict[str, Any]:
     }
 
 
+def collect_effort(runs: str | Path) -> dict[str, Any]:
+    """Steps spent against steps the expert needed, on the same tasks.
+
+    The leaderboard's efficiency column is a single number and is None for
+    several policies. This is the ratio it summarises, restricted to episodes
+    that actually finished: a policy that spends three times the expert's
+    budget and never finishes is not inefficient, it is unfinished, and
+    averaging the two together says neither.
+    """
+    traces = _traces_by_policy(Path(runs))
+    rows = []
+    for policy, episodes in sorted(traces.items()):
+        ratios, finished_ratios, finished = [], [], 0
+        for episode in episodes:
+            expert = episode.get("expert_steps") or 0
+            steps = episode.get("steps") or 0
+            if expert <= 0 or steps <= 0 or episode.get("aborted"):
+                continue
+            ratio = steps / expert
+            ratios.append(ratio)
+            if episode.get("finished_successfully"):
+                finished += 1
+                finished_ratios.append(ratio)
+        if not ratios:
+            continue
+        rows.append({
+            "policy": policy,
+            "episodes": len(ratios),
+            "ratio": sum(ratios) / len(ratios),
+            "finished": finished,
+            "ratio_finished": (sum(finished_ratios) / len(finished_ratios))
+                              if finished_ratios else None,
+        })
+    rows.sort(key=lambda r: r["ratio"])
+    return {"rows": rows}
+
+
 def collect_jam(runs: str | Path) -> dict[str, Any]:
     """When a policy's actions start being refused, and whether it recovers.
 
@@ -844,6 +881,7 @@ def build_bundle(
         "task_types": collect_task_types(benchmark_runs),
         "funnel": collect_funnel(benchmark_runs),
         "jam": collect_jam(benchmark_runs),
+        "effort": collect_effort(benchmark_runs),
         "families_scored": collect_families(benchmark_runs),
         "codec": collect_codec(runs_root),
         "dataset": collect_dataset(dataset),
