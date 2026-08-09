@@ -876,6 +876,10 @@ class Viewer {
    */
   load(meshData, { frame = true } = {}) {
     const gl = this.gl;
+    // Points picked off the previous mesh are not on this one. Kept here
+    // rather than left to callers, because every path that swaps geometry
+    // invalidates them and one of them would eventually forget.
+    this.measure = [];
     const decoded = decodeMesh(meshData);
     if (decoded.useUint32 && !this.uint32Indices) {
       throw new Error('mesh needs 32-bit indices but OES_element_index_uint is missing');
