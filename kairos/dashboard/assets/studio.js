@@ -695,6 +695,10 @@ function initTabs() {
       buttons.forEach((other) => other.setAttribute('aria-selected', String(other === button)));
 
       const isModel = view === 'model';
+      // Hiding a panel does not release its grid track: the browser and
+      // inspector columns and the timeline row went on reserving their width
+      // and left the sheets in a 970px slot with empty gutters either side.
+      document.querySelector('.shell').classList.toggle('sheet-mode', !isModel);
       el('canvas').hidden = !isModel;
       el('browser').hidden = !isModel;
       el('inspector').hidden = !isModel;
@@ -710,6 +714,12 @@ function initTabs() {
       // A canvas has no size while hidden, so the first draw into a zero-width
       // viewport produces nothing; redraw on reveal.
       if (isModel && viewer) viewer.render();
+      // The part readouts describe something that is not on screen in a data
+      // workspace, so they go quiet rather than reporting a stale part.
+      ['status-part', 'status-mesh', 'status-style', 'status-step',
+       'status-section', 'status-measure'].forEach((id) => {
+        el(id).hidden = !isModel;
+      });
     });
   });
 }

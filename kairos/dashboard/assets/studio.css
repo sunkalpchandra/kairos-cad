@@ -156,6 +156,19 @@ svg.icon {
   height: 100vh;
 }
 
+/* A data workspace has no browser, inspector or timeline, so it gets the whole
+   window rather than the middle column of a layout built for a part. */
+.shell.sheet-mode {
+  grid-template-columns: 1fr;
+  grid-template-rows: var(--appbar) var(--tabs) var(--ribbon) 1fr var(--status);
+  grid-template-areas:
+    "appbar"
+    "tabs"
+    "ribbon"
+    "canvas"
+    "status";
+}
+
 /* ------------------------------------------------------------------ app bar */
 
 .appbar {
@@ -638,12 +651,20 @@ svg.icon {
   background: var(--ground);
   overflow-y: auto;
   padding: 20px 24px 36px;
+  /* A dashboard is scanned, not read down a column. Sections pair up as soon
+     as there is room for two that are still wide enough to hold a table. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
+  gap: 24px 26px;
+  align-content: start;
 }
+/* Wide tables and anything that heads a workspace take the full width. */
+.sheet > section.span { grid-column: 1 / -1; }
 .sheet[hidden], .canvas[hidden], .browser[hidden], .inspector[hidden], .timeline[hidden] { display: none; }
 
 .sheet h2 { font-size: 14px; font-weight: 620; margin: 0 0 3px; letter-spacing: -0.005em; text-wrap: balance; }
 .sheet .note { color: var(--ink-muted); font-size: 12px; margin: 0 0 14px; max-width: 70ch; line-height: 1.5; }
-.sheet section + section { margin-top: 26px; }
+.sheet > section { min-width: 0; }
 
 .statgrid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -682,8 +703,12 @@ tbody tr.ceiling td:first-child::after {
 .verdict.yes { color: var(--pass); }
 .verdict.no { color: var(--warn); }
 
-.chart { border: 1px solid var(--rule); background: var(--chrome); padding: 13px; }
-.chart svg { display: block; width: 100%; max-width: 760px; height: auto; overflow: visible; }
+/* Capped at the width the chart is actually drawn at (720 plus padding and
+   border). Stretching the svg past that scales the type with the geometry, so
+   the axis labels grow to headline size; letting the box grow past the drawing
+   leaves a dead band inside the frame. Matching the two avoids both. */
+.chart { border: 1px solid var(--rule); background: var(--chrome); padding: 13px; max-width: 748px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart .grid { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 2 4; }
 .chart .axis { stroke: var(--rule-strong); stroke-width: 1; }
 .chart text { fill: var(--ink-faint); font-size: 10px; font-family: var(--mono); }
