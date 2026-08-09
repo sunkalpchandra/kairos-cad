@@ -23,6 +23,46 @@ jobs:
       - name: Test (non-CAD)
         run: pytest -m "not cad" -q
 
-  # CAD integration tests need a FreeCAD installation; they run locally via
-  # `make test-cad`. Packaging FreeCAD into CI (apt or AppImage) is tracked
-  # as future work.
+  checks:
+    # Guards that need no dataset and no run artifacts, so they can gate every
+    # push. The doc-table gate (scripts/sync_docs.py --check) is deliberately
+    # absent: it reads runs/*_traces.jsonl, which are not committed.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Text hygiene
+        # A repo-wide punctuation sweep once collapsed the regex class [x*] to
+        # [xx] in the requirement parser. It still matched ASCII x, so the whole
+        # suite passed while any requirement using the other character silently
+        # lost its envelope constraint.
+        run: python3 scripts/check_text.py
+      - name: Built pages match their assets
+        # docs/index.html inlines the stylesheet, sprite and scripts. Editing an
+        # asset without rebuilding ships a page that renders fine and is simply
+        # not the thing in the repository.
+        run: python3 scripts/check_station.py
+
+  cad:
+    # FreeCAD's bundled interpreter, which is where the CAD half of the project
+    # lives. Debian's freecad-python3 provides the headless binary, so this no
+    # longer needs a local install.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install FreeCAD
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends freecad-python3
+      - name: Report the interpreter
+        run: |
+          which freecadcmd || true
+          freecadcmd --version || true
+      - name: CAD tests
+        run: |
+          PYTHONPATH="$PWD" freecadcmd -c "
+          import sys, pytest
+          sys.exit(pytest.main(['-m', 'cad', '-q', 'tests']))
+          "
