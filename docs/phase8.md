@@ -171,6 +171,34 @@ actions it never chose.
 Rejection is encoded in cell height as well as colour, so the strip still reads
 without separating red from green.
 
+### What the policy built
+
+The strip says what a policy did. It does not say what it *made*, and for a
+project about building CAD that is the thing. `scripts/build_rollout_meshes.py`
+replays the actions the environment accepted and exports the solid the episode
+left, and the workspace shows it beside the expert's.
+
+That needed one more change. The environment already built the resolved action
+and put it in `info`; the bridge kept only its name, which is what made a
+policy's geometry unreproducible from its trace. It now passes the whole
+action through -- a few hundred bytes a step over a local pipe.
+
+Rejected actions are skipped on replay. One changed nothing when it was
+refused, so replaying it would stop the rebuild at the first rejection rather
+than at the end of what the policy actually built.
+
+**20 of 42 episodes leave a solid** on the core preset. `oracle-replay` and
+`scripted-spec` always do; `bc` and `ppo` on three of the seven tasks;
+`immediate-finish` and `legal-random` never. The export reports the count that
+did not, because a policy that never made a solid is a result rather than a
+gap in the export.
+
+On `build-design_000006` the expert builds a base plate, a wall, a triangular
+rib and two holes. bc builds the plate and the wall and nothing else, then
+jams for the remaining 31 steps. Both viewers share a camera and the expert's
+framing, or the comparison would be between two framings rather than two
+parts.
+
 A trace written before this change has no per-step record. The page says so
 rather than drawing the cells as accepted -- an empty list rendered as a clean
 run would show a policy jamming as a policy succeeding, which is the same
@@ -209,6 +237,10 @@ Software rendering (swiftshader) is enough to judge shading, layout and colour.
   no radius. It snaps to triangle corners, which on these parts are the model
   corners, but on a curved face that is a tessellation vertex and not a
   feature.
+- **Rollout geometry is only as good as the replay.** The solid is rebuilt
+  outside the environment that scored the episode, so a discrepancy between
+  the two would show as a wrong part rather than an error. Nothing currently
+  cross-checks the rebuilt mass against the mass the runner recorded.
 - **16 of 24 designs have no step meshes.** Their timelines highlight a node
   and nothing else, exactly as before. The build report prints the scrubbable
   count so a page built without `build_steps.py` says so.
