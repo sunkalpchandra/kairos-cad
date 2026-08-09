@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint check-text check-docs sync-docs generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard demo clean
+.PHONY: setup setup-learn test test-cad test-all lint check-text check-docs sync-docs generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard dashboard-studio demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -93,7 +93,13 @@ benchmark:
 audit-codec:
 	$(PYTHON) scripts/audit_codec.py --root dataset --json runs/codec_audit.json --max-rate 0.0
 
-## Phase 8: build the standalone dashboard from artifacts on disk.
+## Phase 8: the review station, a CAD-workstation layout over the artifacts.
+dashboard-studio:
+	$(PYTHON) scripts/build_dashboard.py --dataset dataset \
+		--benchmark runs/benchmark_core --ablation runs/ablation --runs runs \
+		--layout studio --out docs/kairos.html --stamp "$(SUITE_VERSION)"
+
+## The plain report layout over the same bundle.
 dashboard:
 	$(PYTHON) scripts/build_dashboard.py --dataset dataset \
 		--benchmark runs/benchmark_core --ablation runs/ablation --runs runs \
