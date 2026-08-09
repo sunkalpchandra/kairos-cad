@@ -658,6 +658,48 @@ def collect_comparisons(runs: str | Path) -> dict[str, Any]:
     }
 
 
+def collect_ablation_intervals(
+    runs: str | Path, baseline: str = "bc"
+) -> dict[str, Any]:
+    """Paired bootstrap intervals on each ablation against the intact policy.
+
+    The ablation table shows point deltas. A point delta is what this project
+    has had to retract twice: two seeds gave opposite signs on the requirement
+    ablation, and nothing on the page said whether either sign was separable
+    from zero. The same paired bootstrap the comparisons use answers that, on
+    the same tasks, with each ablation paired to the run it perturbs.
+    """
+    traces = _traces_by_policy(Path(runs))
+    if baseline not in traces or len(traces) < 2:
+        return {"baseline": baseline, "rows": []}
+
+    from kairos.benchmark.statistics import compare_all
+
+    wanted = {baseline}
+    wanted.update(name for name in traces if name != baseline)
+    comparisons = compare_all({name: traces[name] for name in wanted})
+
+    rows = []
+    for comparison in comparisons:
+        pair = {comparison.policy_a, comparison.policy_b}
+        if baseline not in pair or not comparison.n_pairs:
+            continue
+        other = (pair - {baseline}).pop()
+        # Orient every interval as ablated minus intact, so a negative number
+        # always means the ablation cost the policy something.
+        flip = comparison.policy_a == baseline
+        rows.append({
+            "condition": other,
+            "difference": -comparison.mean_difference if flip else comparison.mean_difference,
+            "low": -comparison.ci_high if flip else comparison.ci_low,
+            "high": -comparison.ci_low if flip else comparison.ci_high,
+            "separates": bool(comparison.separates),
+            "n_pairs": comparison.n_pairs,
+        })
+    rows.sort(key=lambda r: r["difference"])
+    return {"baseline": baseline, "rows": rows}
+
+
 def collect_ablations(runs: str | Path, baseline: str = "bc") -> dict[str, Any]:
     """Ablation leaderboard, expressed as deltas against the intact policy.
 
@@ -806,6 +848,7 @@ def build_bundle(
         "codec": collect_codec(runs_root),
         "dataset": collect_dataset(dataset),
         "ablations": collect_ablations(ablation_runs),
+        "ablation_intervals": collect_ablation_intervals(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
         "counts": {
