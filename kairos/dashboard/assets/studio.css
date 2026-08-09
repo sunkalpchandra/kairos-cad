@@ -958,3 +958,54 @@ tbody tr.ceiling td:first-child::after {
   }
   .browser, .inspector { display: none; }
 }
+
+
+/* ------------------------------------------------------------------- print */
+
+/* A review station gets printed and turned into PDFs. The screen layout is a
+   full-height grid with three scrolling panes, none of which survives that:
+   a printed page has one column and no viewport to scroll. */
+@media print {
+  /* Every theme state has to be named. The dark blocks are
+     `:root:not([data-theme="light"])` and `:root[data-theme="dark"]`, both
+     specificity 0,2,0, so a bare `:root` here loses to them and the page
+     prints its screen palette onto paper. */
+  :root,
+  :root[data-theme="light"],
+  :root[data-theme="dark"],
+  :root:not([data-theme="light"]) {
+    --ground: #fff; --chrome: #fff; --chrome-2: #fff; --sunken: #f2f2f2;
+    --ink: #111; --ink-muted: #444; --ink-faint: #666;
+    --rule: #ccc; --rule-strong: #999;
+    --viewport-top: #f6f7f9; --viewport-bottom: #fff;
+    --grid-line: #d8dce1; --grid-axis-x: #c2ced0; --grid-axis-y: #c8d0d8;
+    --accent: #0f6d78; --accent-solid: #0f6d78;
+    --accent-soft: rgba(15, 109, 120, 0.12);
+    --pass: #2c7a4f; --warn: #8f6115; --fail: #a5372f;
+  }
+  body { overflow: visible; }
+  html, body { height: auto; }
+
+  .shell {
+    display: block;
+    height: auto;
+  }
+  /* Chrome that exists to operate the page, not to carry its content. */
+  .ribbon, .workspaces, .navbar, .viewcube-wrap, .browser-search,
+  .keymap, .timeline, .statusbar, .hud { display: none !important; }
+
+  /* Every workspace prints, in order. On screen they are alternatives; on
+     paper hiding four of them would print a fifth of the document. */
+  .sheet[hidden], .canvas[hidden], .browser[hidden], .inspector[hidden] {
+    display: block !important;
+  }
+  .sheet { display: block; overflow: visible; page-break-before: always; }
+  .canvas { height: 460px; page-break-inside: avoid; }
+  .browser, .inspector { overflow: visible; border: 0; }
+
+  .track, .fail-row, .matrix, .funnel, .tablewrap, .chart, .rollout-compare {
+    page-break-inside: avoid;
+  }
+  h2 { page-break-after: avoid; }
+  a[href]::after { content: ""; }
+}
