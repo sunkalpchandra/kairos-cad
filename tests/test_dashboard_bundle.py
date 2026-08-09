@@ -18,6 +18,7 @@ from kairos.dashboard.bundle import (
     collect_designs,
     collect_failures,
     collect_matrix,
+    collect_task_types,
     collect_rollouts,
     collect_training,
 )
@@ -402,3 +403,39 @@ def test_failures_report_what_the_top_n_left_out(tmp_path):
     assert len(row["kinds"]) == 2
     assert row["other"] == 4
     assert row["distinct"] == 6
+
+
+# ---------------------------------------------------------------- task types
+
+
+def _leaderboard(tmp_path, by_task_type):
+    (tmp_path / "leaderboard.json").write_text(
+        json.dumps({"scores": [], "by_task_type": by_task_type}))
+
+
+def test_task_type_split_keeps_both_kinds_per_policy(tmp_path):
+    _leaderboard(tmp_path, {
+        "bc": {
+            "build": {"progress_score": 0.069, "success_rate": 0.0, "episodes": 16},
+            "complete": {"progress_score": 0.562, "success_rate": 0.467, "episodes": 60},
+        },
+    })
+    rows = collect_task_types(tmp_path)
+    assert rows["kinds"] == ["build", "complete"]
+    assert rows["rows"][0]["build"]["progress"] == 0.069
+    assert rows["rows"][0]["complete"]["success"] == 0.467
+
+
+def test_a_policy_missing_a_kind_reports_none_not_zero(tmp_path):
+    """A kind a policy never ran is not a kind it scored zero on."""
+    _leaderboard(tmp_path, {
+        "bc": {"build": {"progress_score": 0.069, "success_rate": 0.0, "episodes": 16}},
+        "ppo": {"complete": {"progress_score": 0.5, "success_rate": 0.4, "episodes": 60}},
+    })
+    rows = {r["policy"]: r for r in collect_task_types(tmp_path)["rows"]}
+    assert rows["bc"]["complete"]["progress"] is None
+    assert rows["ppo"]["build"]["progress"] is None
+
+
+def test_task_types_without_a_leaderboard_degrade_to_empty(tmp_path):
+    assert collect_task_types(tmp_path) == {"kinds": [], "rows": []}
