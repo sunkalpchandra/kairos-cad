@@ -47,6 +47,9 @@ class TaskResult:
     #: not building at all.
     accepted: list[bool] = field(default_factory=list)
     rejections: list[str] = field(default_factory=list)
+    #: The resolved actions the environment executed, in order, so the solid a
+    #: policy built can be rebuilt from the trace alone.
+    actions: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -58,6 +61,7 @@ class TaskResult:
             "operations": self.operations,
             "accepted": self.accepted,
             "rejections": self.rejections,
+            "actions": self.actions,
             **self.outcome.to_dict(),
         }
 
@@ -130,6 +134,7 @@ def run_task(
         # Only the distinct reasons are worth carrying; a policy that jams
         # repeats one of them for the rest of the episode.
         result.rejections.append("" if accepted else str(info.get("message", "")))
+        result.actions.append(dict(info.get("action") or {}))
         if not accepted:
             outcome.invalid_actions += 1
         _absorb(outcome, observation, next_observation, info, int(operation))

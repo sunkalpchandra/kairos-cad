@@ -82,8 +82,14 @@ def _step_info(info: dict[str, Any]) -> dict[str, Any]:
     """Trim step info to what training and logging actually read."""
     constraints = info.get("constraints") or {}
     result = info.get("result") or {}
+    action = info.get("action") or {}
     return {
-        "operation": (info.get("action") or {}).get("operation"),
+        "operation": action.get("operation"),
+        # The whole resolved action, not just its name. The environment already
+        # has it; dropping it here is what made a policy's geometry
+        # unreproducible from its trace. A few hundred bytes a step over a
+        # local pipe, against being able to rebuild what the policy built.
+        "action": action,
         "ok": bool(result.get("ok", False)),
         "message": str(result.get("message", ""))[:200],
         "reward_components": (info.get("reward_breakdown") or {}).get("components", {}),
