@@ -71,8 +71,8 @@ Development proceeds in phases (see `docs/`):
 - [x] **Phase 3: CAD representation**: geometry graph, observation
       snapshots, numerical/feature encoders, rendered views.
 - [x] **Phase 4: Multimodal VLA + behavioral cloning**: language/vision/state
-      encoders, attention fusion, hierarchical action heads; 0.983 held-out
-      next-action accuracy against a 0.277 majority baseline
+      encoders, attention fusion, hierarchical action heads; 0.987 held-out
+      next-action accuracy
       ([docs/phase4.md](docs/phase4.md)).
 - [x] **Phase 5: Reinforcement learning**: Gymnasium env, shaped reward,
       action masking, PPO with a BC anchor over a FreeCAD<->torch bridge.

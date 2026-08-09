@@ -5,7 +5,7 @@ accuracy. Phase 5 asks the question that actually matters: can it *drive a
 build*, choosing every action itself, living with its own mistakes?
 
 The answer, measured rather than assumed and then re-measured after an audit:
-**no policy tested completes a held-out design.** BC scores 0.983 next-action
+**no policy tested completes a held-out design.** BC scores 0.987 next-action
 accuracy and 0.000 closed-loop success; PPO fine-tuning does not change that,
 though it does eliminate invalid actions entirely.
 
@@ -89,7 +89,7 @@ policy facing the same requirements in the same order:
 | PPO (best checkpoint) | 0.000 | [0.00, 0.00] | 1.000 | +0.72 | 19.4 | 0.000 |
 | legal-random baseline | 0.000 | [0.00, 0.00] | 0.143 | -1.68 | 8.1 | 0.265 |
 
-The gap between 0.983 next-action accuracy and 0.000 closed-loop success is
+The gap between 0.987 next-action accuracy and 0.000 closed-loop success is
 the whole finding. Teacher forcing hands the policy the expert's state at every
 step, so per-step errors never compound; driving its own build, it reaches
 states the demonstrations never visited. It still produces a valid solid in
@@ -115,33 +115,35 @@ above.
 
 ### Ablation: BC anchor
 
-Run twice, identically, changing only `bc_kl_coef` (0.05 vs 0.0), then scored
-under the same 14-episode held-out protocol:
+Run twice, identically, changing only `bc_kl_coef` (0.05 vs 0.0).
 
-| run | success | solid | mean reward | invalid actions |
-| --- | --- | --- | --- | --- |
-| anchored (`bc_kl_coef=0.05`) | 0.286 | **1.000** | **+1.88** | **0.000** |
-| unanchored (`bc_kl_coef=0.0`) | 0.286 | 0.786 | -0.37 | 0.295 |
+**The success column of this experiment is withdrawn.** Both runs were scored
+under the protocol that `evaluate_ppo` used before the split contamination was
+found: it re-derived its own held-out pool from a different pool size than
+training, so three of six "held-out" requirements had been trained on. Both
+runs reported 0.286 under it. That number is not a result and neither is the
+comparison between them; the ablation has not been re-run since.
 
-**The anchor did not change the success rate.** Both reach 0.286, so the
-claim that it is "what makes RL viable here" is not supported by this
-experiment. It is a hypothesis the data declined to confirm.
+What survives is the stability difference, which does not depend on which
+requirements were held out:
 
-What it does buy is stability in everything around the headline number: the
-anchored policy produces a valid solid in every episode and emits no invalid
-actions at all, while the unanchored one degrades to 79% solids and a 30%
-invalid-action rate, with mean reward going negative. That is consistent with
-the drift story, just far weaker than "necessary".
+| run | solid | mean reward | invalid actions |
+| --- | --- | --- | --- |
+| anchored (`bc_kl_coef=0.05`) | 1.000 | +1.88 | 0.000 |
+| unanchored (`bc_kl_coef=0.0`) | 0.786 | -0.37 | 0.295 |
 
-There is a second lesson here, and it is about measurement rather than
-algorithms. During training the unanchored run reported a held-out success rate
-of **0.500**, apparently twice the anchored run, on the 6-episode evaluation
-the loop runs every 5 iterations. At 14 episodes it scored 0.286, identical to
-the anchored run. Six episodes over six requirements simply cannot separate
-those hypotheses, and the best-checkpoint selection inside the loop is picking
-on that noisy estimate. `eval_episodes` is now defaulted higher for this
-reason, and the reported intervals (`[0.07, 0.50]` for a 0.286 point estimate)
-show how much room remains.
+The anchored policy produced a valid solid in every episode and emitted no
+invalid actions; the unanchored one degraded to 79% solids and a 30%
+invalid-action rate with mean reward going negative. That is consistent with
+the drift the anchor exists to prevent, and much weaker than "what makes RL
+viable here".
+
+There is a measurement lesson independent of the algorithm. During training the
+unanchored run reported a held-out success rate of 0.500 on the 6-episode
+evaluation the loop runs every 5 iterations, apparently twice the anchored run.
+At 14 episodes both scored the same. Six episodes over six requirements cannot
+separate those hypotheses, and best-checkpoint selection inside the loop was
+picking on that estimate. `eval_episodes` now defaults higher.
 
 ### Baseline: BC initialization
 
