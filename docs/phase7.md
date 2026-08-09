@@ -314,11 +314,19 @@ retracted a claim built on one twice: two seeds gave opposite signs on the
 requirement ablation. Paired bootstrap intervals, each condition against the
 intact run it perturbs, over the same 76 tasks:
 
-| condition | difference | 95% interval | separates |
-| --- | --- | --- | --- |
-| `bc+shuffled-req` | -0.036 | [-0.091, +0.014] | no |
-| `bc+blank-req` | +0.053 | [-0.021, +0.125] | no |
-| `bc+no-mask` | -0.009 | [-0.018, -0.001] | yes |
+<!-- generated: ablation-intervals -->
+
+Paired bootstrap on the per-task difference against `bc`, oriented ablated minus intact.
+
+| condition | difference | 95% interval | tasks | separates |
+| --- | --- | --- | --- | --- |
+| `bc+shuffled-req` | -0.036 | [-0.091, +0.014] | 76 | no |
+| `bc+no-mask` | -0.009 | [-0.018, -0.001] | 76 | yes |
+| `bc+blank-req` | +0.053 | [-0.021, +0.125] | 76 | no |
+
+Separating from zero: `bc+no-mask`.
+
+<!-- /generated -->
 
 **Neither requirement ablation separates from zero.** Corrupting the
 requirement and blanking it both leave an interval spanning zero, so on this

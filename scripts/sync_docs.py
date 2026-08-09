@@ -41,6 +41,11 @@ BLOCKS: dict[str, dict] = {
         "command": [sys.executable, "scripts/benchmark_report.py",
                     "--runs", "runs/ablation", "--baseline", "bc"],
     },
+    "ablation-intervals": {
+        "doc": "docs/phase7.md",
+        "command": [sys.executable, "scripts/ablation_intervals.py",
+                    "--runs", "runs/ablation", "--baseline", "bc"],
+    },
 }
 
 _MARKER = "<!-- generated: {} -->"
