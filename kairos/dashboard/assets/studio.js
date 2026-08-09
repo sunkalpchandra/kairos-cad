@@ -440,6 +440,27 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** The artifacts behind the page. */
+function renderSources() {
+  const rows = DATA.sources || [];
+  if (!rows.length) { el('sources').innerHTML = ''; return; }
+  const missing = rows.filter((r) => !r.present).length;
+  el('sources').innerHTML = `
+    <table>
+      <thead><tr><th>Artifact</th><th>Path</th><th>Count</th><th>Feeds</th><th>Present</th></tr></thead>
+      <tbody>${rows.map((row) => `
+        <tr>
+          <td>${esc(row.label)}</td>
+          <td><code>${esc(row.path)}</code></td>
+          <td>${row.count === null || row.count === undefined ? '' : row.count}</td>
+          <td class="sub">${esc(row.reads)}</td>
+          <td class="${row.present ? 'sep-yes' : 'wide-gap'}">${row.present ? 'yes' : 'MISSING'}</td>
+        </tr>`).join('')}</tbody>
+    </table>${missing ? `<p class="note"><strong>${missing} artifact${
+      missing === 1 ? ' was' : 's were'} missing when this page was built.</strong> `
+      + 'Whatever they feed is empty above, not wrong.</p>' : ''}`;
+}
+
 /** Ablation deltas with their intervals. */
 function renderAblationIntervals() {
   const data = DATA.ablation_intervals || {};
@@ -1053,6 +1074,7 @@ function renderRollouts() {
     track.addEventListener('click', () => {
       rolloutPolicy = track.dataset.policy;
       renderDataset();
+  renderSources();
   renderCodec();
   renderFamilies();
   renderFunnel();
@@ -1747,6 +1769,7 @@ function init() {
   renderAblations();
   renderAblationIntervals();
   renderDataset();
+  renderSources();
   renderCodec();
   renderFamilies();
   renderFunnel();
