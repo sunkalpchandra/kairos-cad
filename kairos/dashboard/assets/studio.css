@@ -525,6 +525,32 @@ svg.icon {
 .tl-node:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tl-node.terminal { border-color: var(--pass); color: var(--pass); }
 
+/* A node whose geometry was exported can be rolled back to. The rest are
+ * sketch-level features that change no solid, so there is nothing to show;
+ * the underline says which is which before you click. */
+.tl-node.built { color: var(--ink); }
+.tl-node.built::before {
+  content: ""; position: absolute; left: 4px; right: 4px; bottom: -3px;
+  height: 2px; background: var(--accent); opacity: 0.55;
+}
+.tl-node.built[aria-current="true"]::before { opacity: 1; }
+
+/* Everything after the rollback point is dimmed, the way a suppressed tail of
+ * a feature history reads. */
+.tl-node.rolled { opacity: 0.34; }
+
+.tl-transport { display: flex; align-items: center; gap: 2px; flex: none; }
+.tl-button {
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px;
+  background: none; border: 1px solid transparent;
+  color: var(--ink-muted); cursor: pointer;
+}
+.tl-button:hover { border-color: var(--rule-strong); color: var(--ink); }
+.tl-button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.tl-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tl-button svg.icon { width: 14px; height: 14px; }
+
 .timeline .empty-track { color: var(--ink-faint); font-size: 11px; font-style: italic; }
 
 /* ------------------------------------------------------------------ status */

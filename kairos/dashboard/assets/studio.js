@@ -372,39 +372,151 @@ const OP_ICON = {
   FINISH_DESIGN: 'i-finish',
 };
 
+/* Rollback state for the design on screen. `stepMeshes` maps a step index to
+ * the solid as it stood after that action; it is sparse, because a sketch
+ * action changes no solid and several designs were not exported at all. */
+let stepMeshes = {};
+let builtSteps = [];
+let atStep = null;
+let playTimer = null;
+
 /** The expert trajectory as a feature timeline.
  *
  * In a parametric CAD tool the timeline IS the ordered feature history that
- * produced the solid. The recorded trajectory is exactly that, so it belongs
- * here rather than in a list of chips.
+ * produced the solid, and clicking a feature rolls the part back to it. The
+ * recorded trajectory is the same object, and scripts/build_steps.py exports
+ * the geometry, so this does the same thing rather than only highlighting.
  */
 function renderTimeline(design) {
   const track = el('timeline-track');
   const ops = (design && design.operations) || [];
+  stopPlayback();
+  stepMeshes = (design && design.step_meshes) || {};
+  builtSteps = Object.keys(stepMeshes).map(Number).sort((a, b) => a - b);
+  atStep = null;
+  el('tl-transport').hidden = builtSteps.length < 2;
+
   if (!ops.length) {
     track.innerHTML = '<span class="empty-track">No recorded trajectory.</span>';
     return;
   }
   track.innerHTML = ops.map((op, index) => {
     const icon = OP_ICON[op] || 'i-body';
-    const terminal = op === 'FINISH_DESIGN' ? ' terminal' : '';
-    return `<button class="tl-node${terminal}" data-step="${index}"
-      title="${index + 1}. ${esc(op)}" aria-current="false">
+    const classes = ['tl-node'];
+    if (op === 'FINISH_DESIGN') classes.push('terminal');
+    if (stepMeshes[index]) classes.push('built');
+    const note = stepMeshes[index] ? ' - click to roll back here' : '';
+    return `<button class="${classes.join(' ')}" data-step="${index}"
+      title="${index + 1}. ${esc(op)}${note}" aria-current="false">
       <svg class="icon" viewBox="0 0 24 24"><use href="#${icon}"></use></svg>
     </button>`;
   }).join('');
 
   track.querySelectorAll('.tl-node').forEach((node) => {
     node.addEventListener('click', () => {
-      track.querySelectorAll('.tl-node').forEach((other) => {
-        other.setAttribute('aria-current', String(other === node));
-      });
-      const step = Number(node.dataset.step);
-      el('status-step').textContent =
-        'STEP ' + (step + 1) + '/' + ops.length + '  ' + ops[step];
+      stopPlayback();
+      rollTo(Number(node.dataset.step));
     });
   });
-  el('status-step').textContent = ops.length + ' FEATURES';
+  el('status-step').textContent = ops.length + ' FEATURES'
+    + (builtSteps.length ? '  ' + builtSteps.length + ' SCRUBBABLE' : '');
+}
+
+/** Show the part as it stood after `step`, or the finished part for null.
+ *
+ * A step with no exported geometry falls back to the last one that has it, so
+ * clicking a sketch action shows the solid that action was drawn on rather
+ * than doing nothing.
+ */
+function rollTo(step) {
+  const design = designs[selected];
+  if (!design) return;
+  const ops = design.operations || [];
+
+  let source = null;
+  if (step !== null) {
+    for (const built of builtSteps) {
+      if (built <= step) source = built; else break;
+    }
+  }
+  const mesh = source === null ? design.mesh : stepMeshes[source];
+  if (viewer && mesh) {
+    try {
+      // Keep the finished part's framing: an early step really is smaller.
+      viewer.load(mesh, { frame: step === null });
+      el('viewer-error').hidden = true;
+    } catch (err) {
+      el('viewer-error').hidden = false;
+      el('viewer-error').textContent = 'Viewer: ' + err.message;
+    }
+  }
+
+  atStep = step;
+  el('timeline-track').querySelectorAll('.tl-node').forEach((node) => {
+    const index = Number(node.dataset.step);
+    node.setAttribute('aria-current', String(step !== null && index === step));
+    node.classList.toggle('rolled', step !== null && index > step);
+  });
+
+  if (step === null) {
+    el('status-step').textContent = ops.length + ' FEATURES'
+      + (builtSteps.length ? '  ' + builtSteps.length + ' SCRUBBABLE' : '');
+  } else {
+    const rolled = source === null ? '  NO GEOMETRY YET'
+      : (source === step ? '' : '  SHOWING STEP ' + (source + 1));
+    el('status-step').textContent =
+      'STEP ' + (step + 1) + '/' + ops.length + '  ' + ops[step] + rolled;
+  }
+  const shown = source === null ? design.mesh : stepMeshes[source];
+  el('status-mesh').textContent = shown
+    ? `${shown.triangle_count} TRI / ${shown.vertex_count} VTX`
+    : 'NO MESH';
+}
+
+function stopPlayback() {
+  if (playTimer !== null) clearInterval(playTimer);
+  playTimer = null;
+  const button = el('tl-play');
+  if (!button) return;
+  button.setAttribute('aria-pressed', 'false');
+  button.querySelector('use').setAttribute('href', '#i-play');
+}
+
+/** Walk the exported steps in order, which is the build as it happened. */
+function playBuild() {
+  if (playTimer !== null) { stopPlayback(); return; }
+  if (builtSteps.length < 2) return;
+  const button = el('tl-play');
+  button.setAttribute('aria-pressed', 'true');
+  button.querySelector('use').setAttribute('href', '#i-pause');
+
+  // Resume where the part is rolled to; from the top once it is finished.
+  let cursor = 0;
+  if (atStep !== null) {
+    const next = builtSteps.findIndex((step) => step > atStep);
+    cursor = next === -1 ? 0 : next;
+  }
+  rollTo(builtSteps[cursor]);
+  playTimer = setInterval(() => {
+    cursor += 1;
+    if (cursor >= builtSteps.length) { stopPlayback(); rollTo(null); return; }
+    rollTo(builtSteps[cursor]);
+  }, 520);
+}
+
+/** Move one exported step along, stopping at the finished part. */
+function stepBy(direction) {
+  stopPlayback();
+  if (!builtSteps.length) return;
+  if (atStep === null) {
+    if (direction < 0) rollTo(builtSteps[builtSteps.length - 1]);
+    return;
+  }
+  const here = builtSteps.findIndex((step) => step >= atStep);
+  const next = (here === -1 ? builtSteps.length : here) + direction;
+  if (next < 0) rollTo(builtSteps[0]);
+  else if (next >= builtSteps.length) rollTo(null);
+  else rollTo(builtSteps[next]);
 }
 
 /** Rotate the ViewCube to match the orbit camera.
@@ -589,6 +701,16 @@ function initFilter() {
   });
 }
 
+/** Timeline transport: rewind, play the build, roll forward to the part. */
+function initTransport() {
+  el('tl-first').addEventListener('click', () => {
+    stopPlayback();
+    if (builtSteps.length) rollTo(builtSteps[0]);
+  });
+  el('tl-play').addEventListener('click', playBuild);
+  el('tl-last').addEventListener('click', () => { stopPlayback(); rollTo(null); });
+}
+
 /** Keyboard commands, as a CAD tool has. */
 function initKeys() {
   const panel = el('keymap');
@@ -619,6 +741,9 @@ function initKeys() {
       case 's': case 'S': press('cmd-section'); break;
       case 'x': case 'X': press('cmd-axis'); break;
       case 'e': case 'E': press('cmd-export'); break;
+      case ' ': event.preventDefault(); playBuild(); break;
+      case ',': stepBy(-1); break;
+      case '.': stepBy(1); break;
       case '/': event.preventDefault(); el('tree-filter').focus(); break;
       case '?': panel.hidden = !panel.hidden; break;
       case 'Escape': close(); break;
@@ -649,6 +774,7 @@ function init() {
   initViewer();
   initTabs();
   initFilter();
+  initTransport();
   initKeys();
   renderBenchmark();
   renderSuccessCurve();

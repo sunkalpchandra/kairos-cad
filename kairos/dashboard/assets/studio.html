@@ -296,6 +296,18 @@
 
   <div class="timeline" id="timeline">
     <span class="label">Timeline</span>
+    <div class="tl-transport" id="tl-transport" hidden>
+      <button class="tl-button" id="tl-first" title="Rewind to the first feature">
+        <svg class="icon" viewBox="0 0 24 24"><use href="#i-first"></use></svg>
+      </button>
+      <button class="tl-button" id="tl-play" title="Play the build (space)"
+              aria-pressed="false">
+        <svg class="icon" viewBox="0 0 24 24"><use href="#i-play"></use></svg>
+      </button>
+      <button class="tl-button" id="tl-last" title="Roll forward to the finished part">
+        <svg class="icon" viewBox="0 0 24 24"><use href="#i-last"></use></svg>
+      </button>
+    </div>
     <div class="timeline-track" id="timeline-track"></div>
   </div>
 
@@ -322,6 +334,8 @@
         <dt>S</dt><dd>section view</dd>
         <dt>X</dt><dd>cycle cut axis</dd>
         <dt>E</dt><dd>export STL</dd>
+        <dt>Space</dt><dd>play the build</dd>
+        <dt>, .</dt><dd>roll back / forward one feature</dd>
         <dt>/</dt><dd>filter parts</dd>
         <dt>?</dt><dd>this panel</dd>
       </dl>
