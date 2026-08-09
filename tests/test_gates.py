@@ -134,6 +134,55 @@ def test_check_station_staged_ignores_unrelated_changes():
     assert module.staged_split({"README.md", "kairos/rl/environment.py"}) == []
 
 
+# ----------------------------------------------------------------- check_wiring
+
+
+def _wiring():
+    from importlib import util
+
+    spec = util.spec_from_file_location("check_wiring", SCRIPTS / "check_wiring.py")
+    module = util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_check_wiring_passes_on_the_repository():
+    assert run("check_wiring.py").returncode == 0
+
+
+def test_check_wiring_catches_a_lookup_with_no_element(tmp_path):
+    """The mistake it was written for: an insert into the markup that did not
+    match, so the id was never created and el() returned null part way through
+    init, silently unwiring everything after it."""
+    module = _wiring()
+    script = tmp_path / "app.js"
+    markup = tmp_path / "page.html"
+    script.write_text("el('present').textContent = ''; el('absent').innerHTML = '';")
+    markup.write_text('<div id="present"></div>')
+
+    assert module.missing(script, markup) == ["absent"]
+
+
+def test_check_wiring_accepts_both_quote_styles(tmp_path):
+    module = _wiring()
+    script = tmp_path / "app.js"
+    markup = tmp_path / "page.html"
+    script.write_text("""el("double"); el('single'); getElementById('direct');""")
+    markup.write_text("""<a id='single'></a><b id="double"></b><i id=direct></i>""")
+
+    # id=direct is unquoted, which the markup here never uses; the point is
+    # that the two quoted forms both resolve.
+    assert "single" not in module.missing(script, markup)
+    assert "double" not in module.missing(script, markup)
+
+
+def test_check_wiring_reports_a_registry_that_points_at_nothing():
+    """Skipping an unreadable pair is how this check reported success over one
+    page while believing it covered two."""
+    module = _wiring()
+    assert module.missing(SCRIPTS / "no-such.js", SCRIPTS / "no-such.html")
+
+
 # ------------------------------------------------------------------ sync_docs
 
 
