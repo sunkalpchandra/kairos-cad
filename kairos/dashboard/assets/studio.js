@@ -885,6 +885,12 @@ function placeDimension() {
   readout.style.top = middle.y + 'px';
 }
 
+/** Which workspace tab is selected. */
+function activeWorkspace() {
+  const chosen = document.querySelector('.workspaces button[aria-selected="true"]');
+  return chosen ? chosen.dataset.view : 'model';
+}
+
 /** Keyboard commands, as a CAD tool has. */
 function initKeys() {
   const panel = el('keymap');
@@ -903,8 +909,10 @@ function initKeys() {
 
     const press = (id) => { const node = el(id); if (node) node.click(); };
     switch (event.key) {
-      case 'ArrowLeft': press('cmd-prev'); break;
-      case 'ArrowRight': press('cmd-next'); break;
+      // The arrows step whatever the active workspace lists: parts in Model,
+      // tasks in Rollouts. One key, one meaning per context, as a CAD app does.
+      case 'ArrowLeft': press(activeWorkspace() === 'rollouts' ? 'cmd-rollout-prev' : 'cmd-prev'); break;
+      case 'ArrowRight': press(activeWorkspace() === 'rollouts' ? 'cmd-rollout-next' : 'cmd-next'); break;
       case '1': document.querySelector('.cmd[data-view3d="iso"]').click(); break;
       case '2': document.querySelector('.cmd[data-view3d="front"]').click(); break;
       case '3': document.querySelector('.cmd[data-view3d="top"]').click(); break;
