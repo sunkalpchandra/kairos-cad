@@ -2,28 +2,33 @@
 
 Phase 5 ended with every closed-loop number at 0.000: behavioral cloning, PPO
 and a legal-random baseline all completed exactly zero held-out designs. A
-benchmark whose headline metric is 0.000 for every entrant ranks nothing and
-directs nothing, so Phase 7's first job is not to build an evaluation harness; it is to **manufacture signal**.
+benchmark whose headline metric is 0.000 for every entrant ranks nothing, so
+the first job here was to produce a metric that discriminates before any policy
+succeeds.
 
 ## Metrics
 
-The headline is a **milestone progress score**, because `success` is a
-conjunction of four gates collapsed into one bit:
+The headline is a milestone progress score, because `success` is a conjunction
+of four gates collapsed into one bit:
 
 ```
 sketch → geometry → solid → valid solid → holes → all constraints → finished
 ```
 
-Credit is **prefix-scored**: it stops at the first milestone missed. That
-matters because a constraint check passes vacuously on geometry that was never
-built, so awarding it would rank an empty document above a real but imperfect
-part. Milestone weights strictly dominate, each is worth more than every
-earlier one combined, so the ranking of two policies never depends on the exact
-weights.
+Credit is prefix-scored: it stops at the first milestone missed. A constraint
+check passes vacuously on geometry that was never built, so awarding it would
+rank an empty document above a real but imperfect part. Milestone weights
+strictly dominate (each is worth more than every earlier one combined), so the
+ranking of two policies never depends on the exact weights.
 
-Validity, efficiency and constraint satisfaction are reported **alongside**, not
-folded in. Validity is where PPO actually beat BC in Phase 5 (0.000 invalid
-actions against 0.018), and a single success number hid it entirely.
+Validity, efficiency and constraint satisfaction are reported alongside rather
+than folded in. Validity is where PPO beat BC in Phase 5 (0.000 invalid actions
+against 0.018), and a single success number hid it.
+
+A caution the metric itself teaches: validity rises when a policy stops
+emitting actions at all. Cutting episodes short once took BC's validity from
+0.658 to 0.930 while progress fell from 0.435 to 0.321, because the failing
+steps stopped being counted. Read validity next to progress, never alone.
 
 ## Harness baselines
 
@@ -35,12 +40,16 @@ actions against 0.018), and a single success number hid it entirely.
   ~2 steps because quitting stops paying the per-action cost. Any metric it can
   win is a broken metric.
 
-**Both invariants must be checked per task type, and finding that out was
-itself a result.** Run across all tasks, `immediate-finish` scored 0.406 and beat
-two real policies, which looks damning until you notice that on `COMPLETE(k=1)`
-the expert's own final action *is* `FINISH_DESIGN`. Finishing immediately is the
-correct answer there. Checked on `BUILD` alone, where quitting can never be
-right, it scores **0.000** exactly as it must.
+Both invariants have to be checked per task type. Run across all tasks,
+`immediate-finish` scored 0.406 and beat two real policies, which looks damning
+until you notice that on `COMPLETE(k=1)` the expert's own final action *is*
+`FINISH_DESIGN`, so finishing immediately is the correct answer there. Checked
+on `BUILD` alone, where quitting can never be right, it scores 0.000 as it must.
+
+The check covers success, satisfaction and efficiency as well as progress.
+Checking progress alone let `immediate-finish` hold a perfect 1.000 efficiency
+for quitting in one step, on a baseline whose whole contract is that it must
+lose every column.
 
 ## Results
 
@@ -148,48 +157,48 @@ every other condition and the difference is the ablation alone.
 
 | condition | progress | delta | finished successfully | validity rate | satisfaction rate | efficiency |
 | --- | --- | --- | --- | --- | --- | --- |
-| `bc+shuffled-req` | 0.321 | +0.0% | 0.237 | 0.961 | 0.391 | 0.856 |
-| `bc` | 0.321 | +0.0% | 0.237 | 0.930 | 0.383 | 0.824 |
-| `bc+no-mask` | 0.320 | -0.2% | 0.237 | 0.772 | 0.364 | 0.568 |
-| `bc+blank-req` | 0.319 | -0.5% | 0.237 | 1.000 | 0.384 | 0.844 |
+| `bc+shuffled-req` | 0.451 | +3.6% | 0.342 | 0.743 | 0.513 | 0.640 |
+| `bc+blank-req` | 0.443 | +1.8% | 0.355 | 0.688 | 0.481 | 0.669 |
+| `bc` | 0.435 | +0.0% | 0.342 | 0.658 | 0.487 | 0.644 |
+| `bc+no-mask` | 0.425 | -2.4% | 0.342 | 0.573 | 0.480 | 0.633 |
 
 ## milestone ladder (fraction of episodes reaching each rung)
 
 | policy | opened a sketch | drew geometry | made a solid | solid is valid | has any hole | all constraints met | finished successfully |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `bc+shuffled-req` | 1.00 | 0.64 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
-| `bc` | 1.00 | 0.64 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
-| `bc+no-mask` | 0.78 | 0.86 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
-| `bc+blank-req` | 1.00 | 0.64 | 0.64 | 0.64 | 0.49 | 0.24 | 0.24 |
+| `bc+shuffled-req` | 0.89 | 1.00 | 0.83 | 0.83 | 0.71 | 0.36 | 0.34 |
+| `bc+blank-req` | 0.89 | 0.95 | 0.76 | 0.76 | 0.64 | 0.36 | 0.36 |
+| `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.34 | 0.34 |
+| `bc+no-mask` | 0.89 | 0.93 | 0.68 | 0.68 | 0.64 | 0.34 | 0.34 |
 
 ## success(k): finish the last k actions
 
 | policy | BUILD | k=1 | k=2 | k=4 | k=8 |
 | --- | --- | --- | --- | --- | --- |
-| `bc` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
-| `bc+blank-req` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
-| `bc+no-mask` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
-| `bc+shuffled-req` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
+| `bc` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
+| `bc+blank-req` | 0.06 | 1.00 | 0.31 | 0.25 | 0.08 |
+| `bc+no-mask` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
+| `bc+shuffled-req` | 0.00 | 1.00 | 0.50 | 0.12 | 0.00 |
 
 ## progress by family
 
 | policy | corner_bracket | flange | l_bracket | plate | reinforced_plate | spacer | support_bracket |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `bc` | 0.32 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
-| `bc+blank-req` | 0.32 | 0.27 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
-| `bc+no-mask` | 0.33 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
-| `bc+shuffled-req` | 0.32 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
+| `bc` | 0.48 | 0.28 | 0.35 | 0.62 | 0.40 | 0.51 | 0.51 |
+| `bc+blank-req` | 0.48 | 0.32 | 0.33 | 0.31 | 0.67 | 0.40 | 0.63 |
+| `bc+no-mask` | 0.48 | 0.28 | 0.35 | 0.56 | 0.35 | 0.51 | 0.49 |
+| `bc+shuffled-req` | 0.42 | 0.30 | 0.45 | 0.57 | 0.48 | 0.48 | 0.56 |
 
 ## paired comparisons (95% bootstrap CI on the per-task difference)
 
 | comparison | difference | 95% CI | W/L/T | separates? |
 | --- | --- | --- | --- | --- |
-| `bc` vs `bc+blank-req` | +0.002 | [+0.000, +0.005] | 1/0/75 | **no** |
-| `bc+blank-req` vs `bc+shuffled-req` | -0.002 | [-0.005, +0.000] | 0/1/75 | **no** |
-| `bc+blank-req` vs `bc+no-mask` | -0.001 | [-0.005, +0.002] | 17/6/53 | **no** |
-| `bc` vs `bc+no-mask` | +0.001 | [-0.001, +0.002] | 17/5/54 | **no** |
-| `bc+no-mask` vs `bc+shuffled-req` | -0.001 | [-0.002, +0.001] | 5/17/54 | **no** |
-| `bc` vs `bc+shuffled-req` | +0.000 | [+0.000, +0.000] | 0/0/76 | **no** |
+| `bc+no-mask` vs `bc+shuffled-req` | -0.026 | [-0.076, +0.023] | 6/20/50 | **no** |
+| `bc+blank-req` vs `bc+no-mask` | +0.018 | [-0.047, +0.083] | 13/7/56 | **no** |
+| `bc` vs `bc+shuffled-req` | -0.016 | [-0.066, +0.034] | 10/16/50 | **no** |
+| `bc` vs `bc+no-mask` | +0.011 | [+0.001, +0.021] | 5/0/71 | yes |
+| `bc+blank-req` vs `bc+shuffled-req` | -0.008 | [-0.079, +0.061] | 12/16/48 | **no** |
+| `bc` vs `bc+blank-req` | -0.008 | [-0.071, +0.057] | 10/10/56 | **no** |
 
 <!-- /generated -->
 
