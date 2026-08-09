@@ -322,6 +322,62 @@ def _failure_kind(message: str) -> str:
     return head or kind[:80]
 
 
+def collect_dataset(root: str | Path, buckets: int = 12) -> dict[str, Any]:
+    """Shape of the whole dataset, not the 24 designs the page can carry.
+
+    The browser shows a capped sample and says 24. Nothing said what it is a
+    sample *of*, so a reader had no way to know whether the families are
+    balanced or whether the sample is representative of anything.
+
+    Read from the trajectory files rather than the embedded bundle, so the
+    numbers describe the dataset and not the cap.
+    """
+    root = Path(root)
+    families: dict[str, int] = {}
+    masses: list[float] = []
+    steps: list[int] = []
+    for path in sorted(root.glob("designs/design_*/state.json")):
+        state = _read_json(path) or {}
+        requirement = _read_json(path.parent / "requirements.json") or {}
+        family = (requirement.get("spec") or {}).get("kind", "unknown")
+        families[family] = families.get(family, 0) + 1
+        mass = state.get("mass_g")
+        if isinstance(mass, (int, float)) and mass > 0:
+            masses.append(float(mass))
+        trajectory = _read_json(path.parent / "trajectory.json") or {}
+        count = (trajectory.get("final_metrics") or {}).get("steps")
+        if isinstance(count, int):
+            steps.append(count)
+
+    if not families:
+        return {}
+
+    histogram: list[dict[str, Any]] = []
+    if masses:
+        low, high = min(masses), max(masses)
+        width = (high - low) / buckets or 1.0
+        counts = [0] * buckets
+        for mass in masses:
+            index = min(buckets - 1, int((mass - low) / width))
+            counts[index] += 1
+        histogram = [
+            {"from": low + i * width, "to": low + (i + 1) * width, "count": n}
+            for i, n in enumerate(counts)
+        ]
+
+    ordered = sorted(families.items())
+    return {
+        "designs": sum(families.values()),
+        "families": [{"name": name, "count": n} for name, n in ordered],
+        "mass_histogram": histogram,
+        "mass_min": min(masses) if masses else None,
+        "mass_max": max(masses) if masses else None,
+        "steps_mean": sum(steps) / len(steps) if steps else None,
+        "steps_min": min(steps) if steps else None,
+        "steps_max": max(steps) if steps else None,
+    }
+
+
 def collect_codec(runs_root: str | Path) -> dict[str, Any]:
     """The action codec's audit: what it cannot express, and how far it drifts.
 
@@ -748,6 +804,7 @@ def build_bundle(
         "jam": collect_jam(benchmark_runs),
         "families_scored": collect_families(benchmark_runs),
         "codec": collect_codec(runs_root),
+        "dataset": collect_dataset(dataset),
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
