@@ -434,7 +434,14 @@ class Viewer {
     this.render();
   }
 
-  load(meshData) {
+  /** Upload a mesh.
+   *
+   * `frame` false keeps the framing of whatever was loaded before, which is
+   * what timeline scrubbing needs: a two-step-old part is genuinely smaller
+   * than the finished one, and re-normalizing each step would hide that by
+   * blowing every intermediate up to fill the viewport.
+   */
+  load(meshData, { frame = true } = {}) {
     const gl = this.gl;
     const decoded = decodeMesh(meshData);
     if (decoded.useUint32 && !this.uint32Indices) {
@@ -452,11 +459,13 @@ class Viewer {
 
     // Normalize every part to a unit-ish box so a 6 mm spacer and a 200 mm
     // rail both arrive framed, and one camera distance suits all of them.
-    this.bounds = meshData.bounds;
-    const min = meshData.bounds.min, max = meshData.bounds.max;
-    this.center = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
-    const extent = Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2]) || 1;
-    this.scale = 2.0 / extent;
+    if (frame || !this.center) {
+      this.bounds = meshData.bounds;
+      const min = meshData.bounds.min, max = meshData.bounds.max;
+      this.center = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
+      const extent = Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2]) || 1;
+      this.scale = 2.0 / extent;
+    }
     this.render();
   }
 
