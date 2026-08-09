@@ -202,41 +202,46 @@ every other condition and the difference is the ablation alone.
 
 <!-- /generated -->
 
-**The requirement ablations do not reproduce across seeds, and that is the
-result.** This suite has now been run twice against checkpoints that differ
-only in initialization noise (the second dropped 115,089 vision parameters that
-never received a gradient, which shifts the RNG draw but nothing else). The
-mask condition agrees to within half a point. Both requirement conditions
-change sign:
+The paired intervals in that last table are the part to read; the percentage
+deltas above are point estimates on 76 tasks and move more than they look.
+
+**Neither requirement condition separates from the intact policy.** Blanking
+the requirement is -0.053 [-0.125, +0.021] and shuffling it +0.036 [-0.014,
++0.091]; both intervals straddle zero. On this benchmark the requirement text
+cannot be shown to matter either way.
+
+**A wrong requirement is worse than none**, and that one does separate:
+`bc+blank-req` beats `bc+shuffled-req` by +0.089 [+0.021, +0.158], 23 wins to
+6. Misleading information costs more than absent information, which is the
+ordering you would want, but it says nothing about whether the policy uses a
+*correct* requirement.
+
+**The mask does a small, real amount of work.** Removing it costs +0.009
+[+0.001, +0.018] of progress, 5 wins to 0 with 71 ties, and drops validity by
+10 to 17 points. The interval is narrow and excludes zero, and the sign
+reproduces across both runs of this suite.
+
+The point estimates are not stable across training seeds, which is why the
+intervals matter. Running the suite against two checkpoints differing only in
+initialization noise flipped the sign on both requirement conditions:
 
 | condition | run A | run B |
 | --- | --- | --- |
-| `bc+shuffled-req` | **+3.7%** | **-7.8%** |
+| `bc+shuffled-req` | +3.7% | -7.8% |
 | `bc+blank-req` | +1.8% | +11.7% |
 | `bc+no-mask` | -2.3% | -2.0% |
 
-An effect that flips sign between two seeds is smaller than the seed variance,
-so no claim about requirement conditioning survives from this data. Earlier
-versions of this document asserted first that shuffling costs 22.9% and the
-policy therefore reads its requirement, then that success was identical and it
-therefore does not. Both were single-run readings of a measurement too noisy to
-support either.
+Only the mask keeps its sign, and it is also the only condition whose interval
+excludes zero. Earlier versions of this document read those point estimates
+directly and concluded first that the policy reads its requirement (from a
+-22.9% swing) and later that it does not (from identical success rates). Both
+were single-run readings of a quantity this suite cannot resolve.
 
-What the suite can currently support:
-
-- **The mask does a small, reproducible amount of work.** Removing it costs
-  about 2% of progress in both runs and drops validity by 10 to 17 points. That
-  is the one condition with a stable sign.
-- **Nothing about the requirement**, in either direction, until this is run
-  across several seeds with intervals. `paired_bootstrap` already exists in
-  `kairos/benchmark/statistics.py` and is applied to the leaderboard; extending
-  it over ablation seeds is the obvious next step and is not done.
-
-Two structural caveats compound the noise and are worth stating rather than
-explaining away. Most tasks are `COMPLETE(k)`, where a replayed expert prefix
-already fixes the geometry, so the requirement has less left to determine. And
-requirement texts are templated per family, so family identity is partly
-recoverable from geometry alone.
+Two structural caveats compound it and are worth stating rather than explaining
+away. Most tasks are `COMPLETE(k)`, where a replayed expert prefix already fixes
+the geometry, so the requirement has less left to determine. And requirement
+texts are templated per family, so family identity is partly recoverable from
+geometry alone.
 
 ## Reproducibility
 
