@@ -76,7 +76,9 @@ traces to a file on disk. Six workspaces:
   projection and STL/PNG export. The expert trajectory is a feature timeline
   that rebuilds the actual geometry at each step.
 - **Dataset**: what the browser's 24 parts are a sample of -- 1,080 designs,
-  8 families, the mass distribution.
+  8 families, the mass distribution, and the artifacts the page was built from.
+- **Optimize**: the surrogate's held-out fit, the search that walked it out of
+  the region it was fitted in, and the build that caught it.
 - **Benchmark**: the leaderboard, and four views that read its mean apart --
   BUILD versus COMPLETE, per-family difficulty, the milestone funnel, and the
   suite un-averaged task by task.
@@ -109,8 +111,11 @@ Development proceeds in phases (see `docs/`):
       ([docs/phase5.md](docs/phase5.md)).
 - [x] **Phase 6: Engineering optimization + learned surrogate**: minimum wall
       thickness is now *measured* (ray casting), and a surrogate-driven search
-      found a 54% lighter plate that a verification build confirms is
-      manufacturable ([docs/phase6.md](docs/phase6.md)).
+      found a **54% lighter plate** that a verification build confirms is
+      manufacturable. The surrogate's own prediction at those parameters was
+      **98.9% wrong** (0.32 g against 29.16 g built); the result stands because
+      the winner is always built and measured rather than reported from
+      prediction ([docs/phase6.md](docs/phase6.md)).
 - [x] **Phase 7: KAIROS-CAD benchmark**: frozen three-way split, milestone
       progress metrics that discriminate at zero success, six baselines,
       requirement/mask ablations, and paired bootstrap intervals. An oracle
