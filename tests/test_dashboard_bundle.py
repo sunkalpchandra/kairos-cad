@@ -17,6 +17,7 @@ from kairos.dashboard.bundle import (
     collect_ablations,
     collect_designs,
     collect_failures,
+    collect_families,
     collect_funnel,
     collect_jam,
     collect_matrix,
@@ -525,3 +526,35 @@ def test_jam_skips_traces_with_no_per_step_record(tmp_path):
     jamming policy at zero."""
     _traces(tmp_path, "old", [_episode(accepted=None)])
     assert collect_jam(tmp_path)["rows"][0]["episodes"] == 0
+
+
+# ----------------------------------------------------------------- families
+
+
+def test_family_scores_are_means_within_the_family(tmp_path):
+    _traces(tmp_path, "bc", [
+        _episode(task_id="build-a", family="plate", progress_score=0.6),
+        _episode(task_id="build-b", family="plate", progress_score=0.4),
+        _episode(task_id="build-c", family="flange", progress_score=0.2),
+    ])
+    scored = collect_families(tmp_path)
+    families = [f["name"] for f in scored["families"]]
+    assert families == ["flange", "plate"]
+    assert scored["cells"]["bc"] == [0.2, 0.5]
+
+
+def test_a_family_a_policy_never_ran_is_none_not_zero(tmp_path):
+    _traces(tmp_path, "aaa", [_episode(task_id="build-a", family="plate")])
+    _traces(tmp_path, "zzz", [_episode(task_id="build-b", family="flange")])
+    cells = collect_families(tmp_path)["cells"]
+    assert cells["aaa"][0] is None and cells["aaa"][1] is not None
+    assert cells["zzz"][0] is not None and cells["zzz"][1] is None
+
+
+def test_aborted_episodes_do_not_drag_a_family_down(tmp_path):
+    """An episode the harness could not run is not a score of zero."""
+    _traces(tmp_path, "bc", [
+        _episode(task_id="build-a", family="plate", progress_score=0.8),
+        _episode(task_id="build-b", family="plate", aborted=True, progress_score=0.0),
+    ])
+    assert collect_families(tmp_path)["cells"]["bc"] == [0.8]
