@@ -705,6 +705,7 @@ class Viewer {
       edge: gl.createBuffer(),
       measure: gl.createBuffer(),
       bounds: gl.createBuffer(),
+      plane: gl.createBuffer(),
     };
     this.mesh = null;
     this.color = [0.42, 0.58, 0.86];
@@ -1029,8 +1030,50 @@ class Viewer {
     if ((this.showEdges || this.wireframe) && this.edgeCount) {
       this._drawEdges(modelView, projection, axis, where);
     }
+    if (this.section.on) this._drawSectionPlane(modelView, projection, axis, where);
     if (this.showBounds) this._drawBounds(modelView, projection);
     if (this.measure.length) this._drawMeasure(modelView, projection);
+  }
+
+  /** The section plane's outline, so the cut has a position you can see.
+   *
+   * The slider says 42%. Of what, in which direction, is a question the
+   * viewport should answer rather than the reader.
+   */
+  _drawSectionPlane(modelView, projection, axis, where) {
+    const gl = this.gl;
+    if (!this.bounds) return;
+    this._updateCapQuad(axis, where);
+
+    const index = axis[0] ? 0 : (axis[1] ? 1 : 2);
+    const u = (index + 1) % 3, v = (index + 2) % 3;
+    const { min, max } = this.bounds;
+    const pad = 0.05 * Math.max(max[u] - min[u], max[v] - min[v], 1);
+    const corner = (su, sv) => {
+      const point = [0, 0, 0];
+      point[index] = where;
+      point[u] = su ? max[u] + pad : min[u] - pad;
+      point[v] = sv ? max[v] + pad : min[v] - pad;
+      return point;
+    };
+    const a = corner(0, 0), b = corner(1, 0), c = corner(1, 1), d = corner(0, 1);
+    const line = [...a, ...b, ...b, ...c, ...c, ...d, ...d, ...a];
+
+    gl.useProgram(this.lineProgram);
+    gl.uniform1i(this.lineUniforms.sectioning, 0);
+    gl.uniformMatrix4fv(this.lineUniforms.modelView, false, modelView);
+    gl.uniformMatrix4fv(this.lineUniforms.projection, false, projection);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.plane);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(line), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(this.lineAttributes.position);
+    gl.vertexAttribPointer(this.lineAttributes.position, 3, gl.FLOAT, false, 0, 0);
+    gl.disableVertexAttribArray(this.lineAttributes.color);
+    gl.vertexAttrib3fv(this.lineAttributes.color, this.capColor);
+    // In front of the part: the outline marks where the cut is, and half of it
+    // is inside the material it cut.
+    gl.disable(gl.DEPTH_TEST);
+    gl.drawArrays(gl.LINES, 0, line.length / 3);
+    gl.enable(gl.DEPTH_TEST);
   }
 
   /** The current frame as a PNG data URL, or null.
