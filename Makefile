@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint check-text check-station check-docs sync-docs generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard dashboard-studio step-meshes rollout-meshes demo clean
+.PHONY: setup setup-learn test test-cad test-all lint check-text check-station check-commit check-docs sync-docs generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard dashboard-studio step-meshes rollout-meshes demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -39,6 +39,12 @@ check-text:
 ## Fail when a built page in docs/ lags the assets it inlines.
 check-station:
 	$(PYTHON) scripts/check_station.py
+
+## Fail when an asset is staged without the page built from it. `lint` checks
+## the working tree, which passes after a rebuild whether or not the page was
+## staged; this asks the same question of the commit.
+check-commit:
+	$(PYTHON) scripts/check_station.py --staged
 
 ## Fail if a doc's generated tables disagree with the artifacts on disk.
 check-docs:

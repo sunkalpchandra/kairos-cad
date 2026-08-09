@@ -11,6 +11,12 @@ is not the thing in the repository.
 This needs no dataset and no run artifacts, so unlike the doc-table gate it can
 run in CI. It compares content rather than modification times, which survives a
 fresh clone where every file has the same checkout timestamp.
+
+`--staged` asks the narrower question this gate kept catching after the fact:
+does the *commit about to be made* keep them together? Running it on a working
+tree that has been rebuilt passes while a commit that stages only the assets
+does not, and CI is where that difference shows up. Two commits landed red
+that way before this mode existed.
 """
 
 from __future__ import annotations
@@ -68,10 +74,46 @@ def stale(page: Path, assets: tuple[str, ...]) -> list[str]:
     return missing
 
 
+def staged_split(staged: set[str]) -> list[str]:
+    """Assets staged without the page built from them, or the reverse."""
+    problems = []
+    for page, assets in PAGES.items():
+        touched = sorted(f"kairos/dashboard/assets/{a}" for a in assets
+                         if f"kairos/dashboard/assets/{a}" in staged)
+        if touched and page not in staged:
+            problems.append(
+                f"{page} is not staged, but {', '.join(Path(t).name for t in touched)} "
+                f"{'is' if len(touched) == 1 else 'are'}"
+            )
+    return problems
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pages", nargs="*", default=list(PAGES))
+    parser.add_argument("--staged", action="store_true",
+                        help="check what is staged, not the working tree")
     args = parser.parse_args()
+
+    if args.staged:
+        import subprocess
+
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            capture_output=True, text=True, cwd=ROOT,
+        )
+        if result.returncode != 0:
+            print("error: not a git repository", file=sys.stderr)
+            return 2
+        split = staged_split(set(result.stdout.split()))
+        if split:
+            print("An asset and the page built from it belong in one commit:\n  "
+                  + "\n  ".join(split), file=sys.stderr)
+            print("\nRebuild and stage the page:  make dashboard-studio && make dashboard",
+                  file=sys.stderr)
+            return 1
+        print("staged: assets and their built pages travel together")
+        return 0
 
     problems: list[str] = []
     for name in args.pages:

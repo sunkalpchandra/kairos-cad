@@ -103,6 +103,37 @@ def test_check_station_reports_a_page_that_was_never_built(tmp_path):
     assert problems and "has not been built" in problems[0]
 
 
+def test_check_station_staged_catches_an_asset_without_its_page():
+    """The failure mode that put two commits red in CI.
+
+    `make lint` passes on a working tree that has been rebuilt. Staging only
+    the asset makes a commit where the built page lags it, and nothing local
+    looked wrong. This is the same gate asked about the commit instead.
+    """
+    from importlib import util
+
+    spec = util.spec_from_file_location("check_station", SCRIPTS / "check_station.py")
+    module = util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    only_asset = {"kairos/dashboard/assets/studio.js"}
+    problems = module.staged_split(only_asset)
+    assert problems and "docs/index.html" in problems[0]
+
+    together = only_asset | {"docs/index.html"}
+    assert module.staged_split(together) == []
+
+
+def test_check_station_staged_ignores_unrelated_changes():
+    from importlib import util
+
+    spec = util.spec_from_file_location("check_station", SCRIPTS / "check_station.py")
+    module = util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    assert module.staged_split({"README.md", "kairos/rl/environment.py"}) == []
+
+
 # ------------------------------------------------------------------ sync_docs
 
 
