@@ -19,8 +19,8 @@ from kairos.dashboard.bundle import (
     collect_failures,
     collect_funnel,
     collect_matrix,
-    collect_task_types,
     collect_rollouts,
+    collect_task_types,
     collect_training,
 )
 
