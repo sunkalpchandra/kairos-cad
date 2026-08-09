@@ -64,7 +64,7 @@ lose every column.
 | `bc` | 0.458 | 0.368 | 0.689 | 0.464 | 0.624 |
 | `immediate-finish` | 0.318 | 0.237 | 1.000 | 0.404 | 1.000 |
 | `scripted-spec` | 0.241 | 0.000 | 1.000 | 0.264 | 0.573 |
-| `legal-random` | 0.194 | 0.000 | 0.668 | 0.356 | 0.464 |
+| `legal-random` | 0.191 | 0.000 | 0.681 | 0.349 | 0.464 |
 
 ## milestone ladder (fraction of episodes reaching each rung)
 
@@ -75,7 +75,7 @@ lose every column.
 | `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.38 | 0.37 |
 | `immediate-finish` | 0.64 | 0.64 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
 | `scripted-spec` | 1.00 | 1.00 | 1.00 | 1.00 | 0.50 | 0.24 | 0.00 |
-| `legal-random` | 0.78 | 0.87 | 0.66 | 0.64 | 0.50 | 0.21 | 0.00 |
+| `legal-random` | 0.78 | 0.87 | 0.66 | 0.64 | 0.50 | 0.20 | 0.00 |
 
 ## success(k): finish the last k actions
 
@@ -94,7 +94,7 @@ lose every column.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `bc` | 0.50 | 0.28 | 0.58 | 0.62 | 0.40 | 0.51 | 0.46 |
 | `immediate-finish` | 0.32 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
-| `legal-random` | 0.22 | 0.19 | 0.17 | 0.18 | 0.17 | 0.18 | 0.23 |
+| `legal-random` | 0.22 | 0.19 | 0.14 | 0.18 | 0.17 | 0.18 | 0.23 |
 | `oracle-replay` | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
 | `ppo` | 0.50 | 0.28 | 0.50 | 0.62 | 0.40 | 0.51 | 0.58 |
 | `scripted-spec` | 0.24 | 0.24 | 0.24 | 0.21 | 0.19 | 0.26 | 0.24 |
@@ -103,20 +103,20 @@ lose every column.
 
 | comparison | difference | 95% CI | W/L/T | separates? |
 | --- | --- | --- | --- | --- |
-| `legal-random` vs `oracle-replay` | -0.806 | [-0.845, -0.765] | 0/76/0 | yes |
+| `legal-random` vs `oracle-replay` | -0.809 | [-0.848, -0.768] | 0/76/0 | yes |
 | `oracle-replay` vs `scripted-spec` | +0.759 | [+0.724, +0.792] | 76/0/0 | yes |
 | `immediate-finish` vs `oracle-replay` | -0.682 | [-0.766, -0.593] | 0/58/18 | yes |
 | `bc` vs `oracle-replay` | -0.542 | [-0.635, -0.449] | 0/48/28 | yes |
 | `oracle-replay` vs `ppo` | +0.528 | [+0.433, +0.620] | 47/0/29 | yes |
-| `legal-random` vs `ppo` | -0.278 | [-0.351, -0.208] | 2/48/26 | yes |
-| `bc` vs `legal-random` | +0.264 | [+0.196, +0.335] | 48/2/26 | yes |
+| `legal-random` vs `ppo` | -0.281 | [-0.356, -0.211] | 2/48/26 | yes |
+| `bc` vs `legal-random` | +0.268 | [+0.199, +0.339] | 48/2/26 | yes |
 | `ppo` vs `scripted-spec` | +0.231 | [+0.161, +0.307] | 39/19/18 | yes |
 | `bc` vs `scripted-spec` | +0.218 | [+0.148, +0.289] | 39/19/18 | yes |
 | `immediate-finish` vs `ppo` | -0.153 | [-0.222, -0.092] | 0/35/41 | yes |
 | `bc` vs `immediate-finish` | +0.140 | [+0.082, +0.206] | 35/0/41 | yes |
-| `immediate-finish` vs `legal-random` | +0.124 | [+0.072, +0.181] | 18/10/48 | yes |
+| `immediate-finish` vs `legal-random` | +0.127 | [+0.075, +0.186] | 18/10/48 | yes |
 | `immediate-finish` vs `scripted-spec` | +0.077 | [+0.025, +0.133] | 18/27/31 | yes |
-| `legal-random` vs `scripted-spec` | -0.047 | [-0.063, -0.031] | 0/28/48 | yes |
+| `legal-random` vs `scripted-spec` | -0.050 | [-0.068, -0.034] | 0/29/47 | yes |
 | `bc` vs `ppo` | -0.013 | [-0.060, +0.030] | 2/4/70 | **no** |
 
 <!-- /generated -->
@@ -280,3 +280,29 @@ make benchmark PRESET=core      # run the baselines
 
 (Paired bootstrap statistics were listed here and are now implemented, see the
 interval table above and `kairos/benchmark/statistics.py`.)
+
+## The mask has to be true of the environment
+
+`legal_operations` answers from model state, which is what it should do:
+RENDER_VIEW is legal the moment there is a solid to look at. The benchmark
+environment's executor has no `render_dir`, so it refused every one -- 15 for
+15 across the core suite, all of them `legal-random`'s, every one counted
+against its validity rate. The other five policies never emitted it, and no
+expert trajectory contains it: 0 of 16,452 recorded actions.
+
+A mask that advertises an action the environment cannot carry out is lying to
+the policy reading it. The environment now subtracts what it cannot execute,
+which leaves `legal_operations` pure and makes the mask true of the
+environment handing it out.
+
+Measured on the same 76 tasks, one policy moved and the rest are identical to
+four decimal places:
+
+| policy | validity | progress | satisfaction |
+| --- | --- | --- | --- |
+| legal-random | 0.6683 -> 0.6810 | 0.1941 -> 0.1907 | 0.3564 -> 0.3487 |
+| every other policy | unchanged | unchanged | unchanged |
+
+Progress fell slightly while validity rose, which is what a changed sampling
+distribution does rather than an improvement: `legal-random` now spends those
+steps on other operations. Both harness invariants still pass.
