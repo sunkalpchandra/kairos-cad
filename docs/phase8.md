@@ -277,6 +277,48 @@ carry leaves the selection alone rather than clearing it, since the bundle is
 capped at 24 designs and a link to the 500th names something this page never
 had.
 
+## Reading a mean apart
+
+Four views exist because one number was hiding four different things.
+
+**Building versus finishing.** A BUILD task is a sentence; a COMPLETE task
+hands the policy an expert prefix and asks for the last k actions. bc and ppo
+both score **0.069 on BUILD with 0.000 success** and around 0.57 on COMPLETE.
+Nearly all of the 0.458 headline comes from tasks where the prefix had already
+built most of the part.
+
+**Which parts are hard.** bc and ppo span **0.339** between their best family
+and their worst -- 0.622 on plate, 0.283 on flange -- where every baseline
+spans under 0.11. They are not uniformly better than the baselines; they are
+much better at some shapes and barely better at others.
+
+**Where each policy stops.** Progress is prefix-scored, so the rung a policy
+fails at zeroes everything after it. scripted-spec loses half its episodes at
+`has_any_hole`; immediate-finish 36% at `opened_a_sketch`; bc and ppo theirs at
+`all_constraints_met`.
+
+**Mistakes, or a stop.** bc and ppo hit their first refusal a quarter of the
+way into an episode and then spend three quarters of it being refused,
+recovering in **2 of 31** and 2 of 30. legal-random is refused more often and
+recovers in 42 of 53. The learned policies are not making scattered mistakes;
+they reach a state they cannot act from and stay there.
+
+The codec audit is stated beside the ceiling it explains: all 16,452 expert
+actions survive the round trip through the action space, the worst by 5e-10
+mm. If it did not, the oracle would sit below 1.000 and it would be the codec
+rather than any policy -- which it has been, twice.
+
+## The corpus
+
+The browser carries a capped 24 and used to say only that. The Dataset
+workspace says what the 24 are a sample of: **1,080 designs across 8
+families**, 114 to 144 each, masses 2.0 to 278.1 g, expert trajectories 7 to
+22 steps with a mean of 15.2.
+
+The families are near-even by construction and not exactly so, because
+generation rejects parts that fail their own constraints and some families
+fail more often than others.
+
 ## Verifying the render
 
 Lint cannot see any of the above. Screenshot it:
