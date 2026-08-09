@@ -103,9 +103,21 @@ def test_a_rejected_action_does_not_freeze_the_observation():
 
     A rejected action leaves the geometry untouched, which looks absorbing, but
     step_fraction advances every step, so the policy's input keeps drifting and
-    the argmax eventually flips. Cutting after 8 consecutive rejections cost BC
-    0.435 -> 0.321 progress and 0.342 -> 0.237 success, measured on the same 76
-    tasks: the policies genuinely recover.
+    the argmax eventually flips. That is what this test pins, and it is still
+    true: the observation is not absorbing.
+
+    The measurement that came with it is not. Cutting after 8 consecutive
+    rejections cost BC 0.435 -> 0.321 progress on the harness of the time.
+    On the current traces **no policy has a single accepted action after any
+    run of 8 refusals** -- 0 across 76 episodes for each of bc, ppo and
+    legal-random -- so that cut would now discard nothing that was ever used.
+    The harness changed underneath the number: BC scored 0.435 then and 0.458
+    now, across the codec fixes that took the oracle to 1.000.
+
+    This is not an argument for adding the cut back. It measures the necessary
+    condition only; episode length also feeds the efficiency metric, and
+    truncating is not the same as terminating. It is here so the repository
+    does not keep asserting something its own traces contradict.
     """
     import numpy as np
 
