@@ -4074,9 +4074,15 @@ function writeRoute() {
   }
 }
 
-/** Restore whatever the hash names, ignoring anything it does not. */
-function applyRoute() {
-  const raw = decodeURIComponent(window.location.hash.replace(/^#/, ''));
+/** Restore whatever the hash names, ignoring anything it does not.
+ *
+ * Takes the hash rather than reading it, because on load the default
+ * selection has already run and written its own route over the incoming one.
+ * The link has to be captured before anything can overwrite it.
+ */
+function applyRoute(hash) {
+  const raw = decodeURIComponent(
+    String(hash === undefined ? window.location.hash : hash).replace(/^#/, ''));
   if (!raw) return;
   const [view, ...rest] = raw.split('/');
   const tab = document.querySelector(`.workspaces button[data-view="${CSS.escape(view)}"]`);
@@ -4102,6 +4108,10 @@ function applyRoute() {
   } finally {
     applyingRoute = false;
   }
+  // Restate the route from the state that ended up applied. Writes were
+  // suppressed while restoring, so without this the address bar still holds
+  // whatever the default selection wrote and copying it shares the wrong view.
+  writeRoute();
 }
 
 /** Which workspace tab is selected. */
@@ -4155,6 +4165,9 @@ function initKeys() {
 }
 
 function init() {
+  // Read before anything renders. select(0) writes its own route, so by the
+  // end of init the address bar no longer holds the link that was followed.
+  const incoming = window.location.hash;
   const suite = (DATA.benchmark || {}).suite_version || DATA.generated_at || '';
   el('suite').textContent = suite ? 'rev ' + suite.replace('kairos-cad-', '') : 'rev -';
   el('doctab-name').textContent = suite || 'kairos-cad';
@@ -4178,10 +4191,7 @@ function init() {
   initFilter();
   initTransport();
   initKeys();
-  // After everything is wired, so a link can name a part or a task that only
-  // exists once the tree and the rollouts have been built.
-  applyRoute();
-  window.addEventListener('hashchange', applyRoute);
+  window.addEventListener('hashchange', () => applyRoute());
   renderBenchmark();
   renderSuccessCurve();
   renderComparisons();
@@ -4193,6 +4203,9 @@ function init() {
   el('cmd-rollout-prev').addEventListener('click', () => { rolloutTask -= 1; renderRollouts(); });
   el('cmd-rollout-next').addEventListener('click', () => { rolloutTask += 1; renderRollouts(); });
   if ((DATA.designs || []).length) select(0);
+  // Last, and from the hash captured before any of the above could write over
+  // it: the default selection runs first and would otherwise win.
+  applyRoute(incoming);
 }
 
 document.addEventListener('DOMContentLoaded', init);
