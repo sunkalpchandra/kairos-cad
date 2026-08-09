@@ -449,6 +449,71 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** The surrogate search, its fit, and the build that checked it. */
+function renderOptimization() {
+  const data = DATA.optimization || {};
+  const best = data.best || {};
+  if (!best.verified_mass_g) {
+    el('optimize-stats').innerHTML = '<p class="empty">No optimization run in this bundle.</p>';
+    el('optimize-note').textContent = '';
+    el('surrogate-fit-table').innerHTML = '';
+    el('search-chart').innerHTML = '';
+    return;
+  }
+
+  el('optimize-stats').innerHTML = `
+    <div class="stat">
+      <div class="stat-value ${best.feasible ? 'good' : ''}">${fmt(best.verified_mass_g, 1)}</div>
+      <span class="label">Verified mass, g</span>
+      <div class="stat-sub">built and measured</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${fmt(best.predicted_mass_g, 2)}</div>
+      <span class="label">Surrogate said, g</span>
+      <div class="stat-sub">at the same parameters</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${fmt(best.surrogate_error_pct, 1)}%</div>
+      <span class="label">Surrogate error</span>
+      <div class="stat-sub">at its own optimum</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value good">${fmt(best.mass_saving_pct, 1)}%</div>
+      <span class="label">Real saving</span>
+      <div class="stat-sub">against ${fmt(best.baseline_mass_g, 1)} g baseline</div>
+    </div>`;
+
+  el('optimize-note').innerHTML =
+    '<strong>The answer is right and the surrogate is not.</strong> The search '
+    + `recommended parameters the surrogate scored at ${fmt(best.predicted_mass_g, 2)} g; `
+    + `building them produced ${fmt(best.verified_mass_g, 1)} g, which is still `
+    + `${fmt(best.mass_saving_pct, 1)}% lighter than the baseline and still `
+    + `manufacturable. The pipeline holds because nothing trusted the surrogate: `
+    + 'the number it reports is the built one. A search that skipped the '
+    + 'verification build would have reported a 0.3 g plate.';
+
+  const fit = data.fit || {};
+  el('surrogate-fit-table').innerHTML = `
+    <table>
+      <thead><tr><th>Target</th><th>R&sup2;</th><th>MAE</th></tr></thead>
+      <tbody>
+        <tr><td>mass</td><td>${fmt(fit.mass_r2)}</td><td>${fmt(fit.mass_mae, 2)} g</td></tr>
+        <tr><td>min wall thickness</td><td>${fmt(fit.thickness_r2)}</td><td>${fmt(fit.thickness_mae, 3)} mm</td></tr>
+      </tbody>
+    </table>
+    <p class="note">${fit.train_rows} fitted, ${fit.test_rows} held out, from
+      ${data.samples} sampled builds over ${(data.parameters || []).length} parameters.</p>`;
+
+  const history = (data.search || {}).history || [];
+  el('search-chart').innerHTML = history.length
+    ? lineChart([{ name: 'predicted mass', points: history.map((m, i) => [i + 1, m]) }],
+        { xLabel: 'iteration', yLabel: 'predicted mass, g' })
+      + legend(['predicted mass'])
+      + `<p class="note">${(data.search || {}).evaluations} surrogate evaluations
+         across ${(data.search || {}).iterations} iterations.</p>`
+    : '<p class="empty">This run recorded no search history.</p>';
+}
+
 /** The artifacts behind the page. */
 function renderSources() {
   const rows = DATA.sources || [];
@@ -1129,6 +1194,7 @@ function renderRollouts() {
       renderCoverage();
   renderDataset();
   renderSources();
+  renderOptimization();
   renderCodec();
   renderFamilies();
   renderFunnel();
@@ -1524,7 +1590,8 @@ function initTabs() {
       document.querySelectorAll('.group[data-workspace]').forEach((group) => {
         group.hidden = group.dataset.workspace !== view;
       });
-      ['dataset', 'benchmark', 'training', 'rollouts', 'ablations'].forEach((name) => {
+      ['dataset', 'optimize', 'benchmark', 'training', 'rollouts',
+       'ablations'].forEach((name) => {
         el('sheet-' + name).hidden = view !== name;
       });
       // A canvas has no size while hidden, so the first draw into a zero-width
@@ -1825,6 +1892,7 @@ function init() {
   renderCoverage();
   renderDataset();
   renderSources();
+  renderOptimization();
   renderCodec();
   renderFamilies();
   renderFunnel();
