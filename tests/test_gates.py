@@ -106,8 +106,20 @@ def test_check_station_reports_a_page_that_was_never_built(tmp_path):
 # ------------------------------------------------------------------ sync_docs
 
 
+TRACES = list((ROOT / "runs/benchmark_core").glob("*_traces.jsonl"))
+
+
+@pytest.mark.skipif(
+    not TRACES,
+    reason="benchmark traces are not committed, so the generators cannot run",
+)
 def test_sync_docs_reports_the_repository_as_current():
-    """--check exits 0 only when every generated block matches its generator."""
+    """--check exits 0 only when every generated block matches its generator.
+
+    Skipped where the traces are absent, which includes CI: they are run
+    artifacts, not source. The marker test below still runs everywhere and is
+    the part that catches a gate wired to nothing.
+    """
     result = run("sync_docs.py", "--check")
     # Exit 2 means a block marker is missing, which is a wiring bug, not drift.
     assert result.returncode != 2, result.stderr

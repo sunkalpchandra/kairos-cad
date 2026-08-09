@@ -54,8 +54,14 @@ BANNED = {
     "≥": "greater-than-or-equal",
 }
 
-#: Files whose non-ASCII content is the point.
-SKIP = {"scripts/check_text.py", "docs/dashboard.html"}
+#: Files whose non-ASCII content is the point: this script defines the banned
+#: characters, and the gate's own test must contain them to prove the detector
+#: fires. Anything added here stops being guarded, so keep the list short.
+SKIP = {
+    "scripts/check_text.py",
+    "tests/test_gates.py",
+    "docs/dashboard.html",
+}
 
 
 def offenders(path: Path) -> list[tuple[int, int, str, str]]:
