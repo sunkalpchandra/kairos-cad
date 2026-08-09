@@ -93,6 +93,62 @@ still looks complete. That is why `tests/test_dashboard_bundle.py` pins every
 field name the bundle reads, and why the headless capture is part of the
 workflow rather than a nicety.
 
+## The viewport
+
+The renderer is hand-written WebGL, ~900 lines, no library. What it draws, and
+why each piece is there rather than being decoration:
+
+**Model edges.** A shaded solid with no edges reads as a blob. On a tessellated
+mesh the model edges are the ones where two faces meet at an angle; the
+triangulation's own diagonals lie flat between coplanar faces and must not be
+drawn. `buildEdges` separates them with a 22-degree test, and open boundaries
+are always kept. Welding is what makes this possible: two triangles only share
+an edge if they share vertex indices. The fill is pushed back with a polygon
+offset while the edges draw, or a line coplanar with the surface it bounds
+z-fights and half of every edge drops out as the camera moves.
+
+**Section cap.** Clipping alone deletes fragments and leaves the far wall
+showing through an open mouth, so a solid part reads as a shell. The stencil
+counts the faces the cut removed and fills where the plane passes through
+material. The cut face takes the part's brightness pulled warm -- drawn in the
+part's own tone first, and readback showed 1667 capped pixels while the
+screenshot showed nothing, which is a correct cap that looks like more surface.
+
+**Ground shadow.** The part is flattened onto the floor plane down the light
+ray, one matrix and a second pass over the same buffers. Stencilled, or a part
+many triangles deep blends into a silhouette of its own tessellation. Drawn
+after the grid, because on a dark ground the shadow has no room against the
+background and what actually reads is the grid dimming inside the silhouette.
+
+**Measurement.** Ray-triangle against every triangle, once per click; a part
+here is a few thousand of them, so an acceleration structure would be code with
+no measurement behind it. The ray has to come back out of the renderer's
+normalized space into millimetres, which is exact because both transforms are
+translation plus uniform scale. Hits snap to the nearest corner of their
+triangle when close, since measuring a machined part means measuring between
+its corners.
+
+Verified over a 19x19 sweep of the viewport: 97 hits, every one lying on a
+triangle plane to 0.0000 mm, none outside the bounds, all reprojecting to
+within the snap radius of the pixel they were picked from.
+
+## Scrubbing the timeline
+
+`scripts/build_steps.py` replays each recorded trajectory one action at a time
+under FreeCAD's interpreter and exports an STL wherever the solid changed.
+`bundle.py` attaches them, and clicking a timeline node loads the part as it
+stood at that feature -- which is what a parametric timeline does, and what
+this one could not do while it had only the action list.
+
+The step meshes are attached for **one design per family, 8 of 24**, and that
+is a size decision: they are 189 KB of a 412 KB bundle as it is. A node with no
+exported solid falls back to the last one that has it, so clicking a sketch
+action shows the solid it was drawn on rather than doing nothing.
+
+The framing deliberately does not change between steps. An early step is
+genuinely smaller than the finished part, and re-normalizing each one would
+hide that by blowing every intermediate up to fill the viewport.
+
 ## Verifying the render
 
 Lint cannot see any of the above. Screenshot it:
@@ -118,3 +174,14 @@ Software rendering (swiftshader) is enough to judge shading, layout and colour.
   results; there is no live reload and no server.
 - **WebGL required.** The metrics, tables and charts render without it; only the
   3D panel degrades, and it says so rather than showing an empty box.
+- **The section cap needs a stencil buffer** and a consistently wound mesh.
+  Without one it is skipped and the section still works, uncapped, as it did
+  before. Nothing checks the winding; a mesh that fails it would cap with
+  holes rather than error.
+- **Measurement is point to point.** No edge, arc or face snapping, no angle,
+  no radius. It snaps to triangle corners, which on these parts are the model
+  corners, but on a curved face that is a tessellation vertex and not a
+  feature.
+- **16 of 24 designs have no step meshes.** Their timelines highlight a node
+  and nothing else, exactly as before. The build report prints the scrubbable
+  count so a page built without `build_steps.py` says so.
