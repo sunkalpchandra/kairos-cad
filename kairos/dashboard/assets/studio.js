@@ -547,6 +547,44 @@ function renderFailures() {
     : '';
 }
 
+/** Where refusals fall inside an episode, and whether anything follows them. */
+function renderJam() {
+  const rows = ((DATA.jam || {}).rows || []).filter((r) => r.jammed > 0)
+    .sort((a, b) => b.tail_share - a.tail_share);
+  if (!rows.length) {
+    el('jam').innerHTML = '<p class="empty">No refusals recorded in this bundle.</p>';
+    el('jam-note').textContent = '';
+    return;
+  }
+  el('jam').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Policy</th><th>Episodes with a refusal</th><th>First refusal</th>
+        <th>Refused tail</th><th>Recovered</th>
+      </tr></thead>
+      <tbody>${rows.map((row) => {
+        const back = row.recovered / row.jammed;
+        return `<tr>
+          <td><code>${esc(row.policy)}</code></td>
+          <td>${row.jammed} of ${row.episodes}</td>
+          <td>${fmt(row.first_refusal * 100, 0)}% in</td>
+          <td class="${row.tail_share > 0.5 ? 'wide-gap' : ''}">${fmt(row.tail_share * 100, 0)}% of the episode</td>
+          <td class="${back < 0.2 ? 'wide-gap' : ''}">${row.recovered} of ${row.jammed}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+
+  const stuck = rows.filter((r) => r.recovered / r.jammed < 0.2);
+  const back = rows.filter((r) => r.recovered / r.jammed > 0.6);
+  el('jam-note').innerHTML = stuck.length && back.length
+    ? `<strong>${stuck.map((r) => esc(r.policy)).join(' and ')} stop.</strong> `
+      + stuck.map((r) => `${esc(r.policy)} recovers in ${r.recovered} of ${r.jammed}`).join(', ')
+      + `, against ${back.map((r) => `${esc(r.policy)} in ${r.recovered} of ${r.jammed}`).join(' and ')}. `
+      + 'The learned policies are not making scattered mistakes; they reach a '
+      + 'state they cannot act from and stay there.'
+    : '';
+}
+
 /** Every task against every policy, un-averaged.
  *
  * Shaded by milestones reached rather than success: success is 0.000 for three
@@ -783,6 +821,7 @@ function renderRollouts() {
   renderTaskTypes();
   renderMatrix();
   renderFailures();
+  renderJam();
   renderRollouts();
     });
   });
@@ -1399,6 +1438,7 @@ function init() {
   renderTaskTypes();
   renderMatrix();
   renderFailures();
+  renderJam();
   renderRollouts();
   el('cmd-rollout-prev').addEventListener('click', () => { rolloutTask -= 1; renderRollouts(); });
   el('cmd-rollout-next').addEventListener('click', () => { rolloutTask += 1; renderRollouts(); });
