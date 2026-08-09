@@ -322,6 +322,28 @@ def _failure_kind(message: str) -> str:
     return head or kind[:80]
 
 
+def collect_codec(runs_root: str | Path) -> dict[str, Any]:
+    """The action codec's audit: what it cannot express, and how far it drifts.
+
+    Every learned policy speaks through this codec, so anything it cannot
+    represent is a ceiling no policy can pass. It has been the cause rather
+    than the symptom twice -- the oracle sat at 0.431 and then 0.858 because
+    of it, not because of any policy -- and it lived in a script's exit code.
+    """
+    audit = _read_json(Path(runs_root) / "codec_audit.json") or {}
+    if not audit:
+        return {}
+    return {
+        "steps": audit.get("steps"),
+        "unrepresentable": audit.get("unrepresentable"),
+        "unrepresentable_rate": audit.get("unrepresentable_rate"),
+        "drifted": audit.get("drifted"),
+        "worst_round_trip_mm": audit.get("worst_round_trip_mm"),
+        "operations_used": audit.get("operations_used"),
+        "affected_designs": audit.get("affected_designs"),
+    }
+
+
 def collect_families(runs: str | Path) -> dict[str, Any]:
     """Progress per part family, per policy.
 
@@ -725,6 +747,7 @@ def build_bundle(
         "funnel": collect_funnel(benchmark_runs),
         "jam": collect_jam(benchmark_runs),
         "families_scored": collect_families(benchmark_runs),
+        "codec": collect_codec(runs_root),
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
