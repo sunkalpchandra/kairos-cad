@@ -509,8 +509,13 @@ svg.icon {
 .check .kind { font-family: var(--mono); font-size: 10.5px; color: var(--ink); }
 .check .detail { color: var(--ink-muted); font-size: 10.5px; margin-top: 1px; }
 
+/* Pinned to the foot of the inspector. A drawing's title block is the one
+   block that identifies the sheet, and on a laptop the inspector scrolls far
+   enough to push it off; sticky keeps it where a title block belongs. */
 .titleblock {
   margin-top: auto; flex: none;
+  position: sticky; bottom: 0; z-index: 1;
+  background: var(--chrome);
   border-top: 1px solid var(--rule-strong);
   display: grid; grid-template-columns: 1fr 1fr;
   font-family: var(--mono); font-size: 9.5px;
