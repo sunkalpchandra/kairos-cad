@@ -322,6 +322,44 @@ def _failure_kind(message: str) -> str:
     return head or kind[:80]
 
 
+def collect_families(runs: str | Path) -> dict[str, Any]:
+    """Progress per part family, per policy.
+
+    The suite mixes eight families of very different difficulty. A mean over
+    all of them says a policy scores 0.458 without saying that it is competent
+    on plates and helpless on flanges, which is the difference between a
+    policy that has learned something and one that has learned one thing.
+    """
+    traces = _traces_by_policy(Path(runs))
+    if not traces:
+        return {"families": [], "policies": [], "cells": {}}
+
+    families: dict[str, int] = {}
+    cells: dict[str, dict[str, list[float]]] = {}
+    for policy, rows in traces.items():
+        for row in rows:
+            if row.get("aborted"):
+                continue
+            family = row.get("family") or "unknown"
+            families[family] = families.get(family, 0) + 1
+            cells.setdefault(policy, {}).setdefault(family, []).append(
+                float(row.get("progress_score") or 0.0))
+
+    order = sorted(families)
+    return {
+        "families": [{"name": name, "episodes": families[name] // max(1, len(traces))}
+                     for name in order],
+        "policies": sorted(cells),
+        "cells": {
+            policy: [
+                (sum(scores[family]) / len(scores[family])) if family in scores else None
+                for family in order
+            ]
+            for policy, scores in cells.items()
+        },
+    }
+
+
 def collect_jam(runs: str | Path) -> dict[str, Any]:
     """When a policy's actions start being refused, and whether it recovers.
 
@@ -686,6 +724,7 @@ def build_bundle(
         "task_types": collect_task_types(benchmark_runs),
         "funnel": collect_funnel(benchmark_runs),
         "jam": collect_jam(benchmark_runs),
+        "families_scored": collect_families(benchmark_runs),
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
