@@ -119,7 +119,7 @@ covered by automated checks (`make audit-codec`):
 
 ## Policy
 
-A 1.02M-parameter language-action model maps a requirement plus the current
+A 1,022,764-parameter language-action model maps a requirement plus the current
 geometry to the next structured action. Behavioral cloning on the expert
 trajectories reaches **0.987** held-out next-action accuracy, held out by
 *design* rather than by step, see [docs/phase4.md](docs/phase4.md).
@@ -136,16 +136,21 @@ happens when it has to drive:
 
 | policy | progress | success | validity | constraints |
 | --- | --- | --- | --- | --- |
-| `oracle-replay` (ceiling) | 0.896 | 0.895 | 0.961 | 0.895 |
-| `ppo` | 0.485 | 0.395 | 0.704 | 0.508 |
-| `bc` | 0.435 | 0.342 | 0.658 | 0.487 |
+| `oracle-replay` (ceiling) | **1.000** | 1.000 | 1.000 | 1.000 |
+| `ppo` | 0.472 | 0.382 | 0.705 | 0.486 |
+| `bc` | 0.458 | 0.368 | 0.689 | 0.464 |
 | `immediate-finish` | 0.318 | 0.237 | 1.000 | 0.404 |
 | `scripted-spec` | 0.241 | 0.000 | 1.000 | 0.264 |
 | `legal-random` | 0.194 | 0.000 | 0.668 | 0.356 |
 
-76 tasks from the frozen test split. PPO leads BC on the point estimate, **but
-the paired bootstrap does not separate them**: the per-task difference is
--0.050 with a 95% interval of [-0.108, +0.002] over 76 paired tasks. Both
+76 tasks from the frozen test split. The oracle reaching **1.000** is the
+harness invariant holding for the first time: replaying the expert through the
+agent's own action codec now reproduces the expert exactly, so the action space
+is no longer an excuse for anything below it.
+
+PPO leads BC on the point estimate, **but the paired bootstrap does not
+separate them**: the per-task difference is -0.013 with a 95% interval of
+[-0.060, +0.030] over 76 paired tasks, 2 wins to 4 losses with 70 ties. Both
 clearly beat the scripted null hypothesis and the random floor.
 
 Full builds from an empty document are still the hard case. Both learned

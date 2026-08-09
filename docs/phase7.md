@@ -60,8 +60,8 @@ lose every column.
 | policy | progress score | finished successfully | validity rate | satisfaction rate | efficiency |
 | --- | --- | --- | --- | --- | --- |
 | `oracle-replay` | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
-| `ppo` | 0.485 | 0.395 | 0.704 | 0.508 | 0.739 |
-| `bc` | 0.435 | 0.342 | 0.658 | 0.487 | 0.644 |
+| `ppo` | 0.472 | 0.382 | 0.705 | 0.486 | 0.613 |
+| `bc` | 0.458 | 0.368 | 0.689 | 0.464 | 0.624 |
 | `immediate-finish` | 0.318 | 0.237 | 1.000 | 0.404 | 1.000 |
 | `scripted-spec` | 0.241 | 0.000 | 1.000 | 0.264 | 0.573 |
 | `legal-random` | 0.194 | 0.000 | 0.668 | 0.356 | 0.464 |
@@ -71,8 +71,8 @@ lose every column.
 | policy | opened a sketch | drew geometry | made a solid | solid is valid | has any hole | all constraints met | finished successfully |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `oracle-replay` | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| `ppo` | 0.89 | 1.00 | 0.75 | 0.75 | 0.70 | 0.42 | 0.39 |
-| `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.34 | 0.34 |
+| `ppo` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.41 | 0.38 |
+| `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.38 | 0.37 |
 | `immediate-finish` | 0.64 | 0.64 | 0.64 | 0.64 | 0.50 | 0.24 | 0.24 |
 | `scripted-spec` | 1.00 | 1.00 | 1.00 | 1.00 | 0.50 | 0.24 | 0.00 |
 | `legal-random` | 0.78 | 0.87 | 0.66 | 0.64 | 0.50 | 0.21 | 0.00 |
@@ -81,22 +81,22 @@ lose every column.
 
 | policy | BUILD | k=1 | k=2 | k=4 | k=8 |
 | --- | --- | --- | --- | --- | --- |
-| `bc` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
+| `bc` | 0.00 | 1.00 | 0.50 | 0.25 | 0.00 |
 | `immediate-finish` | 0.00 | 1.00 | 0.12 | 0.00 | 0.00 |
 | `legal-random` | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 | `oracle-replay` | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| `ppo` | 0.00 | 1.00 | 0.56 | 0.31 | 0.00 |
+| `ppo` | 0.00 | 1.00 | 0.50 | 0.19 | 0.17 |
 | `scripted-spec` | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
 
 ## progress by family
 
 | policy | corner_bracket | flange | l_bracket | plate | reinforced_plate | spacer | support_bracket |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `bc` | 0.48 | 0.28 | 0.35 | 0.62 | 0.40 | 0.51 | 0.51 |
+| `bc` | 0.50 | 0.28 | 0.58 | 0.62 | 0.40 | 0.51 | 0.46 |
 | `immediate-finish` | 0.32 | 0.28 | 0.31 | 0.31 | 0.27 | 0.38 | 0.32 |
 | `legal-random` | 0.22 | 0.19 | 0.17 | 0.18 | 0.17 | 0.18 | 0.23 |
 | `oracle-replay` | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
-| `ppo` | 0.55 | 0.28 | 0.49 | 0.62 | 0.55 | 0.51 | 0.57 |
+| `ppo` | 0.50 | 0.28 | 0.50 | 0.62 | 0.40 | 0.51 | 0.58 |
 | `scripted-spec` | 0.24 | 0.24 | 0.24 | 0.21 | 0.19 | 0.26 | 0.24 |
 
 ## paired comparisons (95% bootstrap CI on the per-task difference)
@@ -106,18 +106,18 @@ lose every column.
 | `legal-random` vs `oracle-replay` | -0.806 | [-0.845, -0.765] | 0/76/0 | yes |
 | `oracle-replay` vs `scripted-spec` | +0.759 | [+0.724, +0.792] | 76/0/0 | yes |
 | `immediate-finish` vs `oracle-replay` | -0.682 | [-0.766, -0.593] | 0/58/18 | yes |
-| `bc` vs `oracle-replay` | -0.565 | [-0.658, -0.472] | 0/50/26 | yes |
-| `oracle-replay` vs `ppo` | +0.515 | [+0.419, +0.608] | 46/0/30 | yes |
-| `legal-random` vs `ppo` | -0.291 | [-0.363, -0.222] | 2/53/21 | yes |
-| `ppo` vs `scripted-spec` | +0.244 | [+0.173, +0.318] | 43/19/14 | yes |
-| `bc` vs `legal-random` | +0.241 | [+0.175, +0.310] | 45/2/29 | yes |
-| `bc` vs `scripted-spec` | +0.194 | [+0.126, +0.264] | 36/19/21 | yes |
-| `immediate-finish` vs `ppo` | -0.167 | [-0.236, -0.104] | 0/40/36 | yes |
+| `bc` vs `oracle-replay` | -0.542 | [-0.635, -0.449] | 0/48/28 | yes |
+| `oracle-replay` vs `ppo` | +0.528 | [+0.433, +0.620] | 47/0/29 | yes |
+| `legal-random` vs `ppo` | -0.278 | [-0.351, -0.208] | 2/48/26 | yes |
+| `bc` vs `legal-random` | +0.264 | [+0.196, +0.335] | 48/2/26 | yes |
+| `ppo` vs `scripted-spec` | +0.231 | [+0.161, +0.307] | 39/19/18 | yes |
+| `bc` vs `scripted-spec` | +0.218 | [+0.148, +0.289] | 39/19/18 | yes |
+| `immediate-finish` vs `ppo` | -0.153 | [-0.222, -0.092] | 0/35/41 | yes |
+| `bc` vs `immediate-finish` | +0.140 | [+0.082, +0.206] | 35/0/41 | yes |
 | `immediate-finish` vs `legal-random` | +0.124 | [+0.072, +0.181] | 18/10/48 | yes |
-| `bc` vs `immediate-finish` | +0.117 | [+0.064, +0.178] | 32/0/44 | yes |
 | `immediate-finish` vs `scripted-spec` | +0.077 | [+0.025, +0.133] | 18/27/31 | yes |
-| `bc` vs `ppo` | -0.050 | [-0.108, +0.002] | 3/10/63 | **no** |
 | `legal-random` vs `scripted-spec` | -0.047 | [-0.063, -0.031] | 0/28/48 | yes |
+| `bc` vs `ppo` | -0.013 | [-0.060, +0.030] | 2/4/70 | **no** |
 
 <!-- /generated -->
 
@@ -157,75 +157,86 @@ every other condition and the difference is the ablation alone.
 
 | condition | progress | delta | finished successfully | validity rate | satisfaction rate | efficiency |
 | --- | --- | --- | --- | --- | --- | --- |
-| `bc+shuffled-req` | 0.451 | +3.6% | 0.342 | 0.743 | 0.513 | 0.640 |
-| `bc+blank-req` | 0.443 | +1.8% | 0.355 | 0.688 | 0.481 | 0.669 |
-| `bc` | 0.435 | +0.0% | 0.342 | 0.658 | 0.487 | 0.644 |
-| `bc+no-mask` | 0.425 | -2.4% | 0.342 | 0.573 | 0.480 | 0.633 |
+| `bc+blank-req` | 0.512 | +11.7% | 0.395 | 0.895 | 0.565 | 0.612 |
+| `bc` | 0.458 | +0.0% | 0.368 | 0.689 | 0.464 | 0.624 |
+| `bc+no-mask` | 0.449 | -2.0% | 0.368 | 0.588 | 0.473 | 0.631 |
+| `bc+shuffled-req` | 0.423 | -7.8% | 0.303 | 0.714 | 0.488 | 0.593 |
 
 ## milestone ladder (fraction of episodes reaching each rung)
 
 | policy | opened a sketch | drew geometry | made a solid | solid is valid | has any hole | all constraints met | finished successfully |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `bc+shuffled-req` | 0.89 | 1.00 | 0.83 | 0.83 | 0.71 | 0.36 | 0.34 |
-| `bc+blank-req` | 0.89 | 0.95 | 0.76 | 0.76 | 0.64 | 0.36 | 0.36 |
-| `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.34 | 0.34 |
-| `bc+no-mask` | 0.89 | 0.93 | 0.68 | 0.68 | 0.64 | 0.34 | 0.34 |
+| `bc+blank-req` | 0.89 | 0.89 | 0.89 | 0.89 | 0.80 | 0.42 | 0.39 |
+| `bc` | 0.89 | 1.00 | 0.75 | 0.75 | 0.67 | 0.38 | 0.37 |
+| `bc+no-mask` | 0.89 | 0.95 | 0.70 | 0.70 | 0.64 | 0.38 | 0.37 |
+| `bc+shuffled-req` | 0.89 | 1.00 | 0.83 | 0.83 | 0.67 | 0.34 | 0.30 |
 
 ## success(k): finish the last k actions
 
 | policy | BUILD | k=1 | k=2 | k=4 | k=8 |
 | --- | --- | --- | --- | --- | --- |
-| `bc` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
-| `bc+blank-req` | 0.06 | 1.00 | 0.31 | 0.25 | 0.08 |
-| `bc+no-mask` | 0.00 | 1.00 | 0.44 | 0.19 | 0.00 |
-| `bc+shuffled-req` | 0.00 | 1.00 | 0.50 | 0.12 | 0.00 |
+| `bc` | 0.00 | 1.00 | 0.50 | 0.25 | 0.00 |
+| `bc+blank-req` | 0.06 | 1.00 | 0.44 | 0.31 | 0.08 |
+| `bc+no-mask` | 0.00 | 1.00 | 0.50 | 0.25 | 0.00 |
+| `bc+shuffled-req` | 0.00 | 0.94 | 0.38 | 0.12 | 0.00 |
 
 ## progress by family
 
 | policy | corner_bracket | flange | l_bracket | plate | reinforced_plate | spacer | support_bracket |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `bc` | 0.48 | 0.28 | 0.35 | 0.62 | 0.40 | 0.51 | 0.51 |
-| `bc+blank-req` | 0.48 | 0.32 | 0.33 | 0.31 | 0.67 | 0.40 | 0.63 |
-| `bc+no-mask` | 0.48 | 0.28 | 0.35 | 0.56 | 0.35 | 0.51 | 0.49 |
-| `bc+shuffled-req` | 0.42 | 0.30 | 0.45 | 0.57 | 0.48 | 0.48 | 0.56 |
+| `bc` | 0.50 | 0.28 | 0.58 | 0.62 | 0.40 | 0.51 | 0.46 |
+| `bc+blank-req` | 0.58 | 0.32 | 0.50 | 0.81 | 0.55 | 0.45 | 0.65 |
+| `bc+no-mask` | 0.50 | 0.28 | 0.58 | 0.56 | 0.37 | 0.51 | 0.44 |
+| `bc+shuffled-req` | 0.55 | 0.30 | 0.45 | 0.54 | 0.48 | 0.42 | 0.41 |
 
 ## paired comparisons (95% bootstrap CI on the per-task difference)
 
 | comparison | difference | 95% CI | W/L/T | separates? |
 | --- | --- | --- | --- | --- |
-| `bc+no-mask` vs `bc+shuffled-req` | -0.026 | [-0.076, +0.023] | 6/20/50 | **no** |
-| `bc+blank-req` vs `bc+no-mask` | +0.018 | [-0.047, +0.083] | 13/7/56 | **no** |
-| `bc` vs `bc+shuffled-req` | -0.016 | [-0.066, +0.034] | 10/16/50 | **no** |
-| `bc` vs `bc+no-mask` | +0.011 | [+0.001, +0.021] | 5/0/71 | yes |
-| `bc+blank-req` vs `bc+shuffled-req` | -0.008 | [-0.079, +0.061] | 12/16/48 | **no** |
-| `bc` vs `bc+blank-req` | -0.008 | [-0.071, +0.057] | 10/10/56 | **no** |
+| `bc+blank-req` vs `bc+shuffled-req` | +0.089 | [+0.021, +0.158] | 23/6/47 | yes |
+| `bc+blank-req` vs `bc+no-mask` | +0.063 | [-0.012, +0.135] | 25/7/44 | **no** |
+| `bc` vs `bc+blank-req` | -0.053 | [-0.125, +0.021] | 7/23/46 | **no** |
+| `bc` vs `bc+shuffled-req` | +0.036 | [-0.014, +0.091] | 14/12/50 | **no** |
+| `bc+no-mask` vs `bc+shuffled-req` | +0.027 | [-0.022, +0.082] | 11/15/50 | **no** |
+| `bc` vs `bc+no-mask` | +0.009 | [+0.001, +0.018] | 5/0/71 | yes |
 
 <!-- /generated -->
 
-**The policy does not read its requirement.** Success is *identical* at 0.342
-across the intact policy, a shuffled requirement and a blanked one, and the
-progress differences are smaller than the gap between the two corrupted
-conditions themselves. On this benchmark the requirement text contributes
-nothing measurable.
+**The requirement ablations do not reproduce across seeds, and that is the
+result.** This suite has now been run twice against checkpoints that differ
+only in initialization noise (the second dropped 115,089 vision parameters that
+never received a gradient, which shifts the RNG draw but nothing else). The
+mask condition agrees to within half a point. Both requirement conditions
+change sign:
 
-This retracts the earlier reading. A previous run reported shuffling the
-requirement costing **-22.9%** of progress and concluded the policy did read
-it. That measurement came from the pre-fix dataset and codec; on corrected
-artifacts it does not reproduce. The honest conclusion is the one the ablation
-was built to be able to reach: with eight families and near-fixed recipes, a
-policy can score this well by learning what CAD builds look like, and these
-tasks do not separate that from requirement following.
+| condition | run A | run B |
+| --- | --- | --- |
+| `bc+shuffled-req` | **+3.7%** | **-7.8%** |
+| `bc+blank-req` | +1.8% | +11.7% |
+| `bc+no-mask` | -2.3% | -2.0% |
 
-Two things blunt the test and are worth stating rather than explaining away.
-Most tasks are `COMPLETE(k)`, where a replayed expert prefix already fixes the
-geometry, so the requirement has less left to determine. And the requirement
-texts are templated per family, so family identity is partly recoverable from
-the geometry alone.
+An effect that flips sign between two seeds is smaller than the seed variance,
+so no claim about requirement conditioning survives from this data. Earlier
+versions of this document asserted first that shuffling costs 22.9% and the
+policy therefore reads its requirement, then that success was identical and it
+therefore does not. Both were single-run readings of a measurement too noisy to
+support either.
 
-**The mask matters less than it did.** Removing it costs 2.4% of progress and
-drops validity from 0.658 to 0.573, where an earlier run saw 0.957 collapse to
-0.407. Validity is lower across the board now, so the mask is carrying less of
-the policy's legality than it was.
+What the suite can currently support:
+
+- **The mask does a small, reproducible amount of work.** Removing it costs
+  about 2% of progress in both runs and drops validity by 10 to 17 points. That
+  is the one condition with a stable sign.
+- **Nothing about the requirement**, in either direction, until this is run
+  across several seeds with intervals. `paired_bootstrap` already exists in
+  `kairos/benchmark/statistics.py` and is applied to the leaderboard; extending
+  it over ablation seeds is the obvious next step and is not done.
+
+Two structural caveats compound the noise and are worth stating rather than
+explaining away. Most tasks are `COMPLETE(k)`, where a replayed expert prefix
+already fixes the geometry, so the requirement has less left to determine. And
+requirement texts are templated per family, so family identity is partly
+recoverable from geometry alone.
 
 ## Reproducibility
 
