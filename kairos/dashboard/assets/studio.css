@@ -279,6 +279,7 @@ body {
   min-width: 42px;
 }
 .viewport-tools button:hover { color: var(--ink); border-color: var(--accent); }
+.viewport-tools button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
 .viewport-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 .viewer-error {
@@ -342,7 +343,9 @@ body {
 .check .kind { font-family: var(--mono); font-size: 11px; color: var(--ink); }
 .check .detail { color: var(--ink-muted); font-size: 11px; margin-top: 1px; }
 
-.ops { display: flex; flex-wrap: wrap; gap: 2px; }
+/* The trajectory can run to 20+ operations. Capping it keeps the title block,
+   which identifies the part, above the fold rather than pushed off it. */
+.ops { display: flex; flex-wrap: wrap; gap: 2px; max-height: 118px; overflow-y: auto; }
 .ops span {
   font-family: var(--mono);
   font-size: 9.5px;
@@ -358,6 +361,7 @@ body {
    it holds the identifying fields a part is filed under. */
 .titleblock {
   margin-top: auto;
+  flex: none;
   border-top: 1px solid var(--rule-strong);
   display: grid;
   grid-template-columns: 1fr 1fr;

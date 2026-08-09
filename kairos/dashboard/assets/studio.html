@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KAIROS Review Station</title>
+<style>/*__STYLE__*/</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <header class="titlebar">
+    <div class="mark"><span class="glyph">[K]</span>KAIROS<span class="sub" id="suite"></span></div>
+    <nav class="viewtabs" aria-label="Workspace">
+      <button data-view="model" aria-selected="true">Model</button>
+      <button data-view="benchmark" aria-selected="false">Benchmark</button>
+      <button data-view="training" aria-selected="false">Training</button>
+      <button data-view="ablations" aria-selected="false">Ablations</button>
+    </nav>
+    <span class="spacer"></span>
+    <div class="meta">
+      <span>DESIGNS <b id="meta-designs">-</b></span>
+      <span>POLICIES <b id="meta-policies">-</b></span>
+      <span>TASKS <b id="meta-tasks">-</b></span>
+    </div>
+  </header>
+
+  <aside class="rail" id="rail">
+    <div class="rail-head">
+      <span class="label">Browser</span>
+      <span class="label" id="rail-count"></span>
+    </div>
+    <div id="tree"></div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="viewport" aria-label="3D view of the selected part"></canvas>
+
+    <div class="hud tl" id="hud-orientation">ISO</div>
+
+    <div class="viewport-tools">
+      <button data-view3d="iso">ISO</button>
+      <button data-view3d="front">FRONT</button>
+      <button data-view3d="right">RIGHT</button>
+      <button data-view3d="top">TOP</button>
+      <button id="grid-toggle">GRID</button>
+    </div>
+
+    <div class="hud bl">
+      <div class="scalebar">
+        <span id="scale-label">-</span>
+        <span class="bar" aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <p class="viewer-error" id="viewer-error" hidden></p>
+  </main>
+
+  <section class="sheet" id="sheet-benchmark" hidden>
+    <section>
+      <h2>Benchmark</h2>
+      <p class="note">
+        Every policy faces the same enumerated tasks in the same order, drawn
+        from a frozen test split. <code>oracle-replay</code> is not a competitor:
+        it replays the recorded expert through the same action codec a policy
+        must use, so its score is the ceiling any policy could reach.
+      </p>
+      <div class="statgrid" id="benchmark-stats"></div>
+      <div class="tablewrap" id="leaderboard"></div>
+    </section>
+
+    <section>
+      <h2>Compounding error</h2>
+      <p class="note">
+        The policy is handed an expert prefix and must supply the last
+        <em>k</em> actions itself. Larger k is a harder task.
+      </p>
+      <div class="chart" id="success-curve"></div>
+    </section>
+
+    <section>
+      <h2>Paired comparisons</h2>
+      <p class="note">
+        Bootstrap intervals on the per-task difference, recomputed from the
+        traces in this bundle. An interval spanning zero means the benchmark
+        cannot separate the two policies.
+      </p>
+      <div class="tablewrap" id="comparisons"></div>
+    </section>
+  </section>
+
+  <section class="sheet" id="sheet-training" hidden>
+    <section>
+      <h2>Behavioural cloning</h2>
+      <p class="note">
+        Held out by design rather than by step. Splitting on steps would put an
+        action from the same trajectory on both sides and inflate the number.
+      </p>
+      <div class="statgrid" id="training-stats"></div>
+      <div class="chart" id="bc-chart"></div>
+    </section>
+
+    <section>
+      <h2>Loss</h2>
+      <div class="chart" id="bc-loss-chart"></div>
+    </section>
+
+    <section>
+      <h2>PPO</h2>
+      <p class="note">
+        Clipped surrogate with a KL anchor back to the cloned policy. Reward is
+        dense over milestones.
+      </p>
+      <div class="chart" id="ppo-reward-chart"></div>
+      <div class="chart" id="ppo-rate-chart" style="margin-top:14px"></div>
+    </section>
+  </section>
+
+  <section class="sheet" id="sheet-ablations" hidden>
+    <section>
+      <h2>What the policy uses</h2>
+      <p class="note">
+        Each condition corrupts one input and re-runs the identical suite.
+        <code>shuffled-req</code> pairs a design with another design's
+        requirement; <code>blank-req</code> removes the text; <code>no-mask</code>
+        drops the action-legality mask.
+      </p>
+      <div class="tablewrap" id="ablations"></div>
+      <p class="callout" id="ablation-note"></p>
+    </section>
+  </section>
+
+  <aside class="inspector" id="inspector">
+    <div class="panel">
+      <span class="label">Requirement</span>
+      <p class="requirement" id="requirement"></p>
+    </div>
+    <div class="panel">
+      <span class="label">Measured</span>
+      <dl class="props" id="props"></dl>
+    </div>
+    <div class="panel">
+      <span class="label">Constraint report</span>
+      <div id="checks"></div>
+    </div>
+    <div class="panel">
+      <span class="label">Expert trajectory</span>
+      <div class="ops" id="ops"></div>
+    </div>
+    <div class="titleblock" id="titleblock"></div>
+  </aside>
+
+  <footer class="statusbar">
+    <span id="status-part">-</span>
+    <span id="status-mesh">-</span>
+    <span class="spacer"></span>
+    <span>UNITS mm</span>
+    <span id="status-invariant" class="ok">-</span>
+  </footer>
+
+</div>
+
+<script>window.KAIROS_DATA=/*__DATA__*/null;</script>
+<script>/*__VIEWER__*/</script>
+<script>/*__CHARTS__*/</script>
+<script>/*__APP__*/</script>
+</body>
+</html>

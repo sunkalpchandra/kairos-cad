@@ -17,6 +17,13 @@ _SLOTS = {
     "/*__APP__*/": "app.js",
 }
 
+#: Named layouts. `studio` is the review station; `dashboard` is the plain
+#: report. Both read the same bundle, so a figure cannot differ between them.
+LAYOUTS = {
+    "dashboard": {"template": "index.html", "style": "style.css", "app": "app.js"},
+    "studio": {"template": "studio.html", "style": "studio.css", "app": "studio.js"},
+}
+
 
 def _guard(payload: str) -> str:
     """Neutralize sequences that would end the enclosing <script> early.
@@ -33,10 +40,27 @@ def _guard(payload: str) -> str:
     )
 
 
-def render(data: dict[str, Any], template: Path | None = None) -> str:
-    """Render the dashboard HTML with `data` inlined."""
-    html = (template or ASSETS / "index.html").read_text()
-    for slot, filename in _SLOTS.items():
+def render(
+    data: dict[str, Any],
+    template: Path | None = None,
+    layout: str = "dashboard",
+) -> str:
+    """Render the page with `data` inlined.
+
+    Args:
+        data: the bundle from `bundle.build_bundle`.
+        template: explicit template path, overriding `layout`.
+        layout: a key of `LAYOUTS`.
+    """
+    if layout not in LAYOUTS:
+        raise ValueError(f"unknown layout {layout!r}; have {sorted(LAYOUTS)}")
+    chosen = LAYOUTS[layout]
+    slots = dict(_SLOTS)
+    slots["/*__STYLE__*/"] = chosen["style"]
+    slots["/*__APP__*/"] = chosen["app"]
+
+    html = (template or ASSETS / chosen["template"]).read_text()
+    for slot, filename in slots.items():
         if slot not in html:
             raise ValueError(f"template is missing the {slot} slot")
         html = html.replace(slot, (ASSETS / filename).read_text())
@@ -46,9 +70,11 @@ def render(data: dict[str, Any], template: Path | None = None) -> str:
     return html.replace("/*__DATA__*/null", payload)
 
 
-def write_dashboard(data: dict[str, Any], path: str | Path) -> Path:
-    """Render and write the dashboard; returns the path written."""
+def write_dashboard(
+    data: dict[str, Any], path: str | Path, layout: str = "dashboard"
+) -> Path:
+    """Render and write the page; returns the path written."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render(data))
+    path.write_text(render(data, layout=layout))
     return path

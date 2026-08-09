@@ -30,6 +30,10 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=MAX_DESIGNS, help="designs to embed")
     parser.add_argument("--no-meshes", action="store_true", help="skip 3D geometry")
     parser.add_argument("--stamp", default="", help="generation stamp shown in the header")
+    parser.add_argument(
+        "--layout", default="dashboard", choices=("dashboard", "studio"),
+        help="studio is the review station; dashboard is the plain report",
+    )
     parser.add_argument("--bundle-out", default="", help="also write the raw JSON bundle here")
     args = parser.parse_args()
 
@@ -47,7 +51,7 @@ def main() -> int:
         Path(args.bundle_out).parent.mkdir(parents=True, exist_ok=True)
         Path(args.bundle_out).write_text(json.dumps(bundle, indent=2))
 
-    path = write_dashboard(bundle, args.out)
+    path = write_dashboard(bundle, args.out, layout=args.layout)
     size_kb = path.stat().st_size / 1024
     counts = bundle["counts"]
     policies = len(bundle["benchmark"]["leaderboard"]["policies"])
