@@ -71,6 +71,7 @@ ICONS: dict[str, str] = {
     "i-section": "scissors",
     "i-axis": "move-3d",
     "i-export": "download",
+    "i-image": "image",
     # Timeline playback, the way a parametric history is stepped through.
     "i-play": "play",
     "i-pause": "pause",

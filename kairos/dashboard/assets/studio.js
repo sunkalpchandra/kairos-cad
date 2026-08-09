@@ -1142,6 +1142,16 @@ function initViewer() {
 
   el('cmd-prev').addEventListener('click', () => select((selected - 1 + designs.length) % designs.length));
   el('cmd-next').addEventListener('click', () => select((selected + 1) % designs.length));
+  el('cmd-image').addEventListener('click', () => {
+    const design = designs[selected];
+    const url = viewer && viewer.snapshot();
+    if (!url || !design) return;
+    const link = document.createElement('a');
+    link.href = url;
+    // The view is part of what the picture is of, so it belongs in the name.
+    link.download = `${design.design_id}-${viewer.orthographic ? 'ortho' : 'persp'}.png`;
+    link.click();
+  });
   el('cmd-props').addEventListener('click', () => el('panel-measure').scrollIntoView({ block: 'nearest' }));
   el('cmd-measure').addEventListener('click', toggleMeasure);
   el('cmd-checks').addEventListener('click', () => el('panel-checks').scrollIntoView({ block: 'nearest' }));
