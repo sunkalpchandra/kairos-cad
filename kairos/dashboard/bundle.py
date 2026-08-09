@@ -322,6 +322,50 @@ def _failure_kind(message: str) -> str:
     return head or kind[:80]
 
 
+def collect_jam(runs: str | Path) -> dict[str, Any]:
+    """When a policy's actions start being refused, and whether it recovers.
+
+    A refusal rate says how much of an episode was wasted. It does not say
+    whether the waste is scattered or is one unbroken run at the end, and those
+    are different failures: scattered refusals are a policy making mistakes,
+    an unbroken tail is a policy that has stopped.
+    """
+    traces = _traces_by_policy(Path(runs))
+    rows = []
+    for policy, episodes in sorted(traces.items()):
+        firsts, tails, recovered, counted = [], [], 0, 0
+        for episode in episodes:
+            accepted = episode.get("accepted") or []
+            if not accepted:
+                continue
+            counted += 1
+            refused = [i for i, ok in enumerate(accepted) if not ok]
+            if not refused:
+                continue
+            firsts.append(refused[0] / len(accepted))
+            # The unbroken run of refusals at the end of the episode.
+            tail = 0
+            for ok in reversed(accepted):
+                if ok:
+                    break
+                tail += 1
+            tails.append(tail / len(accepted))
+            if any(accepted[refused[0]:]):
+                recovered += 1
+        if not firsts:
+            rows.append({"policy": policy, "episodes": counted, "jammed": 0})
+            continue
+        rows.append({
+            "policy": policy,
+            "episodes": counted,
+            "jammed": len(firsts),
+            "first_refusal": sum(firsts) / len(firsts),
+            "tail_share": sum(tails) / len(tails),
+            "recovered": recovered,
+        })
+    return {"rows": rows}
+
+
 def collect_funnel(runs: str | Path) -> dict[str, Any]:
     """Milestone reach rates as a funnel, with the drop at each rung.
 
@@ -641,6 +685,7 @@ def build_bundle(
         "failures": collect_failures(benchmark_runs),
         "task_types": collect_task_types(benchmark_runs),
         "funnel": collect_funnel(benchmark_runs),
+        "jam": collect_jam(benchmark_runs),
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
