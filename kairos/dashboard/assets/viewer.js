@@ -740,6 +740,23 @@ class Viewer {
     if (this.measure.length) this._drawMeasure(modelView, projection);
   }
 
+  /** The current frame as a PNG data URL, or null.
+   *
+   * Redraws immediately before reading: a WebGL drawing buffer is cleared
+   * after compositing unless preserveDrawingBuffer is set, and setting that
+   * costs every frame to save one. Rendering into a buffer that is about to
+   * be read is the cheaper half of the trade.
+   */
+  snapshot() {
+    if (!this.mesh) return null;
+    this.render();
+    try {
+      return this.canvas.toDataURL('image/png');
+    } catch (err) {
+      return null;
+    }
+  }
+
   /** The part's bounding box, as a wireframe cage in millimetres.
    *
    * The inspector reports the extents as three numbers. Drawn on the part they
