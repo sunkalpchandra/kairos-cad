@@ -10,6 +10,7 @@ Pure python, so it builds under either interpreter.
 
 from __future__ import annotations
 
+import collections
 import json
 import re
 from pathlib import Path
@@ -614,16 +615,32 @@ def collect_jam(runs: str | Path) -> dict[str, Any]:
 def collect_funnel(runs: str | Path) -> dict[str, Any]:
     """Milestone reach rates as a funnel, with the drop at each rung.
 
-    Progress is prefix-scored, so the rung a policy stops at is the whole
-    story of its score. The rates are in the leaderboard already; the drops
-    are not, and the drop is what names the wall.
+    Prefix-reached, not raw flags. The leaderboard's `milestone_rates` count
+    each flag independently, and the flags are not nested: 8 of bc's 76
+    episodes drew geometry without the harness recording that a sketch was
+    opened, so the raw rates read 0.89 then 1.00 and a funnel drawn from them
+    goes *up*. `progress_score` uses prefix semantics -- stop at the first
+    milestone missed -- so a funnel that means anything has to use the same.
     """
-    leaderboard = _read_json(Path(runs) / "leaderboard.json") or {}
+    traces = _traces_by_policy(Path(runs))
     rows = []
-    for score in leaderboard.get("scores") or []:
-        rates = score.get("milestone_rates") or {}
-        if not rates:
+    for policy, episodes in sorted(traces.items()):
+        if not episodes:
             continue
+        depth = collections.Counter()
+        for episode in episodes:
+            reached = episode.get("milestones_reached")
+            if reached is None:
+                # Older traces carry flags only; recover the prefix from them.
+                reached = []
+                for name in MILESTONES:
+                    if not episode.get(name):
+                        break
+                    reached.append(name)
+            for name in reached:
+                depth[name] += 1
+        rates = {name: depth[name] / len(episodes) for name in MILESTONES}
+        score = {"policy": policy}
         steps = []
         previous = 1.0
         for name in MILESTONES:
@@ -634,7 +651,7 @@ def collect_funnel(runs: str | Path) -> dict[str, Any]:
             previous = rate
         worst = max(steps, key=lambda s: s["drop"], default=None)
         rows.append({
-            "policy": score.get("policy"),
+            "policy": score["policy"],
             "steps": steps,
             # The rung where the most episodes were lost. For a policy that
             # never finishes, this is the sentence the funnel is drawing.
