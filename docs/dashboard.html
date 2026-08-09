@@ -951,7 +951,7 @@ class Viewer {
     // almost no room to read against the background, and what does read is the
     // grid dimming inside the silhouette. On a light ground both do.
     if (this.showGrid) this._drawGrid(view, projection, floor);
-    if (this.mesh && this.showShadow) {
+    if (this.mesh && this.showShadow && !this.wireframe) {
       this._drawShadow(view, projection, model, floor);
     }
     if (!this.mesh) return;
@@ -981,18 +981,16 @@ class Viewer {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.index);
     // LINES over the triangle indices draws each triangle's three edges twice.
     // That is the cheap wireframe, and at these mesh sizes it is imperceptible.
-    if (this.showEdges && !this.wireframe) {
-      gl.enable(gl.POLYGON_OFFSET_FILL);
-      gl.polygonOffset(1.2, 1.2);
+    if (!this.wireframe) {
+      if (this.showEdges) {
+        gl.enable(gl.POLYGON_OFFSET_FILL);
+        gl.polygonOffset(1.2, 1.2);
+      }
+      gl.drawElements(gl.TRIANGLES, this.mesh.count, this.indexType, 0);
+      gl.disable(gl.POLYGON_OFFSET_FILL);
+      if (this.section.on) this._drawCap(modelView, projection, axis, where);
     }
-    gl.drawElements(this.wireframe ? gl.LINES : gl.TRIANGLES,
-                    this.mesh.count, this.indexType, 0);
-    gl.disable(gl.POLYGON_OFFSET_FILL);
-
-    if (this.section.on && !this.wireframe) {
-      this._drawCap(modelView, projection, axis, where);
-    }
-    if (this.showEdges && !this.wireframe && this.edgeCount) {
+    if ((this.showEdges || this.wireframe) && this.edgeCount) {
       this._drawEdges(modelView, projection, axis, where);
     }
   }
@@ -1018,7 +1016,10 @@ class Viewer {
     // One tone for every edge, so the colour is a constant attribute rather
     // than a buffer the same size as the geometry.
     gl.disableVertexAttribArray(this.lineAttributes.color);
-    gl.vertexAttrib3fv(this.lineAttributes.color, this.edgeTone);
+    // With no fill behind them the edges are the whole drawing, so they take
+    // the part's own colour rather than the dark tone that sits on shading.
+    gl.vertexAttrib3fv(this.lineAttributes.color,
+                       this.wireframe ? this.color : this.edgeTone);
     gl.drawArrays(gl.LINES, 0, this.edgeCount);
     gl.uniform1i(this.lineUniforms.sectioning, 0);
   }
