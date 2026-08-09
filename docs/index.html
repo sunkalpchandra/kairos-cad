@@ -1093,6 +1093,20 @@ tbody tr.ceiling td:first-child::after {
     <circle cx="19" cy="5" r="2" />
     <circle cx="5" cy="19" r="2" />
   </symbol>
+  <symbol id="i-ortho" viewBox="0 0 24 24">
+    <path d="M5 3a2 2 0 0 0-2 2" />
+    <path d="M19 3a2 2 0 0 1 2 2" />
+    <path d="M21 19a2 2 0 0 1-2 2" />
+    <path d="M5 21a2 2 0 0 1-2-2" />
+    <path d="M9 3h1" />
+    <path d="M9 21h1" />
+    <path d="M14 3h1" />
+    <path d="M14 21h1" />
+    <path d="M3 9v1" />
+    <path d="M21 9v1" />
+    <path d="M3 14v1" />
+    <path d="M21 14v1" />
+  </symbol>
   <symbol id="i-pad" viewBox="0 0 24 24">
     <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
     <path d="m3.3 7 8.7 5 8.7-5" />
@@ -1264,6 +1278,10 @@ tbody tr.ceiling td:first-child::after {
       <div class="commands">
         <button class="cmd" id="cmd-grid" aria-pressed="true" title="Ground grid">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-grid"></use></svg>Grid
+        </button>
+        <button class="cmd" id="cmd-ortho" aria-pressed="false"
+                title="Parallel projection (P)">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-ortho"></use></svg>Ortho
         </button>
         <button class="cmd" id="cmd-shade" aria-pressed="true"
                 title="Visual style: shaded with edges, shaded, wireframe (W)">
@@ -1632,6 +1650,7 @@ tbody tr.ceiling td:first-child::after {
         <dt>X</dt><dd>cycle cut axis</dd>
         <dt>E</dt><dd>export STL</dd>
         <dt>M</dt><dd>measure between two points</dd>
+        <dt>P</dt><dd>parallel projection</dd>
         <dt>Space</dt><dd>play the build</dd>
         <dt>, .</dt><dd>roll back / forward one feature</dd>
         <dt>/</dt><dd>filter parts</dd>
@@ -1808,6 +1827,20 @@ function perspective(fovY, aspect, near, far) {
     0, f, 0, 0,
     0, 0, (near + far) * range, -1,
     0, 0, 2 * near * far * range, 0,
+  ]);
+}
+
+/* Orthographic: parallel projection, which is what an engineering view is.
+ * Perspective makes two equal features different sizes depending on where they
+ * sit, so a drawing cannot be read off it. */
+function orthographic(halfHeight, aspect, near, far) {
+  const halfWidth = halfHeight * aspect;
+  const range = 1 / (near - far);
+  return new Float32Array([
+    1 / halfWidth, 0, 0, 0,
+    0, 1 / halfHeight, 0, 0,
+    0, 0, 2 * range, 0,
+    0, 0, (near + far) * range, 1,
   ]);
 }
 
@@ -2050,6 +2083,10 @@ class Viewer {
     //: darken a light ground and lighten nothing on a dark one.
     this.shadowTone = new Float32Array([0.02, 0.03, 0.05, 0.55]);
     this.showShadow = true;
+    //: Parallel projection. Off by default: perspective reads as a solid
+    //: object, and this viewport is for looking at parts before it is for
+    //: measuring them.
+    this.orthographic = false;
     //: Model edges over the shading, which is how a CAD viewport draws a part.
     this.showEdges = true;
     this.edgeTone = [0.10, 0.13, 0.18];
@@ -2300,7 +2337,12 @@ class Viewer {
     ]);
     const modelView = multiply(view, model);
     const aspect = this.canvas.width / Math.max(1, this.canvas.height);
-    const projection = perspective(Math.PI / 4, aspect, 0.05, 100);
+    // The orthographic frustum is sized from the camera distance so that
+    // zooming keeps working and the part fills the same share of the frame in
+    // both projections; switching should change the projection, not the shot.
+    const projection = this.orthographic
+      ? orthographic(this.camera.distance * Math.tan(Math.PI / 8), aspect, -100, 100)
+      : perspective(Math.PI / 4, aspect, 0.05, 100);
 
     // The grid is the ground the part stands on, so it belongs at the part's
     // underside. Drawn at z=0 it cut through the middle of every part, because
@@ -2608,18 +2650,36 @@ class Viewer {
     right = normalize3(right);
     const up = cross3(right, forward);
 
-    const direction = normalize3([
-      forward[0] + right[0] * ndcX * tan * aspect + up[0] * ndcY * tan,
-      forward[1] + right[1] * ndcX * tan * aspect + up[1] * ndcY * tan,
-      forward[2] + right[2] * ndcX * tan * aspect + up[2] * ndcY * tan,
-    ]);
+    // Under perspective every ray leaves the eye; under a parallel projection
+    // they are all the view direction and it is the origin that slides across
+    // the image plane. Picking has to follow the projection or the measure
+    // tool reports distances between points nobody clicked.
+    let origin = eye;
+    let direction;
+    if (this.orthographic) {
+      const halfHeight = distance * Math.tan(Math.PI / 8);
+      const offsetU = ndcX * halfHeight * aspect;
+      const offsetV = ndcY * halfHeight;
+      origin = [
+        eye[0] + right[0] * offsetU + up[0] * offsetV,
+        eye[1] + right[1] * offsetU + up[1] * offsetV,
+        eye[2] + right[2] * offsetU + up[2] * offsetV,
+      ];
+      direction = forward;
+    } else {
+      direction = normalize3([
+        forward[0] + right[0] * ndcX * tan * aspect + up[0] * ndcY * tan,
+        forward[1] + right[1] * ndcX * tan * aspect + up[1] * ndcY * tan,
+        forward[2] + right[2] * ndcX * tan * aspect + up[2] * ndcY * tan,
+      ]);
+    }
     // Out of normalized space and back into millimetres.
     const toModel = (p) => [
       p[0] / this.scale + this.center[0],
       p[1] / this.scale + this.center[1],
       p[2] / this.scale + this.center[2],
     ];
-    return { origin: toModel(eye), direction };
+    return { origin: toModel(origin), direction };
   }
 
   /** Nearest surface point under the cursor, in millimetres, or null.
@@ -2734,9 +2794,17 @@ class Viewer {
     const x = view[0] * model[0] + view[4] * model[1] + view[8] * model[2] + view[12];
     const y = view[1] * model[0] + view[5] * model[1] + view[9] * model[2] + view[13];
     const z = view[2] * model[0] + view[6] * model[1] + view[10] * model[2] + view[14];
-    if (z >= -1e-4) return null;
     const aspect = rect.width / Math.max(1, rect.height);
     const tan = Math.tan(Math.PI / 8);
+    if (this.orthographic) {
+      const halfHeight = distance * tan;
+      return {
+        x: rect.width * 0.5 * (1 + x / (halfHeight * aspect)),
+        y: rect.height * 0.5 * (1 - y / halfHeight),
+      };
+    }
+    // Behind the eye has no place on screen; under perspective only.
+    if (z >= -1e-4) return null;
     return {
       x: rect.width * 0.5 * (1 + x / (-z * tan * aspect)),
       y: rect.height * 0.5 * (1 - y / (-z * tan)),
@@ -4015,6 +4083,17 @@ function initViewer() {
     // an artifact of meshing, and drawing them buries the part in noise.
     { name: 'Wire', icon: 'i-wire', edges: true, wireframe: true },
   ];
+  const ortho = el('cmd-ortho');
+  ortho.addEventListener('click', () => {
+    viewer.orthographic = !viewer.orthographic;
+    ortho.setAttribute('aria-pressed', String(viewer.orthographic));
+    el('hud-orientation').dataset.projection = viewer.orthographic ? 'ORTHO' : '';
+    viewer.render();
+    // The dimension label is placed in screen space, and the projection just
+    // changed where these points land.
+    if (viewer.measure.length === 2) placeDimension();
+  });
+
   const shade = el('cmd-shade');
   let style = 0;
   shade.addEventListener('click', () => {
@@ -4352,6 +4431,7 @@ function initKeys() {
       case 'x': case 'X': press('cmd-axis'); break;
       case 'e': case 'E': press('cmd-export'); break;
       case 'm': case 'M': press('cmd-measure'); break;
+      case 'p': case 'P': press('cmd-ortho'); break;
       case ' ': event.preventDefault(); playBuild(); break;
       case ',': stepBy(-1); break;
       case '.': stepBy(1); break;

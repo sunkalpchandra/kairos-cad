@@ -1053,6 +1053,17 @@ function initViewer() {
     // an artifact of meshing, and drawing them buries the part in noise.
     { name: 'Wire', icon: 'i-wire', edges: true, wireframe: true },
   ];
+  const ortho = el('cmd-ortho');
+  ortho.addEventListener('click', () => {
+    viewer.orthographic = !viewer.orthographic;
+    ortho.setAttribute('aria-pressed', String(viewer.orthographic));
+    el('hud-orientation').dataset.projection = viewer.orthographic ? 'ORTHO' : '';
+    viewer.render();
+    // The dimension label is placed in screen space, and the projection just
+    // changed where these points land.
+    if (viewer.measure.length === 2) placeDimension();
+  });
+
   const shade = el('cmd-shade');
   let style = 0;
   shade.addEventListener('click', () => {
@@ -1390,6 +1401,7 @@ function initKeys() {
       case 'x': case 'X': press('cmd-axis'); break;
       case 'e': case 'E': press('cmd-export'); break;
       case 'm': case 'M': press('cmd-measure'); break;
+      case 'p': case 'P': press('cmd-ortho'); break;
       case ' ': event.preventDefault(); playBuild(); break;
       case ',': stepBy(-1); break;
       case '.': stepBy(1); break;
