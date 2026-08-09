@@ -3,6 +3,7 @@
 import math
 
 import pytest
+from conftest import freecad_version
 
 from kairos.cad.errors import FeatureError, SketchError
 
@@ -134,9 +135,16 @@ def test_mirror_doubles_volume(engine):
     assert engine.measure_bounding_box()["x_min"] == pytest.approx(-20)
 
 
+@pytest.mark.skipif(
+    freecad_version() < (1, 1),
+    reason="FreeCAD below 1.1 discards disjoint pattern instances rather than "
+           "keeping them as a multi-solid compound",
+)
 def test_disjoint_mirror_yields_two_solid_compound(engine):
     # FreeCAD 1.1 permits disjoint pattern results as multi-solid compounds;
     # the summary must expose the solid count so rewards can reason about it.
+    # Debian bookworm ships 0.20, where mirror() raises FeatureError instead,
+    # which is how CI surfaced this as a portability difference.
     engine.create_sketch("XY")
     engine.add_rectangle(5, 0, 20, 10)  # clear of the YZ plane: halves disjoint
     engine.pad(6)

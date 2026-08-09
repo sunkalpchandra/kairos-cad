@@ -54,22 +54,23 @@ def test_recorder_scores_expert_shaping_events(engine):
 def test_generator_writes_trajectory_files(tmp_path):
     rng = random.Random(5)
     stats = GenerationStats()
-    trajectories_dir = tmp_path / "trajectories"
+    designs_dir = tmp_path / "designs"
     written = False
     design_id = 0
     while not written and design_id < 20:
-        written = generate_design(
-            "plate", rng, tmp_path / "designs", design_id, stats, trajectories_dir
-        )
+        written = generate_design("plate", rng, designs_dir, design_id, stats)
         design_id += 1
     assert written
-    trajectory_files = list(trajectories_dir.glob("trajectory_*.json"))
+
+    # The trajectory lives beside its design. A separate trajectories/ tree
+    # used to hold a byte-identical copy of each one; the generator no longer
+    # writes it, and this test used to pass that directory into what is now the
+    # `render` parameter, so it silently asked for PNGs and then looked for
+    # json files that were never going to be there.
+    trajectory_files = sorted(designs_dir.glob("design_*/trajectory.json"))
     assert len(trajectory_files) == 1
     data = json.loads(trajectory_files[0].read_text())
     assert data["family"] == "plate"
     assert data["requirement"].startswith("Design a rectangular")
     assert len(data["actions"]) == len(data["rewards"])
-    design_copy = json.loads(
-        next((tmp_path / "designs").glob("design_*/trajectory.json")).read_text()
-    )
-    assert design_copy["design_id"] == data["design_id"]
+    assert data["design_id"].startswith("design_")
