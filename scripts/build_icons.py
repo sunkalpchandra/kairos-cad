@@ -67,6 +67,11 @@ ICONS: dict[str, str] = {
     "i-section": "scissors",
     "i-axis": "move-3d",
     "i-export": "download",
+    # Timeline playback, the way a parametric history is stepped through.
+    "i-play": "play",
+    "i-pause": "pause",
+    "i-first": "chevrons-left",
+    "i-last": "chevrons-right",
 }
 
 #: The brand mark. Drawn here rather than borrowed: an extruded L-bracket in
