@@ -18,14 +18,24 @@ function escapeText(value) {
 }
 
 /** Nice round tick values covering [0, max]. */
-function ticks(max, count) {
-  if (!(max > 0)) return [0, 1];
-  const raw = max / count;
+/** Round tick values spanning [min, max].
+ *
+ * It used to walk up from zero, which is right only when the data is positive.
+ * PPO reward is never positive, so every tick landed in the top few pixels of
+ * the plot as an unreadable stack of labels, and the range the curve actually
+ * occupied had no gridline at all.
+ */
+function ticks(min, max, count) {
+  if (!(max > min)) return [min];
+  const raw = (max - min) / count;
   const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
   const step = [1, 2, 2.5, 5, 10].map((m) => m * magnitude).find((s) => s >= raw) || magnitude * 10;
   const out = [];
-  for (let value = 0; value <= max + step * 0.5; value += step) out.push(Number(value.toFixed(10)));
-  return out;
+  const first = Math.ceil(min / step - 1e-9) * step;
+  for (let value = first; value <= max + step * 1e-9; value += step) {
+    out.push(Number(value.toFixed(10)));
+  }
+  return out.length ? out : [min, max];
 }
 
 /**
@@ -49,7 +59,11 @@ function lineChart(series, options) {
   const allY = live.flatMap((s) => s.points.map((p) => p[1]));
   const xMin = Math.min(...allX);
   const xMax = Math.max(...allX);
-  const yMax = opts.yMax != null ? opts.yMax : Math.max(...allY, 0) * 1.08 || 1;
+  // Zero stays on the chart in both directions: it is the reference the reader
+  // brings, and a reward curve that never reaches it should show how far off
+  // it is rather than filling the frame.
+  const dataMax = Math.max(...allY, 0);
+  const yMax = opts.yMax != null ? opts.yMax : (dataMax > 0 ? dataMax * 1.08 : 0);
   const yMin = Math.min(0, ...allY);
 
   const sx = (x) => pad.left + (xMax === xMin ? plotWidth / 2 : ((x - xMin) / (xMax - xMin)) * plotWidth);
@@ -57,8 +71,7 @@ function lineChart(series, options) {
 
   let svg = `<svg viewBox="0 0 ${opts.width} ${opts.height}" role="img">`;
 
-  for (const tick of ticks(yMax, 5)) {
-    if (tick < yMin) continue;
+  for (const tick of ticks(yMin, yMax, 5)) {
     const y = sy(tick);
     svg += `<line class="grid" x1="${pad.left}" y1="${y}" x2="${pad.left + plotWidth}" y2="${y}"/>`;
     svg += `<text x="${pad.left - 8}" y="${y + 3}" text-anchor="end">${formatTick(tick)}</text>`;
@@ -67,9 +80,10 @@ function lineChart(series, options) {
   svg += `<line class="axis" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + plotHeight}"/>`;
   svg += `<line class="axis" x1="${pad.left}" y1="${sy(0)}" x2="${pad.left + plotWidth}" y2="${sy(0)}"/>`;
 
-  const xTicks = opts.xTickLabels || ticks(xMax, Math.min(8, Math.max(2, allX.length)))
-    .filter((t) => t >= xMin && t <= xMax)
-    .map((t) => [t, formatTick(t)]);
+  const xTicks = opts.xTickLabels
+    || ticks(xMin, xMax, Math.min(8, Math.max(2, allX.length)))
+      .filter((t) => t >= xMin && t <= xMax)
+      .map((t) => [t, formatTick(t)]);
   for (const [value, label] of xTicks) {
     svg += `<text x="${sx(value)}" y="${pad.top + plotHeight + 16}" text-anchor="middle">${escapeText(label)}</text>`;
   }
