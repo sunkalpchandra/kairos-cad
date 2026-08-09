@@ -3433,9 +3433,26 @@ function buildTree() {
   });
 }
 
+/* Camera per part. Comparing two designs means going back and forth between
+ * them, and resetting the view every time makes that a re-orbit rather than a
+ * comparison. */
+const cameras = new Map();
+
+function rememberCamera() {
+  const design = designs[selected];
+  if (!viewer || !design) return;
+  cameras.set(design.design_id, {
+    yaw: viewer.camera.yaw,
+    pitch: viewer.camera.pitch,
+    distance: viewer.camera.distance,
+    pan: viewer.pan.slice(),
+  });
+}
+
 function select(index) {
   const design = designs[index];
   if (!design) return;
+  rememberCamera();
   selected = index;
 
   el('tree').querySelectorAll('.leaf').forEach((button) => {
@@ -3445,6 +3462,15 @@ function select(index) {
   if (viewer && design.mesh) {
     try {
       viewer.load(design.mesh);
+      const saved = cameras.get(design.design_id);
+      if (saved) {
+        viewer.camera.yaw = saved.yaw;
+        viewer.camera.pitch = saved.pitch;
+        viewer.camera.distance = saved.distance;
+        viewer.pan = saved.pan.slice();
+        viewer.render();
+        syncViewCube();
+      }
       el('viewer-error').hidden = true;
       const extent = viewer.extentMm();
       el('scale-label').textContent = extent ? extent.toFixed(1) + ' mm' : '—';
