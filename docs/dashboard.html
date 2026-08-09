@@ -689,6 +689,7 @@ class Viewer {
       capPosition: gl.createBuffer(),
       capNormal: gl.createBuffer(),
       edge: gl.createBuffer(),
+      measure: gl.createBuffer(),
     };
     this.mesh = null;
     this.color = [0.42, 0.58, 0.86];
@@ -700,6 +701,9 @@ class Viewer {
     //: Model edges over the shading, which is how a CAD viewport draws a part.
     this.showEdges = true;
     this.edgeTone = [0.10, 0.13, 0.18];
+    //: Picked points for the measure tool, in millimetres.
+    this.measure = [];
+    this.measureTone = [0.27, 0.76, 0.80];
     this.background = [0.043, 0.055, 0.075];
     this.showGrid = true;
     this.wireframe = false;
@@ -826,6 +830,7 @@ class Viewer {
     const shade = parse('--viewport-shadow', null);
     if (shade) this.shadowTone.set(shade, 0);
     this.edgeTone = parse('--viewport-edge', this.edgeTone);
+    this.measureTone = parse('--accent-solid', this.measureTone);
     this.axisTone = [
       parse('--grid-axis-x', this.axisTone[0]),
       parse('--grid-axis-y', this.axisTone[1]),
@@ -993,6 +998,7 @@ class Viewer {
     if ((this.showEdges || this.wireframe) && this.edgeCount) {
       this._drawEdges(modelView, projection, axis, where);
     }
+    if (this.measure.length) this._drawMeasure(modelView, projection);
   }
 
   /** Model edges over the shaded solid.
@@ -1178,6 +1184,207 @@ class Viewer {
     gl.disableVertexAttribArray(this.shadowPosition);
     gl.depthMask(true);
     gl.disable(gl.BLEND);
+  }
+
+  /** Picked points and the span between them.
+   *
+   * Drawn with the depth test off: a dimension that disappears behind the part
+   * it dimensions is a dimension you cannot read, which is why CAD draws them
+   * in front of the model rather than in it.
+   */
+  _drawMeasure(modelView, projection) {
+    const gl = this.gl;
+    const points = this.measure;
+    const line = [];
+    const tick = 0.035 / this.scale;
+    points.forEach((p) => {
+      // A three-axis cross marks the point without needing a sprite.
+      line.push(p[0] - tick, p[1], p[2], p[0] + tick, p[1], p[2]);
+      line.push(p[0], p[1] - tick, p[2], p[0], p[1] + tick, p[2]);
+      line.push(p[0], p[1], p[2] - tick, p[0], p[1], p[2] + tick);
+    });
+    if (points.length === 2) {
+      line.push(points[0][0], points[0][1], points[0][2],
+                points[1][0], points[1][1], points[1][2]);
+    }
+
+    gl.useProgram(this.lineProgram);
+    gl.uniform1i(this.lineUniforms.sectioning, 0);
+    gl.uniformMatrix4fv(this.lineUniforms.modelView, false, modelView);
+    gl.uniformMatrix4fv(this.lineUniforms.projection, false, projection);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.measure);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(line), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(this.lineAttributes.position);
+    gl.vertexAttribPointer(this.lineAttributes.position, 3, gl.FLOAT, false, 0, 0);
+    gl.disableVertexAttribArray(this.lineAttributes.color);
+    gl.vertexAttrib3fv(this.lineAttributes.color, this.measureTone);
+    gl.disable(gl.DEPTH_TEST);
+    gl.drawArrays(gl.LINES, 0, line.length / 3);
+    gl.enable(gl.DEPTH_TEST);
+  }
+
+  /* ---------------------------------------------------------- picking */
+
+  /** The camera basis in model millimetres: eye point and a ray per pixel.
+   *
+   * The renderer works in a normalized space (part scaled into a 2-unit box,
+   * centred), so a screen ray has to come back out of that to mean anything in
+   * millimetres. Both transforms are translation plus uniform scale, so the
+   * inverse is exact rather than a matrix solve.
+   */
+  _rayThrough(clientX, clientY) {
+    const rect = this.canvas.getBoundingClientRect();
+    const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ndcY = 1 - ((clientY - rect.top) / rect.height) * 2;
+    const aspect = rect.width / Math.max(1, rect.height);
+    const tan = Math.tan(Math.PI / 8);
+
+    const { yaw, pitch, distance } = this.camera;
+    const target = [this.pan[0], this.pan[1], 0];
+    const eye = [
+      distance * Math.cos(pitch) * Math.cos(yaw) + target[0],
+      distance * Math.cos(pitch) * Math.sin(yaw) + target[1],
+      distance * Math.sin(pitch),
+    ];
+    const forward = normalize3([target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]]);
+    let right = cross3(forward, [0, 0, 1]);
+    if (Math.hypot(right[0], right[1], right[2]) < 1e-6) right = [1, 0, 0];
+    right = normalize3(right);
+    const up = cross3(right, forward);
+
+    const direction = normalize3([
+      forward[0] + right[0] * ndcX * tan * aspect + up[0] * ndcY * tan,
+      forward[1] + right[1] * ndcX * tan * aspect + up[1] * ndcY * tan,
+      forward[2] + right[2] * ndcX * tan * aspect + up[2] * ndcY * tan,
+    ]);
+    // Out of normalized space and back into millimetres.
+    const toModel = (p) => [
+      p[0] / this.scale + this.center[0],
+      p[1] / this.scale + this.center[1],
+      p[2] / this.scale + this.center[2],
+    ];
+    return { origin: toModel(eye), direction };
+  }
+
+  /** Nearest surface point under the cursor, in millimetres, or null.
+   *
+   * Brute force over the triangles: a part here is a few thousand of them and
+   * this runs once per click, so an acceleration structure would be code with
+   * no measurement behind it.
+   */
+  pick(clientX, clientY) {
+    if (!this.mesh) return null;
+    const { origin, direction } = this._rayThrough(clientX, clientY);
+    const positions = this.mesh.positions;
+    const indices = this.mesh.indices;
+    const axis = [[1, 0, 0], [0, 1, 0], [0, 0, 1]][this.section.axis];
+    const low = this.bounds ? this.bounds.min[this.section.axis] : 0;
+    const high = this.bounds ? this.bounds.max[this.section.axis] : 0;
+    const cut = low + (high - low) * this.section.cut;
+
+    let best = Infinity;
+    let hit = null;
+    let hitTriangle = -1;
+    for (let i = 0; i < indices.length; i += 3) {
+      const a = indices[i] * 3, b = indices[i + 1] * 3, c = indices[i + 2] * 3;
+      const e1x = positions[b] - positions[a];
+      const e1y = positions[b + 1] - positions[a + 1];
+      const e1z = positions[b + 2] - positions[a + 2];
+      const e2x = positions[c] - positions[a];
+      const e2y = positions[c + 1] - positions[a + 1];
+      const e2z = positions[c + 2] - positions[a + 2];
+      // Moller-Trumbore, both faces, because a sectioned part is picked from
+      // the inside as often as the outside.
+      const px = direction[1] * e2z - direction[2] * e2y;
+      const py = direction[2] * e2x - direction[0] * e2z;
+      const pz = direction[0] * e2y - direction[1] * e2x;
+      const det = e1x * px + e1y * py + e1z * pz;
+      if (Math.abs(det) < 1e-12) continue;
+      const inv = 1 / det;
+      const tx = origin[0] - positions[a];
+      const ty = origin[1] - positions[a + 1];
+      const tz = origin[2] - positions[a + 2];
+      const u = (tx * px + ty * py + tz * pz) * inv;
+      if (u < 0 || u > 1) continue;
+      const qx = ty * e1z - tz * e1y;
+      const qy = tz * e1x - tx * e1z;
+      const qz = tx * e1y - ty * e1x;
+      const v = (direction[0] * qx + direction[1] * qy + direction[2] * qz) * inv;
+      if (v < 0 || u + v > 1) continue;
+      const t = (e2x * qx + e2y * qy + e2z * qz) * inv;
+      if (t <= 1e-6 || t >= best) continue;
+
+      const point = [
+        origin[0] + direction[0] * t,
+        origin[1] + direction[1] * t,
+        origin[2] + direction[2] * t,
+      ];
+      // A clipped fragment is not on screen, so it must not be pickable.
+      if (this.section.on
+          && point[0] * axis[0] + point[1] * axis[1] + point[2] * axis[2] > cut) continue;
+      best = t;
+      hit = point;
+      hitTriangle = i;
+    }
+    if (!hit) return null;
+    return { point: this._snap(hit, hitTriangle), distance: best };
+  }
+
+  /** Pull a hit onto the nearest corner of its triangle when it is close.
+   *
+   * Measuring a machined part means measuring between its corners, and a hit
+   * a third of a millimetre inside the face is a measurement of nothing. The
+   * threshold is a fraction of the part, so it means the same for a spacer
+   * and a rail.
+   */
+  _snap(point, triangle) {
+    if (triangle < 0) return point;
+    const indices = this.mesh.indices;
+    const positions = this.mesh.positions;
+    const reach = 0.045 / this.scale;
+    let best = reach * reach;
+    let snapped = point;
+    for (let k = 0; k < 3; k += 1) {
+      const v = indices[triangle + k] * 3;
+      const dx = positions[v] - point[0];
+      const dy = positions[v + 1] - point[1];
+      const dz = positions[v + 2] - point[2];
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 < best) {
+        best = d2;
+        snapped = [positions[v], positions[v + 1], positions[v + 2]];
+      }
+    }
+    return snapped;
+  }
+
+  /** Where a millimetre point lands on the canvas, in CSS pixels. */
+  project(point) {
+    const rect = this.canvas.getBoundingClientRect();
+    const s = this.scale;
+    const model = [
+      (point[0] - this.center[0]) * s,
+      (point[1] - this.center[1]) * s,
+      (point[2] - this.center[2]) * s,
+    ];
+    const { yaw, pitch, distance } = this.camera;
+    const target = [this.pan[0], this.pan[1], 0];
+    const eye = [
+      distance * Math.cos(pitch) * Math.cos(yaw) + target[0],
+      distance * Math.cos(pitch) * Math.sin(yaw) + target[1],
+      distance * Math.sin(pitch),
+    ];
+    const view = lookAt(eye, target, [0, 0, 1]);
+    const x = view[0] * model[0] + view[4] * model[1] + view[8] * model[2] + view[12];
+    const y = view[1] * model[0] + view[5] * model[1] + view[9] * model[2] + view[13];
+    const z = view[2] * model[0] + view[6] * model[1] + view[10] * model[2] + view[14];
+    if (z >= -1e-4) return null;
+    const aspect = rect.width / Math.max(1, rect.height);
+    const tan = Math.tan(Math.PI / 8);
+    return {
+      x: rect.width * 0.5 * (1 + x / (-z * tan * aspect)),
+      y: rect.height * 0.5 * (1 - y / (-z * tan)),
+    };
   }
 
   /** Ground grid, drawn in the part's own normalized space at `floor`. */
