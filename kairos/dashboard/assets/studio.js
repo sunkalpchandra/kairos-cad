@@ -114,6 +114,8 @@ function select(index) {
     </div>`).join('') : '<p class="empty">No constraints recorded.</p>';
 
   renderTimeline(design);
+  el('dim-readout').hidden = true;
+  if (measuring) el('status-measure').textContent = 'MEASURE: PICK A POINT';
 
   const met = design.satisfaction_rate === null || design.satisfaction_rate === undefined
     ? '—' : fmt(design.satisfaction_rate * 100, 0) + '%';
@@ -452,6 +454,7 @@ function rollTo(step) {
   }
 
   atStep = step;
+  el('dim-readout').hidden = true;
   el('timeline-track').querySelectorAll('.tl-node').forEach((node) => {
     const index = Number(node.dataset.step);
     node.setAttribute('aria-current', String(step !== null && index === step));
@@ -754,7 +757,7 @@ function toggleMeasure() {
   el('cmd-measure').setAttribute('aria-pressed', String(measuring));
   el('canvas').classList.toggle('measuring', measuring);
   el('dim-readout').hidden = true;
-  el('status-section').textContent = measuring ? 'MEASURE: PICK A POINT' : '';
+  el('status-measure').textContent = measuring ? 'MEASURE: PICK A POINT' : '';
   viewer.render();
 }
 
@@ -768,7 +771,7 @@ function pickMeasurePoint(event) {
   if (viewer.measure.length >= 2) viewer.measure = [];
   const hit = viewer.pick(event.clientX, event.clientY);
   if (!hit) {
-    el('status-section').textContent = 'MEASURE: NO PART UNDER THE CURSOR';
+    el('status-measure').textContent = 'MEASURE: NO PART UNDER THE CURSOR';
     return;
   }
   viewer.measure.push(hit.point);
@@ -782,7 +785,7 @@ function placeDimension() {
   const points = viewer.measure;
   if (points.length < 2) {
     readout.hidden = true;
-    el('status-section').textContent = 'MEASURE: PICK THE SECOND POINT';
+    el('status-measure').textContent = 'MEASURE: PICK THE SECOND POINT';
     return;
   }
   const [a, b] = points;
@@ -790,7 +793,7 @@ function placeDimension() {
   const middle = viewer.project([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]);
   // Axis components alongside the span: on a machined part the useful number
   // is often one axis of it, not the diagonal.
-  el('status-section').textContent =
+  el('status-measure').textContent =
     'MEASURE  dX ' + Math.abs(b[0] - a[0]).toFixed(2)
     + '  dY ' + Math.abs(b[1] - a[1]).toFixed(2)
     + '  dZ ' + Math.abs(b[2] - a[2]).toFixed(2) + ' mm';
