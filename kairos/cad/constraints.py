@@ -53,3 +53,23 @@ def add_constraint(sketch, kind: str, *args) -> int:
         return sketch.addConstraint(constraint)
     except Exception as err:
         raise SketchError(f"sketch rejected {kind} constraint {args}: {err}") from err
+# ---------------------------------------------------------------- inspection
+
+
+def constraint_count(sketch) -> int:
+    return len(sketch.Constraints)
+
+
+def is_fully_constrained(sketch) -> bool | None:
+    """True/False when FreeCAD exposes it; None when undeterminable."""
+    value = getattr(sketch, "FullyConstrained", None)
+    return bool(value) if value is not None else None
+
+
+def degrees_of_freedom(sketch) -> int | None:
+    """Remaining sketch DoF when the solver exposes it, else None."""
+    try:
+        sketch.solve()
+        return int(sketch.getDoF())
+    except Exception:
+        return None
