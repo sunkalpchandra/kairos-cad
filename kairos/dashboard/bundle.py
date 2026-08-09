@@ -322,6 +322,51 @@ def _failure_kind(message: str) -> str:
     return head or kind[:80]
 
 
+def collect_sources(
+    dataset: str | Path, benchmark_runs: str | Path,
+    ablation_runs: str | Path, runs_root: str | Path,
+) -> list[dict[str, Any]]:
+    """The artifacts this bundle was built from, and whether each was there.
+
+    The page claims every figure traces to a file on disk. That is only worth
+    saying if the page also says which files, and which of them were missing
+    when it was built -- a collector that finds nothing degrades to empty by
+    design, so an absent artifact shows up as a quiet gap rather than an error.
+    """
+    dataset, runs_root = Path(dataset), Path(runs_root)
+    benchmark_runs, ablation_runs = Path(benchmark_runs), Path(ablation_runs)
+
+    def entry(label: str, path: Path, what: str, count: int | None = None):
+        return {
+            "label": label,
+            "path": str(path),
+            "reads": what,
+            "present": path.exists(),
+            "count": count,
+        }
+
+    designs = len(list(dataset.glob("designs/design_*/state.json")))
+    traces = sorted(benchmark_runs.glob("*_traces.jsonl"))
+    ablations = sorted(ablation_runs.glob("*_traces.jsonl"))
+    steps = len(list(dataset.glob("designs/design_*/steps")))
+    rollouts = len(list(benchmark_runs.glob("rollout_meshes/*/*.stl")))
+
+    return [
+        entry("dataset", dataset, "parts, requirements, expert trajectories", designs),
+        entry("step meshes", dataset / "designs", "the scrubbable timeline", steps),
+        entry("benchmark", benchmark_runs / "leaderboard.json",
+              "leaderboard, task-type split, funnel"),
+        entry("benchmark traces", benchmark_runs,
+              "matrix, families, failures, jam, effort, comparisons", len(traces)),
+        entry("rollout meshes", benchmark_runs / "rollout_meshes",
+              "the solid each policy built", rollouts),
+        entry("ablations", ablation_runs, "conditions and their intervals", len(ablations)),
+        entry("training", runs_root / "bc", "behavioural cloning curves"),
+        entry("ppo", runs_root / "ppo", "reward and rate curves"),
+        entry("codec audit", runs_root / "codec_audit.json", "the ceiling on every policy"),
+    ]
+
+
 def collect_dataset(root: str | Path, buckets: int = 12) -> dict[str, Any]:
     """Shape of the whole dataset, not the 24 designs the page can carry.
 
@@ -885,6 +930,7 @@ def build_bundle(
         "families_scored": collect_families(benchmark_runs),
         "codec": collect_codec(runs_root),
         "dataset": collect_dataset(dataset),
+        "sources": collect_sources(dataset, benchmark_runs, ablation_runs, runs_root),
         "ablations": collect_ablations(ablation_runs),
         "ablation_intervals": collect_ablation_intervals(ablation_runs),
         "training": collect_training(runs_root),
