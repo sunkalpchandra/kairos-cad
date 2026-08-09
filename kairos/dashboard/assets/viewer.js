@@ -411,6 +411,7 @@ class Viewer {
       capNormal: gl.createBuffer(),
       edge: gl.createBuffer(),
       measure: gl.createBuffer(),
+      bounds: gl.createBuffer(),
     };
     this.mesh = null;
     this.color = [0.42, 0.58, 0.86];
@@ -423,6 +424,9 @@ class Viewer {
     //: object, and this viewport is for looking at parts before it is for
     //: measuring them.
     this.orthographic = false;
+    //: The bounding box as a cage. Off by default: it is an inspection aid,
+    //: not part of the part.
+    this.showBounds = false;
     //: Model edges over the shading, which is how a CAD viewport draws a part.
     this.showEdges = true;
     this.edgeTone = [0.10, 0.13, 0.18];
@@ -732,7 +736,44 @@ class Viewer {
     if ((this.showEdges || this.wireframe) && this.edgeCount) {
       this._drawEdges(modelView, projection, axis, where);
     }
+    if (this.showBounds) this._drawBounds(modelView, projection);
     if (this.measure.length) this._drawMeasure(modelView, projection);
+  }
+
+  /** The part's bounding box, as a wireframe cage in millimetres.
+   *
+   * The inspector reports the extents as three numbers. Drawn on the part they
+   * say which number is which axis, which no column of figures can.
+   */
+  _drawBounds(modelView, projection) {
+    const gl = this.gl;
+    if (!this.bounds) return;
+    const { min, max } = this.bounds;
+    const corner = (i) => [
+      i & 1 ? max[0] : min[0],
+      i & 2 ? max[1] : min[1],
+      i & 4 ? max[2] : min[2],
+    ];
+    // The twelve edges of a box: every pair of corners differing in one bit.
+    const line = [];
+    for (let a = 0; a < 8; a += 1) {
+      for (const bit of [1, 2, 4]) {
+        const b = a ^ bit;
+        if (b > a) line.push(...corner(a), ...corner(b));
+      }
+    }
+
+    gl.useProgram(this.lineProgram);
+    gl.uniform1i(this.lineUniforms.sectioning, 0);
+    gl.uniformMatrix4fv(this.lineUniforms.modelView, false, modelView);
+    gl.uniformMatrix4fv(this.lineUniforms.projection, false, projection);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.bounds);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(line), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(this.lineAttributes.position);
+    gl.vertexAttribPointer(this.lineAttributes.position, 3, gl.FLOAT, false, 0, 0);
+    gl.disableVertexAttribArray(this.lineAttributes.color);
+    gl.vertexAttrib3fv(this.lineAttributes.color, this.measureTone);
+    gl.drawArrays(gl.LINES, 0, line.length / 3);
   }
 
   /** Model edges over the shaded solid.
