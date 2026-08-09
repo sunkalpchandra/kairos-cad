@@ -240,6 +240,21 @@ def collect_rollouts(runs: str | Path, per_family: int = 1) -> dict[str, Any]:
                 chosen.setdefault(task, family)
         break
 
+    # Solids rebuilt from the traces by scripts/build_rollout_meshes.py. Absent
+    # until that has run, which the page reports rather than papering over.
+    from kairos.dashboard.mesh import mesh_from_stl
+
+    meshes_root = Path(runs) / "rollout_meshes"
+
+    def _mesh(task_id: str, policy: str):
+        path = meshes_root / task_id / f"{policy}.stl"
+        if not path.is_file():
+            return None
+        try:
+            return mesh_from_stl(path)
+        except (OSError, ValueError):
+            return None
+
     out = []
     for task_id, family in sorted(chosen.items()):
         episodes = []
@@ -263,6 +278,7 @@ def collect_rollouts(runs: str | Path, per_family: int = 1) -> dict[str, Any]:
                 "milestones": [m for m in MILESTONES if row.get(m)],
                 "aborted": bool(row.get("aborted")),
                 "abort_reason": row.get("abort_reason") or "",
+                "mesh": _mesh(task_id, policy),
             })
         if episodes:
             out.append({

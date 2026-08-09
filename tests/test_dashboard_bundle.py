@@ -276,3 +276,35 @@ def test_milestones_are_reported_in_reach_order(tmp_path):
 
 def test_rollouts_without_traces_degrade_to_empty(tmp_path):
     assert collect_rollouts(tmp_path) == {"tasks": []}
+
+
+def test_an_episode_without_a_rebuilt_solid_reports_none_not_a_missing_key(tmp_path):
+    """The page distinguishes 'built nothing' from 'not rebuilt yet'. A missing
+    key would read as neither and silently render an empty pane."""
+    _traces(tmp_path, "bc", [_episode()])
+    episode = collect_rollouts(tmp_path)["tasks"][0]["episodes"][0]
+    assert "mesh" in episode
+    assert episode["mesh"] is None
+
+
+def test_a_rebuilt_solid_is_attached_to_its_own_policy(tmp_path):
+    """Keyed by task and policy; crossing them would show one policy's part
+    under another's name, which no reader could catch."""
+    from kairos.dashboard.mesh import mesh_from_stl
+
+    _traces(tmp_path, "bc", [_episode()])
+    _traces(tmp_path, "ppo", [_episode()])
+
+    # A minimal binary STL: one triangle is enough to exercise the path.
+    import struct
+
+    tri = struct.pack("<12fH", 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0)
+    stl = b"\0" * 80 + struct.pack("<I", 1) + tri
+    target = tmp_path / "rollout_meshes" / "build-design_000000"
+    target.mkdir(parents=True)
+    (target / "ppo.stl").write_bytes(stl)
+    assert mesh_from_stl(target / "ppo.stl")["triangle_count"] == 1
+
+    episodes = {e["policy"]: e for e in collect_rollouts(tmp_path)["tasks"][0]["episodes"]}
+    assert episodes["ppo"]["mesh"]["triangle_count"] == 1
+    assert episodes["bc"]["mesh"] is None
