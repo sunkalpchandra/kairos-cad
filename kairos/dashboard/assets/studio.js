@@ -89,6 +89,7 @@ function select(index) {
   }
 
   el('requirement').textContent = design.requirement || '(no requirement recorded)';
+  renderParse(design);
 
   const extentMm = design.extent_mm || [];
   const wall = design.min_wall_thickness_mm;
@@ -132,6 +133,56 @@ function select(index) {
   el('status-mesh').textContent = mesh
     ? `${mesh.triangle_count} TRI / ${mesh.vertex_count} VTX`
     : 'NO MESH';
+}
+
+/* Fields that steer the build rather than describing the part. `kind` picks
+ * the family and `objective` is what the optimizer minimizes; neither is a
+ * measurable property, so neither is missing a constraint. */
+const DIRECTIVES = new Set(['kind', 'objective']);
+
+/** What the parser pulled out of the sentence, and what verifies it.
+ *
+ * The requirement is prose; the spec is what the parser made of it; the
+ * constraint report is what was checked against the built solid. Those are
+ * three different things and the page showed only the first and the last, so
+ * a value the requirement asked for and nothing verified was invisible.
+ */
+function renderParse(design) {
+  const spec = design.spec || {};
+  const entries = Object.entries(spec);
+  const checked = new Set((design.constraints || []).map((c) => c.kind));
+  if (!entries.length) {
+    el('parse').innerHTML = '<p class="empty">No parsed spec recorded.</p>';
+    el('parse-note').textContent = '';
+    return;
+  }
+
+  // The parser keeps full float precision, which is right for the spec and
+  // wrong for a 240px panel: one value at 17 significant figures pushed every
+  // key into an ellipsis.
+  const show = (value) => (typeof value === 'number' && !Number.isInteger(value)
+    ? Number(value.toFixed(3)) : value);
+
+  el('parse').innerHTML = entries.map(([key, value]) => {
+    const directive = DIRECTIVES.has(key);
+    const verified = checked.has(key);
+    const state = directive ? 'directive' : (verified ? 'pass' : 'warn');
+    const note = directive ? 'directive' : (verified ? 'checked' : 'not checked');
+    return `
+      <div class="parse-row">
+        <span class="flag ${state}"></span>
+        <span class="pkey">${esc(key)}</span>
+        <span class="pval" title="${esc(value)}">${esc(show(value))}</span>
+        <span class="pnote">${note}</span>
+      </div>`;
+  }).join('');
+
+  const measurable = entries.filter(([k]) => !DIRECTIVES.has(k));
+  const verified = measurable.filter(([k]) => checked.has(k)).length;
+  el('parse-note').textContent = measurable.length
+    ? `${verified} of ${measurable.length} parsed values are verified against `
+      + 'the built solid. The rest were asked for and not checked.'
+    : 'Nothing measurable was parsed from this requirement.';
 }
 
 /* ---------------------------------------------------------------- benchmark */

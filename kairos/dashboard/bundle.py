@@ -103,6 +103,12 @@ def collect_designs(root: str | Path, limit: int = MAX_DESIGNS) -> list[dict[str
             "design_id": path.parent.name,
             "family": (requirement.get("spec") or {}).get("kind", "unknown"),
             "requirement": requirement.get("text", ""),
+            # What the parser pulled out of that sentence. Only `kind` was ever
+            # read from it, so the whole language-grounding step -- the first
+            # phase of this project -- had no representation on the page at
+            # all. A number the parser missed shows here as a field that is
+            # absent, which is the only way to see it short of reading code.
+            "spec": requirement.get("spec") or {},
             "mass_g": state.get("mass_g"),
             "volume_mm3": state.get("volume_mm3"),
             "surface_area_mm2": state.get("surface_area_mm2"),
