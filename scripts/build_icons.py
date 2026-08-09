@@ -46,6 +46,8 @@ ICONS: dict[str, str] = {
     "i-fit": "maximize",
     "i-grid": "grid-3x3",
     "i-shaded": "contrast",
+    "i-edges": "box",
+    "i-wire": "frame",
     "i-measure": "ruler",
     "i-orbit": "orbit",
     "i-pan": "move",

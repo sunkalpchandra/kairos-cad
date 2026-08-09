@@ -574,11 +574,26 @@ function initViewer() {
     grid.setAttribute('aria-pressed', String(viewer.showGrid));
   });
 
+  // Visual style, as a CAD tool cycles it. Shaded-with-edges first because it
+  // is the one a part is normally read in.
+  const STYLES = [
+    { name: 'Edges', icon: 'i-edges', edges: true, wireframe: false },
+    { name: 'Shaded', icon: 'i-shaded', edges: false, wireframe: false },
+    // Wireframe draws the model edges, not the tessellation: the triangles are
+    // an artifact of meshing, and drawing them buries the part in noise.
+    { name: 'Wire', icon: 'i-wire', edges: true, wireframe: true },
+  ];
   const shade = el('cmd-shade');
+  let style = 0;
   shade.addEventListener('click', () => {
-    viewer.wireframe = !viewer.wireframe;
-    shade.setAttribute('aria-pressed', String(!viewer.wireframe));
-    shade.lastChild.textContent = viewer.wireframe ? 'Wire' : 'Shaded';
+    style = (style + 1) % STYLES.length;
+    const chosen = STYLES[style];
+    viewer.showEdges = chosen.edges;
+    viewer.wireframe = chosen.wireframe;
+    shade.setAttribute('aria-pressed', String(!chosen.wireframe));
+    shade.querySelector('use').setAttribute('href', '#' + chosen.icon);
+    shade.lastChild.textContent = chosen.name;
+    el('status-style').textContent = chosen.name.toUpperCase();
     viewer.render();
   });
 

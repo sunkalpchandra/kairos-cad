@@ -74,8 +74,9 @@
         <button class="cmd" id="cmd-grid" aria-pressed="true" title="Ground grid">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-grid"></use></svg>Grid
         </button>
-        <button class="cmd" id="cmd-shade" aria-pressed="true" title="Shaded / wireframe">
-          <svg class="icon" viewBox="0 0 24 24"><use href="#i-shaded"></use></svg>Shaded
+        <button class="cmd" id="cmd-shade" aria-pressed="true"
+                title="Visual style: shaded with edges, shaded, wireframe (W)">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-edges"></use></svg>Edges
         </button>
       </div>
       <span class="label">Display</span>
@@ -314,6 +315,7 @@
   <footer class="statusbar">
     <span id="status-part">-</span>
     <span id="status-mesh">-</span>
+    <span id="status-style">EDGES</span>
     <span id="status-step"></span>
     <span id="status-section"></span>
     <span class="spacer"></span>
