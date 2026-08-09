@@ -122,3 +122,44 @@ def test_a_rejected_action_does_not_freeze_the_observation():
         "identical geometry must still yield a changing observation, or the "
         "episode really would be absorbing"
     )
+
+
+# ---------------------------------------------------- the per-step record
+
+
+def test_the_rejection_reason_comes_from_the_field_the_bridge_actually_sends():
+    """`info` carries `message`, not `error`.
+
+    Reading a key the bridge never sets writes a constant into every rejected
+    step and reads as a real diagnosis. It was written that way first, and
+    nothing would have failed: the strip would have shown 34 rejections all
+    blamed on the same invented reason.
+    """
+    from kairos.rl.env_server import _step_info
+
+    info = _step_info({
+        "action": {"operation": "PAD"},
+        "result": {"ok": False, "message": "no closed profile to pad"},
+    })
+    assert info["ok"] is False
+    assert info["message"] == "no closed profile to pad"
+    assert "error" not in info
+
+
+def test_the_trace_carries_one_acceptance_flag_per_operation():
+    """The strip indexes them together; a length mismatch shifts every cell."""
+    from kairos.benchmark.runner import TaskResult
+
+    result = TaskResult(
+        task_id="build-design_000000", policy="bc", repeat=0,
+        outcome=EpisodeOutcome(requirement="r", family="plate"),
+    )
+    for accepted, message in [(True, ""), (False, "no closed profile")]:
+        result.operations.append("PAD")
+        result.accepted.append(accepted)
+        result.rejections.append(message)
+
+    row = result.to_dict()
+    assert len(row["accepted"]) == len(row["operations"]) == len(row["rejections"])
+    assert row["accepted"] == [True, False]
+    assert row["rejections"][1] == "no closed profile"

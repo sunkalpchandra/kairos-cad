@@ -40,6 +40,13 @@ class TaskResult:
     aborted: bool = False
     abort_reason: str = ""
     operations: list[str] = field(default_factory=list)
+    #: Per step: whether the environment accepted it, and why not if it did
+    #: not. The operation list alone says a policy emitted PAD thirty-four
+    #: times; it does not say the environment rejected thirty-four of them,
+    #: which is the difference between a policy building badly and a policy
+    #: not building at all.
+    accepted: list[bool] = field(default_factory=list)
+    rejections: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -49,6 +56,8 @@ class TaskResult:
             "aborted": self.aborted,
             "abort_reason": self.abort_reason,
             "operations": self.operations,
+            "accepted": self.accepted,
+            "rejections": self.rejections,
             **self.outcome.to_dict(),
         }
 
@@ -116,7 +125,12 @@ def run_task(
         )
         outcome.steps += 1
         result.operations.append(str(info.get("operation", "?")))
-        if not info.get("ok", True):
+        accepted = bool(info.get("ok", True))
+        result.accepted.append(accepted)
+        # Only the distinct reasons are worth carrying; a policy that jams
+        # repeats one of them for the rest of the episode.
+        result.rejections.append("" if accepted else str(info.get("message", "")))
+        if not accepted:
             outcome.invalid_actions += 1
         _absorb(outcome, observation, next_observation, info, int(operation))
 
