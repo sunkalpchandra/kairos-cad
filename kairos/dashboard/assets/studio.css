@@ -26,8 +26,9 @@
   --grid-line: #b9c2cd;
   --grid-axis-x: #7fa8ad;
   --grid-axis-y: #8fa4b5;
-  /* The part's ground shadow, read by the renderer. */
+  /* The part's ground shadow and model edges, read by the renderer. */
   --viewport-shadow: #2a3340;
+  --viewport-edge: #253040;
   --rule: #ccd2da;
   --rule-strong: #aab3bf;
   --ink: #1b212a;
@@ -63,6 +64,7 @@
     --grid-axis-x: #4d6b70;
     --grid-axis-y: #425666;
     --viewport-shadow: #05070a;
+    --viewport-edge: #0d1218;
     --rule: #2a323d;
     --rule-strong: #3a4552;
     --ink: #e3e8ef;
@@ -87,6 +89,7 @@
   --grid-axis-x: #4d6b70;
   --grid-axis-y: #425666;
   --viewport-shadow: #05070a;
+  --viewport-edge: #0d1218;
   --rule: #2a323d;
   --rule-strong: #3a4552;
   --ink: #e3e8ef;
