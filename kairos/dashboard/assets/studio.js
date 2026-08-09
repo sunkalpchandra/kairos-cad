@@ -414,6 +414,26 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** The codec audit, stated beside the ceiling it explains. */
+function renderCodec() {
+  const codec = DATA.codec || {};
+  const target = el('codec-note');
+  if (!codec.steps) { target.textContent = ''; return; }
+  const clean = !codec.unrepresentable && !codec.drifted;
+  const drift = codec.worst_round_trip_mm;
+  target.innerHTML = clean
+    ? `<strong>The codec is not the ceiling.</strong> All ${codec.steps.toLocaleString()} `
+      + `expert actions across ${codec.operations_used} operations survive the round `
+      + `trip through the action space, the worst by ${
+        drift < 1e-6 ? drift.toExponential(1) : fmt(drift, 6)} mm. `
+      + 'Anything the codec could not express would cap every learned policy '
+      + 'below it, whatever the policy learned.'
+    : `<strong>The codec caps every policy.</strong> ${codec.unrepresentable} of `
+      + `${codec.steps.toLocaleString()} expert actions cannot be expressed in the `
+      + `action space (${fmt((codec.unrepresentable_rate || 0) * 100, 2)}%), across `
+      + `${codec.affected_designs} designs. No policy can score above that.`;
+}
+
 /** Mean progress per family, per policy. */
 function renderFamilies() {
   const data = DATA.families_scored || {};
@@ -871,7 +891,8 @@ function renderRollouts() {
   body.querySelectorAll('.track').forEach((track) => {
     track.addEventListener('click', () => {
       rolloutPolicy = track.dataset.policy;
-      renderFamilies();
+      renderCodec();
+  renderFamilies();
   renderFunnel();
   renderTaskTypes();
   renderMatrix();
@@ -1525,6 +1546,7 @@ function init() {
   renderComparisons();
   renderTraining();
   renderAblations();
+  renderCodec();
   renderFamilies();
   renderFunnel();
   renderTaskTypes();
