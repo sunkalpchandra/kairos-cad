@@ -217,6 +217,66 @@ rather than drawing the cells as accepted -- an empty list rendered as a clean
 run would show a policy jamming as a policy succeeding, which is the same
 class of silent failure the rest of this document is about.
 
+## What the requirement asked for, and what was checked
+
+The requirement is prose. The spec is what the parser made of it. The
+constraint report is what was checked against the built solid. Those are three
+different things, and the page showed the first and the last, so a value the
+requirement asked for and nothing verified was invisible.
+
+Only `spec.kind` was ever read out of the bundle, which left the first phase of
+this project with no representation on the page at all.
+
+It surfaces a real gap. On `design_000001` the flange parses six measurable
+values and **two** are verified: `bore_diameter`, `bolt_count`,
+`bolt_circle_diameter` and `min_wall_thickness` are asked for and never
+checked, while the part reports CONSTRAINTS MET 100%. Across the 24 embedded
+designs, nine parsed fields have no constraint of that name anywhere, and
+`min_wall_thickness` appears in 21 specs against 6 constraints.
+
+`kind` and `objective` are marked directives rather than unchecked. They pick
+the family and the optimization target; neither is a measurable property, so
+neither is missing a constraint.
+
+## Where the suite is won
+
+The leaderboard is a mean over 76 tasks, and two policies with the same mean
+can be solving disjoint halves of the suite. The matrix is that number
+un-averaged: one column per task, shaded by milestones reached.
+
+Milestones rather than success, because success is 0.000 for three of the six
+policies and a success matrix would be one colour. Bands are named, because
+the strongest pattern in the grid is otherwise a shape with nothing naming it:
+`immediate-finish` is dark across all of BUILD and bright across every
+COMPLETE band, which is the auditing baseline doing exactly what it exists to
+do. A task a policy never attempted leaves a hole rather than a zero.
+
+## How the actions were refused
+
+The rollout strips show seven tasks. The taxonomy is every refused action
+across all 76, reduced to the failure it describes, which is the only way to
+tell a failure of this task from a failure of the policy.
+
+The contrast is the finding. `bc` and `ppo` each fail in **4** distinct ways --
+Pad and Revolution are 97% of bc's 616 refusals -- while `legal-random` fails
+in **77**. A learned policy repeats one mistake; a random one makes many.
+
+Two things had to be normalized away: FreeCAD's instance name (`Pad002`), and
+constraint index tuples. Leaving the indices in split `sketch rejected
+Coincident constraint` across 80 rows of count one, and the tail read as 157
+unrelated failures rather than 77. What the top eight leave out is reported,
+so the listed counts do not read as the whole of it.
+
+## Addressable views
+
+The hash carries the workspace and the selection: `#model/design_000017`,
+`#rollouts/build-design_000010/ppo`. It is written on every state change and
+read only on load and on an explicit back or forward -- a listener reacting to
+its own writes would fight the UI. A hash naming a part this bundle does not
+carry leaves the selection alone rather than clearing it, since the bundle is
+capped at 24 designs and a link to the 500th names something this page never
+had.
+
 ## Verifying the render
 
 Lint cannot see any of the above. Screenshot it:
