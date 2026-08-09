@@ -72,16 +72,18 @@ jobs:
       - name: Discover the FreeCAD module path
         id: freecad
         run: |
-          # Ask dpkg where the extension module actually landed rather than
-          # hardcoding a directory that differs across releases.
-          module=$(dpkg -L freecad-python3 | grep -E '/FreeCAD\.so$' | head -1)
+          # freecad-python3 is a metapackage and ships no module itself, so
+          # search the filesystem rather than one package's manifest.
+          echo "--- installed freecad packages ---"
+          dpkg -l | grep -i freecad || true
+          module=$(find / -name 'FreeCAD.so' -o -name 'FreeCAD.py' 2>/dev/null | head -1)
           if [ -z "$module" ]; then
-            echo "freecad-python3 installed no FreeCAD.so; package contents:" >&2
-            dpkg -L freecad-python3 | grep -iE 'freecad.*\.(so|py)$' | head -20 >&2
+            echo "no FreeCAD module anywhere on the filesystem:" >&2
+            find / -iname 'freecad*' -maxdepth 6 2>/dev/null | head -30 >&2
             exit 1
           fi
           dir=$(dirname "$module")
-          echo "FreeCAD.so at $module"
+          echo "FreeCAD module at $module"
           echo "pythonpath=$dir" >> "$GITHUB_OUTPUT"
       - name: Confirm FreeCAD imports
         run: |
