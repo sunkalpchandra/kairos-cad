@@ -33,19 +33,37 @@ function buildTree() {
     byFamily.get(design.family).push({ design, index });
   });
 
-  el('rail-count').textContent = designs.length + ' parts';
-  el('tree').innerHTML = [...byFamily.entries()].map(([family, rows]) => `
-    <div class="family">
-      <div class="family-name">${esc(family)}<span class="count">${rows.length}</span></div>
+  el('browser-count').textContent = designs.length;
+  el('tree').innerHTML = [...byFamily.entries()].map(([family, rows], groupIndex) => `
+    <div class="family" data-group="${groupIndex}">
+      <button class="node group-node" data-toggle="${groupIndex}" aria-expanded="true">
+        <span class="twisty">&#9660;</span>
+        <svg class="icon" viewBox="0 0 16 16"><use href="#i-folder"></use></svg>
+        ${esc(family)}<span class="count">${rows.length}</span>
+      </button>
+      <div class="leaves" data-leaves="${groupIndex}">
       ${rows.map(({ design, index }) => `
-        <button class="tree-item" data-index="${index}" aria-current="false">
-          <span class="dot ${design.all_satisfied ? '' : 'partial'}"></span>
-          <span class="tree-id">${esc(design.design_id.replace('design_', ''))}</span>
+        <button class="leaf" data-index="${index}" aria-current="false">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-body"></use></svg>
+          <span class="name">${esc(design.design_id.replace('design_', ''))}</span>
+          <svg class="icon eye ${design.all_satisfied ? '' : 'warn'}" viewBox="0 0 16 16"
+               aria-label="${design.all_satisfied ? 'all constraints met' : 'constraints unmet'}">
+            <use href="#i-eye"></use></svg>
         </button>`).join('')}
+      </div>
     </div>`).join('');
 
-  el('tree').querySelectorAll('.tree-item').forEach((button) => {
+  el('tree').querySelectorAll('.leaf').forEach((button) => {
     button.addEventListener('click', () => select(Number(button.dataset.index)));
+  });
+  el('tree').querySelectorAll('[data-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const leaves = el('tree').querySelector(`[data-leaves="${button.dataset.toggle}"]`);
+      const open = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!open));
+      button.querySelector('.twisty').innerHTML = open ? '&#9654;' : '&#9660;';
+      leaves.hidden = open;
+    });
   });
 }
 
@@ -54,7 +72,7 @@ function select(index) {
   if (!design) return;
   selected = index;
 
-  el('tree').querySelectorAll('.tree-item').forEach((button) => {
+  el('tree').querySelectorAll('.leaf').forEach((button) => {
     button.setAttribute('aria-current', String(Number(button.dataset.index) === index));
   });
 
@@ -95,10 +113,7 @@ function select(index) {
       </div>
     </div>`).join('') : '<p class="empty">No constraints recorded.</p>';
 
-  const ops = design.operations || [];
-  el('ops').innerHTML = ops.length
-    ? ops.map((op) => `<span class="${op === 'FINISH_DESIGN' ? 'terminal' : ''}">${esc(op)}</span>`).join('')
-    : '<span class="empty">No trajectory.</span>';
+  renderTimeline(design);
 
   const met = design.satisfaction_rate === null || design.satisfaction_rate === undefined
     ? '—' : fmt(design.satisfaction_rate * 100, 0) + '%';
@@ -347,6 +362,64 @@ function renderAblations() {
 
 /* ---------------------------------------------------------------- shell */
 
+/** Feature icons by operation, matching the ribbon's vocabulary. */
+const OP_ICON = {
+  CREATE_SKETCH: 'i-sketch', ADD_LINE: 'i-line', ADD_CIRCLE: 'i-circle',
+  ADD_ARC: 'i-circle', ADD_RECTANGLE: 'i-rect', ADD_POLYGON: 'i-rect',
+  PAD: 'i-pad', POCKET: 'i-pocket', REVOLVE: 'i-revolve',
+  FILLET: 'i-fillet', CHAMFER: 'i-chamfer',
+  LINEAR_PATTERN: 'i-pattern', CIRCULAR_PATTERN: 'i-pattern', MIRROR: 'i-pattern',
+  FINISH_DESIGN: 'i-finish',
+};
+
+/** The expert trajectory as a feature timeline.
+ *
+ * In a parametric CAD tool the timeline IS the ordered feature history that
+ * produced the solid. The recorded trajectory is exactly that, so it belongs
+ * here rather than in a list of chips.
+ */
+function renderTimeline(design) {
+  const track = el('timeline-track');
+  const ops = (design && design.operations) || [];
+  if (!ops.length) {
+    track.innerHTML = '<span class="empty-track">No recorded trajectory.</span>';
+    return;
+  }
+  track.innerHTML = ops.map((op, index) => {
+    const icon = OP_ICON[op] || 'i-body';
+    const terminal = op === 'FINISH_DESIGN' ? ' terminal' : '';
+    return `<button class="tl-node${terminal}" data-step="${index}"
+      title="${index + 1}. ${esc(op)}" aria-current="false">
+      <svg class="icon" viewBox="0 0 16 16"><use href="#${icon}"></use></svg>
+    </button>`;
+  }).join('');
+
+  track.querySelectorAll('.tl-node').forEach((node) => {
+    node.addEventListener('click', () => {
+      track.querySelectorAll('.tl-node').forEach((other) => {
+        other.setAttribute('aria-current', String(other === node));
+      });
+      const step = Number(node.dataset.step);
+      el('status-step').textContent =
+        'STEP ' + (step + 1) + '/' + ops.length + '  ' + ops[step];
+    });
+  });
+  el('status-step').textContent = ops.length + ' FEATURES';
+}
+
+/** Rotate the ViewCube to match the orbit camera.
+ *
+ * The camera is yaw/pitch about the part; the cube shows the same orientation
+ * from the outside, so its rotations are the inverse.
+ */
+function syncViewCube() {
+  const cube = el('viewcube');
+  if (!cube || !viewer) return;
+  const pitch = (viewer.camera.pitch * 180) / Math.PI;
+  const yaw = (viewer.camera.yaw * 180) / Math.PI;
+  cube.style.transform = `rotateX(${pitch - 90}deg) rotateZ(${-yaw - 90}deg)`;
+}
+
 function initViewer() {
   try {
     viewer = new Viewer(el('viewport'));
@@ -366,31 +439,82 @@ function initViewer() {
     ];
   }
 
+  // Both the ribbon and the ViewCube drive the same setView.
   document.querySelectorAll('[data-view3d]').forEach((button) => {
     button.addEventListener('click', () => {
-      viewer.setView(button.dataset.view3d);
-      el('hud-orientation').textContent = button.dataset.view3d.toUpperCase();
+      const name = button.dataset.view3d;
+      viewer.setView(name);
+      el('hud-orientation').textContent = name.toUpperCase();
+      document.querySelectorAll('.cmd[data-view3d]').forEach((cmd) => {
+        cmd.setAttribute('aria-pressed', String(cmd.dataset.view3d === name));
+      });
+      syncViewCube();
     });
   });
-  const gridButton = el('grid-toggle');
-  gridButton.setAttribute('aria-pressed', 'true');
-  gridButton.addEventListener('click', () => {
+
+  const grid = el('cmd-grid');
+  grid.addEventListener('click', () => {
     viewer.toggleGrid();
-    gridButton.setAttribute('aria-pressed', String(viewer.showGrid));
+    grid.setAttribute('aria-pressed', String(viewer.showGrid));
   });
+
+  const shade = el('cmd-shade');
+  shade.addEventListener('click', () => {
+    viewer.wireframe = !viewer.wireframe;
+    shade.setAttribute('aria-pressed', String(!viewer.wireframe));
+    shade.lastChild.textContent = viewer.wireframe ? 'Wire' : 'Shaded';
+    viewer.render();
+  });
+
+  const fit = () => { viewer.setView('iso'); syncViewCube(); };
+  el('cmd-fit').addEventListener('click', fit);
+  el('nav-fit').addEventListener('click', fit);
+
+  // Orbit/pan/zoom are modes on one pointer, so the buttons report which is
+  // active rather than pretending to be separate tools.
+  const modes = { 'nav-orbit': 'orbit', 'nav-pan': 'pan', 'nav-zoom': 'zoom' };
+  Object.keys(modes).forEach((id) => {
+    el(id).addEventListener('click', () => {
+      viewer.mode = modes[id];
+      Object.keys(modes).forEach((other) => {
+        el(other).setAttribute('aria-pressed', String(other === id));
+      });
+    });
+  });
+
+  el('cmd-prev').addEventListener('click', () => select((selected - 1 + designs.length) % designs.length));
+  el('cmd-next').addEventListener('click', () => select((selected + 1) % designs.length));
+  el('cmd-measure').addEventListener('click', () => el('panel-measure').scrollIntoView({ block: 'nearest' }));
+  el('cmd-checks').addEventListener('click', () => el('panel-checks').scrollIntoView({ block: 'nearest' }));
+
+  document.querySelectorAll('[data-goto]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = el(button.dataset.goto);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  viewer.onCamera = syncViewCube;
+  syncViewCube();
 }
 
 function initTabs() {
-  const buttons = document.querySelectorAll('.viewtabs button');
+  const buttons = document.querySelectorAll('.workspaces button');
   buttons.forEach((button) => {
     button.addEventListener('click', () => {
       const view = button.dataset.view;
       buttons.forEach((other) => other.setAttribute('aria-selected', String(other === button)));
 
       const isModel = view === 'model';
-      el('stage').hidden = !isModel;
-      el('rail').hidden = !isModel;
+      el('canvas').hidden = !isModel;
+      el('browser').hidden = !isModel;
       el('inspector').hidden = !isModel;
+      el('timeline').hidden = !isModel;
+      // The ribbon carries each workspace's own commands, as a CAD ribbon does,
+      // rather than going blank and leaving a dead band across the top.
+      document.querySelectorAll('.group[data-workspace]').forEach((group) => {
+        group.hidden = group.dataset.workspace !== view;
+      });
       ['benchmark', 'training', 'ablations'].forEach((name) => {
         el('sheet-' + name).hidden = view !== name;
       });
@@ -402,7 +526,9 @@ function initTabs() {
 }
 
 function init() {
-  el('suite').textContent = (DATA.benchmark || {}).suite_version || DATA.generated_at || '';
+  const suite = (DATA.benchmark || {}).suite_version || DATA.generated_at || '';
+  el('suite').textContent = suite ? 'rev ' + suite.replace('kairos-cad-', '') : 'rev -';
+  el('doctab-name').textContent = suite || 'kairos-cad';
   el('meta-designs').textContent = (DATA.designs || []).length;
   el('meta-policies').textContent = policies().length;
   el('meta-tasks').textContent = (DATA.benchmark || {}).tasks || '—';

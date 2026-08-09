@@ -21,7 +21,8 @@ _SLOTS = {
 #: report. Both read the same bundle, so a figure cannot differ between them.
 LAYOUTS = {
     "dashboard": {"template": "index.html", "style": "style.css", "app": "app.js"},
-    "studio": {"template": "studio.html", "style": "studio.css", "app": "studio.js"},
+    "studio": {"template": "studio.html", "style": "studio.css", "app": "studio.js",
+               "icons": "icons.html"},
 }
 
 
@@ -60,6 +61,12 @@ def render(
     slots["/*__APP__*/"] = chosen["app"]
 
     html = (template or ASSETS / chosen["template"]).read_text()
+    # The icon sprite is markup, not a script or style, so it gets its own slot.
+    icons = chosen.get("icons")
+    if "<!--__ICONS__-->" in html:
+        html = html.replace(
+            "<!--__ICONS__-->", (ASSETS / icons).read_text() if icons else ""
+        )
     for slot, filename in slots.items():
         if slot not in html:
             raise ValueError(f"template is missing the {slot} slot")

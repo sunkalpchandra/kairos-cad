@@ -1,519 +1,566 @@
 /* KAIROS review station.
  *
- * The visual language is a CAD workstation, because that is what the subject
- * is: a viewport you orbit, a browser tree, an inspector, a status bar reading
- * out units. Monospace carries the labels and every measurement, the way a CAD
- * status bar does; the sans face is reserved for prose.
+ * Modelled on a parametric CAD workstation, because the subject is one. The
+ * layout conventions are functional rather than stylistic: an application bar,
+ * a ribbon of icon commands grouped under labels, a browser tree, a canvas
+ * carrying a ViewCube and a navigation bar, and a feature timeline along the
+ * bottom.
  *
- * Dark is the primary theme (a viewport is dark), but both are defined at token
+ * The timeline is the load-bearing borrowing. In a parametric CAD tool it is
+ * the ordered feature history that produced the solid; here the expert
+ * trajectory is exactly that, so each recorded action becomes a node.
+ *
+ * Dark is primary (a viewport is dark), but both themes are defined at token
  * level so the page holds on either host ground.
  */
 
 :root {
-  /* Drafting-paper light. Neutrals carry a slight cool bias toward the accent
-     so they read as chosen rather than inherited mid-grey. */
-  --ground: #eceef1;
-  --panel: #f7f8fa;
-  --panel-raised: #ffffff;
-  --viewport: #20262f;
-  --rule: #d3d8e0;
-  --rule-strong: #b3bcc9;
-  --ink: #171c24;
-  --ink-muted: #5d6879;
-  --ink-faint: #8b95a5;
-  --accent: #17707a;
-  --accent-soft: rgba(23, 112, 122, 0.12);
-  --pass: #2f7d52;
-  --warn: #96661a;
-  --fail: #a83c34;
+  --ground: #e8eaee;
+  --chrome: #f4f5f7;
+  --chrome-2: #fbfbfc;
+  --sunken: #dfe2e7;
+  --viewport-top: #cdd5de;
+  --viewport-bottom: #eef1f4;
+  --rule: #ccd2da;
+  --rule-strong: #aab3bf;
+  --ink: #1b212a;
+  --ink-muted: #57616f;
+  --ink-faint: #838d9b;
+  --accent: #0f6d78;
+  --accent-soft: rgba(15, 109, 120, 0.13);
+  --pass: #2c7a4f;
+  --warn: #8f6115;
+  --fail: #a5372f;
 
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  --rail: 232px;
-  --inspector: 320px;
-  --bar: 38px;
+  --appbar: 34px;
+  --tabs: 28px;
+  --ribbon: 62px;
+  --browser: 236px;
+  --inspector: 292px;
+  --timeline: 46px;
+  --status: 24px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #0e1116;
-    --panel: #141920;
-    --panel-raised: #1a212a;
-    --viewport: #0b0e13;
-    --rule: #242c38;
-    --rule-strong: #333e4d;
-    --ink: #dee4ed;
-    --ink-muted: #808c9e;
-    --ink-faint: #5a6474;
-    --accent: #3fb8c4;
-    --accent-soft: rgba(63, 184, 196, 0.14);
-    --pass: #5db98a;
-    --warn: #d9a441;
-    --fail: #dc6b62;
+    --ground: #10141a;
+    --chrome: #191f27;
+    --chrome-2: #212832;
+    --sunken: #12171d;
+    --viewport-top: #2b333e;
+    --viewport-bottom: #12171d;
+    --rule: #2a323d;
+    --rule-strong: #3a4552;
+    --ink: #e3e8ef;
+    --ink-muted: #8b96a5;
+    --ink-faint: #626d7c;
+    --accent: #46c2cd;
+    --accent-soft: rgba(70, 194, 205, 0.15);
+    --pass: #5cbd8a;
+    --warn: #dba546;
+    --fail: #e07068;
   }
 }
 
 :root[data-theme="dark"] {
-  --ground: #0e1116;
-  --panel: #141920;
-  --panel-raised: #1a212a;
-  --viewport: #0b0e13;
-  --rule: #242c38;
-  --rule-strong: #333e4d;
-  --ink: #dee4ed;
-  --ink-muted: #808c9e;
-  --ink-faint: #5a6474;
-  --accent: #3fb8c4;
-  --accent-soft: rgba(63, 184, 196, 0.14);
-  --pass: #5db98a;
-  --warn: #d9a441;
-  --fail: #dc6b62;
+  --ground: #10141a;
+  --chrome: #191f27;
+  --chrome-2: #212832;
+  --sunken: #12171d;
+  --viewport-top: #2b333e;
+  --viewport-bottom: #12171d;
+  --rule: #2a323d;
+  --rule-strong: #3a4552;
+  --ink: #e3e8ef;
+  --ink-muted: #8b96a5;
+  --ink-faint: #626d7c;
+  --accent: #46c2cd;
+  --accent-soft: rgba(70, 194, 205, 0.15);
+  --pass: #5cbd8a;
+  --warn: #dba546;
+  --fail: #e07068;
 }
 
 * { box-sizing: border-box; }
-
 html, body { height: 100%; }
 
 body {
   margin: 0;
   background: var(--ground);
   color: var(--ink);
-  font: 13px/1.5 var(--sans);
+  font: 12.5px/1.45 var(--sans);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
-/* Every label, readout and measurement is mono, as on an instrument. */
-.mono, .label, .readout, td.num, .tree-id, .chip, .stat-value {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-}
+svg.icon { width: 16px; height: 16px; fill: none; stroke: currentColor;
+  stroke-width: 1.5; stroke-linecap: square; stroke-linejoin: miter; flex: none; }
+svg.icon.solid { stroke: none; fill: currentColor; }
 
 .label {
-  font-size: 10px;
-  letter-spacing: 0.09em;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
 
-/* ---------------------------------------------------------------- shell */
+/* ------------------------------------------------------------------ shell */
 
 .shell {
   display: grid;
-  grid-template-rows: var(--bar) 1fr var(--bar);
-  grid-template-columns: var(--rail) 1fr var(--inspector);
+  grid-template-rows: var(--appbar) var(--tabs) var(--ribbon) 1fr var(--timeline) var(--status);
+  grid-template-columns: var(--browser) 1fr var(--inspector);
   grid-template-areas:
-    "titlebar titlebar titlebar"
-    "rail     stage    inspector"
+    "appbar   appbar   appbar"
+    "tabs     tabs     tabs"
+    "ribbon   ribbon   ribbon"
+    "browser  canvas   inspector"
+    "timeline timeline timeline"
     "status   status   status";
   height: 100vh;
 }
 
-.titlebar {
-  grid-area: titlebar;
+/* ------------------------------------------------------------------ app bar */
+
+.appbar {
+  grid-area: appbar;
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 0 14px;
-  background: var(--panel);
+  gap: 14px;
+  padding: 0 10px;
+  background: var(--chrome);
   border-bottom: 1px solid var(--rule);
 }
 
-.mark {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  font-weight: 620;
-  letter-spacing: 0.14em;
-  font-size: 12px;
-  text-transform: uppercase;
+.brand { display: flex; align-items: center; gap: 8px; }
+.brand .mark-svg { width: 21px; height: 21px; color: var(--accent); }
+.brand .wordmark {
+  font-weight: 680;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  color: var(--ink);
 }
-.mark .glyph { color: var(--accent); font-family: var(--mono); letter-spacing: 0; }
-.mark .sub {
+.brand .rev {
   font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
+  font-size: 9px;
+  letter-spacing: 0.08em;
   color: var(--ink-faint);
-  text-transform: none;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  padding: 1px 4px;
 }
 
-.viewtabs { display: flex; gap: 1px; margin-left: 10px; }
-.viewtabs button {
+/* Document tabs, the way a CAD app lists open documents. */
+.doctabs { display: flex; align-items: flex-end; height: 100%; margin-left: 6px; }
+.doctab {
+  display: flex; align-items: center; gap: 6px;
+  height: calc(100% - 5px);
+  padding: 0 13px;
+  border: 1px solid var(--rule);
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  background: var(--chrome-2);
+  color: var(--ink);
+  font-size: 11.5px;
+}
+.doctab .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+
+.appbar .spacer { margin-left: auto; }
+.appbar .readouts { display: flex; gap: 16px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); }
+.appbar .readouts b { color: var(--ink-muted); font-weight: 500; }
+
+/* ------------------------------------------------------------------ workspace tabs */
+
+.workspaces {
+  grid-area: tabs;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 8px;
+  background: var(--chrome-2);
+  border-bottom: 1px solid var(--rule);
+}
+.workspaces button {
   font: inherit;
-  font-size: 12px;
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-muted);
+  padding: 0 15px;
+  cursor: pointer;
+}
+.workspaces button:hover { color: var(--ink); }
+.workspaces button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.workspaces button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+
+/* ------------------------------------------------------------------ ribbon */
+
+.ribbon {
+  grid-area: ribbon;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 3px 6px 0;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--rule);
+  overflow-x: auto;
+}
+
+/* Commands sit above a group label, with a hairline between groups. That is
+   the arrangement the whole ribbon idiom rests on. */
+.group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 9px;
+  border-right: 1px solid var(--rule);
+}
+.group:last-child { border-right: 0; }
+/* .group sets display:flex, which beats the user-agent [hidden]{display:none}.
+   Without this the hidden groups from every other workspace stay on screen. */
+.group[hidden] { display: none; }
+.group .commands { display: flex; gap: 1px; flex: 1; align-items: center; }
+.group > .label { padding-bottom: 3px; }
+
+.cmd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 46px;
+  padding: 4px 5px 3px;
   background: none;
   border: 1px solid transparent;
   border-radius: 2px;
   color: var(--ink-muted);
-  padding: 4px 11px;
+  font: inherit;
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
   cursor: pointer;
 }
-.viewtabs button:hover { color: var(--ink); background: var(--panel-raised); }
-.viewtabs button[aria-selected="true"] {
-  color: var(--ink);
-  background: var(--panel-raised);
-  border-color: var(--rule-strong);
-}
-.viewtabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cmd:hover { background: var(--chrome-2); border-color: var(--rule); color: var(--ink); }
+.cmd[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.cmd:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cmd svg.icon { width: 18px; height: 18px; }
 
-.titlebar .spacer { margin-left: auto; }
-.titlebar .meta {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ink-faint);
-  display: flex;
-  gap: 14px;
-}
-.titlebar .meta b { color: var(--ink-muted); font-weight: 500; }
+/* ------------------------------------------------------------------ browser */
 
-/* ---------------------------------------------------------------- rail */
-
-.rail {
-  grid-area: rail;
-  background: var(--panel);
+.browser {
+  grid-area: browser;
+  background: var(--chrome);
   border-right: 1px solid var(--rule);
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+  font-size: 12px;
 }
-
-.rail-head {
-  padding: 10px 12px 7px;
-  border-bottom: 1px solid var(--rule);
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
-.family {
+.browser-head {
+  position: sticky; top: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px;
+  background: var(--chrome);
   border-bottom: 1px solid var(--rule);
 }
-.family > .family-name {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 12px;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ink-muted);
-  background: color-mix(in srgb, var(--panel-raised) 55%, transparent);
-}
-.family > .family-name .count {
-  margin-left: auto;
-  color: var(--ink-faint);
-  font-size: 10px;
-}
 
-.tree-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: 0;
-  border-left: 2px solid transparent;
+.node {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
   color: var(--ink-muted);
-  padding: 5px 12px 5px 22px;
   cursor: pointer;
-  font: inherit;
+  user-select: none;
+  width: 100%;
+  background: none; border: 0; font: inherit; text-align: left;
 }
-.tree-item:hover { background: var(--panel-raised); color: var(--ink); }
-.tree-item[aria-current="true"] {
-  background: var(--accent-soft);
-  border-left-color: var(--accent);
+.node:hover { background: var(--chrome-2); color: var(--ink); }
+.node:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.node .twisty { width: 9px; color: var(--ink-faint); font-size: 9px; flex: none; text-align: center; }
+.node .count { margin-left: auto; font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); }
+.node.group-node { font-family: var(--mono); font-size: 11px; }
+
+.leaf {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%;
+  padding: 3px 10px 3px 27px;
+  background: none; border: 0; border-left: 2px solid transparent;
+  color: var(--ink-muted); font: inherit; font-size: 11.5px;
+  cursor: pointer; text-align: left;
+}
+.leaf:hover { background: var(--chrome-2); color: var(--ink); }
+.leaf[aria-current="true"] {
+  background: var(--accent-soft); border-left-color: var(--accent); color: var(--ink);
+}
+.leaf:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.leaf .name { font-family: var(--mono); font-size: 11px; }
+.leaf .eye { margin-left: auto; color: var(--ink-faint); opacity: 0.55; }
+.leaf .eye.warn { color: var(--warn); opacity: 1; }
+
+/* ------------------------------------------------------------------ canvas */
+
+.canvas {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+  /* A vertical gradient ground, which is what makes a CAD viewport read as a
+     room rather than a void. The renderer paints the same gradient. */
+  background: linear-gradient(var(--viewport-top), var(--viewport-bottom));
+}
+.canvas canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.canvas canvas:active { cursor: grabbing; }
+
+/* ViewCube: a real CSS 3D cube driven by the camera, clickable per face. */
+.viewcube-wrap {
+  position: absolute; top: 14px; right: 16px;
+  width: 78px; height: 78px;
+  perspective: 420px;
+}
+.viewcube {
+  position: absolute; inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) { .viewcube { transition: none; } }
+.viewcube button {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 46px; height: 46px;
+  margin: -23px 0 0 -23px;
+  /* Opaque: a translucent cube reads as haze against the shaded part behind it,
+     and the whole point is that it stays legible over any geometry. */
+  background: var(--chrome);
+  border: 1px solid var(--rule-strong);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chrome-2) 60%, transparent);
   color: var(--ink);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  opacity: 0.94;
 }
-.tree-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.tree-id { font-size: 11px; }
-.tree-item .dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--pass); flex: none;
+.viewcube button:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.viewcube button:focus-visible { outline: 2px solid var(--accent); }
+.cube-f { transform: translateZ(23px); }
+.cube-b { transform: rotateY(180deg) translateZ(23px); }
+.cube-r { transform: rotateY(90deg) translateZ(23px); }
+.cube-l { transform: rotateY(-90deg) translateZ(23px); }
+.cube-u { transform: rotateX(90deg) translateZ(23px); }
+.cube-d { transform: rotateX(-90deg) translateZ(23px); }
+
+/* Navigation bar, bottom-centre of the canvas as in a CAD tool. */
+.navbar {
+  position: absolute; bottom: 12px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 1px;
+  background: color-mix(in srgb, var(--chrome) 88%, transparent);
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  padding: 2px;
 }
-.tree-item .dot.partial { background: var(--warn); }
-
-/* ---------------------------------------------------------------- stage */
-
-.stage { grid-area: stage; position: relative; background: var(--viewport); overflow: hidden; }
-.stage canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
-.stage canvas:active { cursor: grabbing; }
+.navbar button {
+  display: flex; align-items: center; justify-content: center;
+  width: 27px; height: 24px;
+  background: none; border: 0; border-radius: 2px;
+  color: var(--ink-muted); cursor: pointer;
+}
+.navbar button:hover { background: var(--accent-soft); color: var(--accent); }
+.navbar button[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
+.navbar button:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
 
 .hud {
-  position: absolute;
-  pointer-events: none;
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--ink-faint);
-  letter-spacing: 0.06em;
+  position: absolute; pointer-events: none;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.07em; color: var(--ink-faint);
 }
-.hud.tl { top: 12px; left: 14px; }
-.hud.tr { top: 12px; right: 14px; text-align: right; }
-.hud.bl { bottom: 12px; left: 14px; display: flex; align-items: center; gap: 8px; }
-
-/* A scale bar, as on a drawing sheet: the viewport is metric and says so. */
-.scalebar { display: flex; align-items: center; gap: 6px; }
-.scalebar .bar {
-  width: 68px; height: 5px;
-  border: 1px solid var(--ink-faint);
-  border-top: 0;
-}
-
-.viewport-tools {
-  position: absolute;
-  top: 12px; right: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.viewport-tools button {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  background: color-mix(in srgb, var(--panel) 80%, transparent);
-  border: 1px solid var(--rule-strong);
-  border-radius: 2px;
-  color: var(--ink-muted);
-  padding: 4px 8px;
-  cursor: pointer;
-  min-width: 42px;
-}
-.viewport-tools button:hover { color: var(--ink); border-color: var(--accent); }
-.viewport-tools button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
-.viewport-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hud.tl { top: 14px; left: 16px; }
+.hud.bl { bottom: 14px; left: 16px; display: flex; align-items: center; gap: 7px; }
+.scalebar .bar { display: inline-block; width: 56px; height: 4px;
+  border: 1px solid var(--ink-faint); border-top: 0; vertical-align: middle; }
 
 .viewer-error {
-  position: absolute; inset: auto 14px 14px 14px;
-  background: var(--panel);
-  border: 1px solid var(--fail);
-  border-left-width: 2px;
-  padding: 9px 12px;
-  font-size: 12px;
-  color: var(--ink);
+  position: absolute; inset: auto 16px 46px 16px;
+  background: var(--chrome); border: 1px solid var(--fail); border-left-width: 2px;
+  padding: 8px 11px; font-size: 11.5px; color: var(--ink);
 }
 
-/* ---------------------------------------------------------------- inspector */
+/* ------------------------------------------------------------------ inspector */
 
 .inspector {
   grid-area: inspector;
-  background: var(--panel);
+  background: var(--chrome);
   border-left: 1px solid var(--rule);
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+  display: flex; flex-direction: column;
 }
-
-.panel { border-bottom: 1px solid var(--rule); padding: 12px 14px; }
-.panel > .label { display: block; margin-bottom: 9px; }
+.panel { border-bottom: 1px solid var(--rule); padding: 10px 12px; }
+.panel > .label { display: block; margin-bottom: 7px; }
 
 .requirement {
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: var(--ink);
+  font-size: 12px; line-height: 1.5; color: var(--ink);
+  background: var(--chrome-2);
   border-left: 2px solid var(--accent);
-  padding-left: 10px;
+  padding: 8px 10px;
 }
 
-.props { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 12px; }
+.props { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 11.5px; }
 .props dt { color: var(--ink-muted); }
-.props dd {
-  margin: 0;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  color: var(--ink);
-}
+.props dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums;
+  text-align: right; color: var(--ink); }
 
 .check {
-  display: grid;
-  grid-template-columns: 8px 1fr;
-  gap: 8px;
-  padding: 6px 0;
-  border-top: 1px solid var(--rule);
-  font-size: 11.5px;
+  display: grid; grid-template-columns: 8px 1fr; gap: 7px;
+  padding: 5px 0; border-top: 1px solid var(--rule); font-size: 11px;
 }
 .check:first-of-type { border-top: 0; }
-.check .flag {
-  width: 8px; height: 8px; margin-top: 4px; flex: none;
-  background: var(--ink-faint);
-}
+.check .flag { width: 8px; height: 8px; margin-top: 3px; background: var(--ink-faint); }
 .check .flag.satisfied { background: var(--pass); }
 .check .flag.violated { background: var(--fail); }
 .check .flag.unmeasured { background: var(--warn); }
-.check .kind { font-family: var(--mono); font-size: 11px; color: var(--ink); }
-.check .detail { color: var(--ink-muted); font-size: 11px; margin-top: 1px; }
+.check .kind { font-family: var(--mono); font-size: 10.5px; color: var(--ink); }
+.check .detail { color: var(--ink-muted); font-size: 10.5px; margin-top: 1px; }
 
-/* The trajectory can run to 20+ operations. Capping it keeps the title block,
-   which identifies the part, above the fold rather than pushed off it. */
-.ops { display: flex; flex-wrap: wrap; gap: 2px; max-height: 118px; overflow-y: auto; }
-.ops span {
-  font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.03em;
-  padding: 2px 4px;
-  border: 1px solid var(--rule);
-  color: var(--ink-muted);
-  background: var(--panel-raised);
-}
-.ops span.terminal { border-color: var(--accent); color: var(--accent); }
-
-/* The title block every drawing sheet carries. Structural, not decorative:
-   it holds the identifying fields a part is filed under. */
 .titleblock {
-  margin-top: auto;
-  flex: none;
+  margin-top: auto; flex: none;
   border-top: 1px solid var(--rule-strong);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  font-family: var(--mono);
-  font-size: 10px;
+  display: grid; grid-template-columns: 1fr 1fr;
+  font-family: var(--mono); font-size: 9.5px;
 }
-.titleblock div {
-  padding: 7px 10px;
-  border-right: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-}
+.titleblock div { padding: 6px 9px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
 .titleblock div:nth-child(2n) { border-right: 0; }
-.titleblock .k { color: var(--ink-faint); letter-spacing: 0.07em; display: block; }
+.titleblock .k { color: var(--ink-faint); letter-spacing: 0.08em; display: block; }
 .titleblock .v { color: var(--ink); font-variant-numeric: tabular-nums; }
 
-/* ---------------------------------------------------------------- status */
+/* ------------------------------------------------------------------ timeline */
+
+.timeline {
+  grid-area: timeline;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 10px;
+  background: var(--chrome);
+  border-top: 1px solid var(--rule);
+  overflow-x: auto;
+}
+.timeline .label { flex: none; }
+.timeline-track { display: flex; align-items: center; gap: 0; }
+
+/* Nodes butt against a connecting rule, as a feature history does. */
+.tl-node {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 27px; height: 27px;
+  background: var(--chrome-2);
+  border: 1px solid var(--rule-strong);
+  color: var(--ink-muted);
+  cursor: pointer;
+  margin-right: 7px;
+}
+.tl-node::after {
+  content: ""; position: absolute; left: 100%; top: 50%;
+  width: 7px; height: 1px; background: var(--rule-strong);
+}
+.tl-node:last-child { margin-right: 0; }
+.tl-node:last-child::after { display: none; }
+.tl-node:hover { border-color: var(--accent); color: var(--accent); }
+.tl-node[aria-current="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.tl-node:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tl-node.terminal { border-color: var(--pass); color: var(--pass); }
+
+.timeline .empty-track { color: var(--ink-faint); font-size: 11px; font-style: italic; }
+
+/* ------------------------------------------------------------------ status */
 
 .statusbar {
   grid-area: status;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 0 14px;
-  background: var(--panel);
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 10px;
+  background: var(--chrome-2);
   border-top: 1px solid var(--rule);
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--ink-faint);
-  letter-spacing: 0.05em;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 0.06em; color: var(--ink-faint);
 }
 .statusbar .ok { color: var(--pass); }
+.statusbar .bad { color: var(--warn); }
 .statusbar .spacer { margin-left: auto; }
 
-/* ---------------------------------------------------------------- data views */
+/* ------------------------------------------------------------------ sheets */
 
 .sheet {
-  grid-area: stage;
+  grid-area: canvas;
   background: var(--ground);
   overflow-y: auto;
-  padding: 22px 26px 40px;
+  padding: 20px 24px 36px;
 }
-.sheet[hidden], .stage[hidden], .rail[hidden], .inspector[hidden] { display: none; }
+.sheet[hidden], .canvas[hidden], .browser[hidden], .inspector[hidden], .timeline[hidden] { display: none; }
 
-.sheet h2 {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 3px;
-  letter-spacing: -0.01em;
-  text-wrap: balance;
-}
-.sheet .note {
-  color: var(--ink-muted);
-  font-size: 12.5px;
-  margin: 0 0 16px;
-  max-width: 68ch;
-  line-height: 1.55;
-}
-.sheet section + section { margin-top: 30px; }
+.sheet h2 { font-size: 14px; font-weight: 620; margin: 0 0 3px; letter-spacing: -0.005em; text-wrap: balance; }
+.sheet .note { color: var(--ink-muted); font-size: 12px; margin: 0 0 14px; max-width: 70ch; line-height: 1.5; }
+.sheet section + section { margin-top: 26px; }
 
 .statgrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
-  gap: 1px;
-  background: var(--rule);
-  border: 1px solid var(--rule);
-  margin-bottom: 22px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-bottom: 18px;
 }
-.stat { background: var(--panel); padding: 11px 13px; }
-.stat .stat-value {
-  font-size: 21px;
-  line-height: 1.1;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
+.stat { background: var(--chrome); padding: 10px 12px; }
+.stat .stat-value { font-family: var(--mono); font-size: 20px; line-height: 1.1;
+  color: var(--ink); font-variant-numeric: tabular-nums; }
 .stat .stat-value.good { color: var(--pass); }
 .stat .label { margin-top: 4px; display: block; }
-.stat .stat-sub { font-size: 10.5px; color: var(--ink-faint); margin-top: 2px; font-family: var(--mono); }
+.stat .stat-sub { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); margin-top: 2px; }
 
-.tablewrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--panel); }
-table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--chrome); }
+table { border-collapse: collapse; width: 100%; font-size: 11.5px; }
 thead th {
-  text-align: right;
-  padding: 8px 12px;
-  font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  border-bottom: 1px solid var(--rule-strong);
-  white-space: nowrap;
+  text-align: right; padding: 7px 11px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--ink-faint); border-bottom: 1px solid var(--rule-strong); white-space: nowrap;
+  background: var(--chrome-2);
 }
 thead th:first-child { text-align: left; }
-tbody td {
-  text-align: right;
-  padding: 7px 12px;
-  border-bottom: 1px solid var(--rule);
-  font-variant-numeric: tabular-nums;
-}
-tbody td:first-child { text-align: left; font-family: var(--mono); font-size: 11.5px; }
+tbody td { text-align: right; padding: 6px 11px; border-bottom: 1px solid var(--rule);
+  font-variant-numeric: tabular-nums; }
+tbody td:first-child { text-align: left; font-family: var(--mono); font-size: 11px; }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr.ceiling td { background: var(--accent-soft); }
 tbody tr.ceiling td:first-child::after {
-  content: "CEILING";
-  font-size: 8.5px;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  margin-left: 8px;
+  content: "CEILING"; font-size: 8px; letter-spacing: 0.11em; color: var(--accent); margin-left: 7px;
 }
 
-/* A bar that reads as measurement, drawn to the row it sits in. */
 .meter { display: block; height: 3px; background: var(--rule-strong); position: relative; }
 .meter i { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
 .meter.muted i { background: var(--ink-faint); }
 
-.verdict { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; }
+.verdict { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.07em; }
 .verdict.yes { color: var(--pass); }
 .verdict.no { color: var(--warn); }
 
-.chart {
-  border: 1px solid var(--rule);
-  background: var(--panel);
-  padding: 14px;
-}
-.chart svg { display: block; width: 100%; max-width: 780px; height: auto; overflow: visible; }
+.chart { border: 1px solid var(--rule); background: var(--chrome); padding: 13px; }
+.chart svg { display: block; width: 100%; max-width: 760px; height: auto; overflow: visible; }
 .chart .grid { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 2 4; }
 .chart .axis { stroke: var(--rule-strong); stroke-width: 1; }
 .chart text { fill: var(--ink-faint); font-size: 10px; font-family: var(--mono); }
 
-.legend { display: flex; gap: 15px; flex-wrap: wrap; font-size: 11px; color: var(--ink-muted); margin-top: 10px; font-family: var(--mono); }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--mono);
+  font-size: 10.5px; color: var(--ink-muted); margin-top: 9px; }
 .legend span { display: flex; align-items: center; gap: 6px; }
-.legend i { width: 13px; height: 2px; display: inline-block; }
+.legend i { width: 12px; height: 2px; display: inline-block; }
 
 .callout {
-  border: 1px solid var(--rule);
-  border-left: 2px solid var(--warn);
-  background: var(--panel);
-  padding: 11px 14px;
-  font-size: 12.5px;
-  color: var(--ink-muted);
-  max-width: 72ch;
-  line-height: 1.55;
-  margin-top: 16px;
+  border: 1px solid var(--rule); border-left: 2px solid var(--warn);
+  background: var(--chrome); padding: 10px 13px; font-size: 12px;
+  color: var(--ink-muted); max-width: 74ch; line-height: 1.5; margin-top: 14px;
 }
-.callout strong { color: var(--ink); font-weight: 600; }
+.callout strong { color: var(--ink); font-weight: 620; }
 
-.empty { color: var(--ink-faint); font-style: italic; padding: 18px 0; font-size: 12px; }
+.empty { color: var(--ink-faint); font-style: italic; padding: 16px 0; font-size: 11.5px; }
 
-@media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; transition: none !important; }
-}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
-@media (max-width: 1000px) {
-  .shell { grid-template-columns: 1fr; grid-template-areas: "titlebar" "stage" "status"; }
-  .rail, .inspector { display: none; }
+@media (max-width: 1080px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-areas: "appbar" "tabs" "ribbon" "canvas" "timeline" "status";
+  }
+  .browser, .inspector { display: none; }
 }

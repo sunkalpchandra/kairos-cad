@@ -244,7 +244,11 @@ function buildGrid(divisions, half, faint, axisX, axisY) {
 class Viewer {
   constructor(canvas) {
     this.canvas = canvas;
-    const options = { antialias: true, alpha: false, depth: true };
+    // Transparent so the canvas composites over the CSS gradient ground. A
+    // flat WebGL clear paints over it, and the graded ground is most of what
+    // makes a viewport read as a room rather than a void.
+    const options = { antialias: true, alpha: true, depth: true,
+                      premultipliedAlpha: false };
     this.gl = canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options);
     if (!this.gl) throw new Error('WebGL is unavailable in this browser');
     const gl = this.gl;
@@ -277,6 +281,13 @@ class Viewer {
     this.color = [0.42, 0.58, 0.86];
     this.background = [0.043, 0.055, 0.075];
     this.showGrid = true;
+    this.wireframe = false;
+    //: Pointer mode driven by the navigation bar. Orbit and pan share the
+    //: drag gesture, so they are a mode rather than separate tools.
+    this.mode = 'orbit';
+    this.pan = [0, 0];
+    //: Called after any camera change, so a ViewCube can follow it.
+    this.onCamera = null;
     this._grid = buildGrid(20, 2.0, [0.16, 0.19, 0.24], [0.30, 0.42, 0.44], [0.26, 0.34, 0.40]);
     this.lineAttributes = {
       position: gl.getAttribLocation(this.lineProgram, "aPosition"),
@@ -307,13 +318,19 @@ class Viewer {
     const views = {
       iso: [-0.9, 0.5],
       front: [-Math.PI / 2, 0.0],
+      back: [Math.PI / 2, 0.0],
       right: [0.0, 0.0],
+      left: [Math.PI, 0.0],
       top: [-Math.PI / 2, Math.PI / 2 - 0.02],
+      bottom: [-Math.PI / 2, -Math.PI / 2 + 0.02],
     };
     const view = views[name] || views.iso;
     this.camera.yaw = view[0];
     this.camera.pitch = view[1];
+    this.camera.distance = 3.0;
+    this.pan = [0, 0];
     this.render();
+    if (this.onCamera) this.onCamera();
   }
 
   toggleGrid() {
@@ -375,7 +392,7 @@ class Viewer {
     const gl = this.gl;
     this.resize();
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
-    gl.clearColor(this.background[0], this.background[1], this.background[2], 1);
+    gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     const { yaw, pitch, distance } = this.camera;
@@ -384,7 +401,10 @@ class Viewer {
       distance * Math.cos(pitch) * Math.sin(yaw),
       distance * Math.sin(pitch),
     ];
-    const view = lookAt(eye, [0, 0, 0], [0, 0, 1]);
+    const target = [this.pan[0], this.pan[1], 0];
+    const view = lookAt(
+      [eye[0] + target[0], eye[1] + target[1], eye[2]], target, [0, 0, 1]
+    );
 
     // model = scale * translate(-center), folded into the view matrix.
     const s = this.scale;
@@ -415,7 +435,10 @@ class Viewer {
     gl.enableVertexAttribArray(this.attributes.normal);
     gl.vertexAttribPointer(this.attributes.normal, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.index);
-    gl.drawElements(gl.TRIANGLES, this.mesh.count, this.indexType, 0);
+    // LINES over the triangle indices draws each triangle's three edges twice.
+    // That is the cheap wireframe, and at these mesh sizes it is imperceptible.
+    gl.drawElements(this.wireframe ? gl.LINES : gl.TRIANGLES,
+                    this.mesh.count, this.indexType, 0);
   }
 
   /** Ground grid, drawn in the part's own normalized space. */
@@ -443,6 +466,15 @@ class Viewer {
     const down = (x, y) => { dragging = true; lastX = x; lastY = y; };
     const move = (x, y) => {
       if (!dragging) return;
+      if (this.mode === 'pan') {
+        // Pan in the view plane, scaled by distance so it tracks the cursor.
+        const k = this.camera.distance * 0.0016;
+        this.pan[0] -= (x - lastX) * k * Math.sin(this.camera.yaw);
+        this.pan[1] += (x - lastX) * k * Math.cos(this.camera.yaw);
+        lastX = x; lastY = y;
+        this.render();
+        return;
+      }
       this.camera.yaw -= (x - lastX) * 0.01;
       // Clamp short of the pole: at exactly +-pi/2 the up vector and the view
       // direction are parallel and the camera basis degenerates.
@@ -450,6 +482,7 @@ class Viewer {
       this.camera.pitch = Math.max(-limit, Math.min(limit, this.camera.pitch + (y - lastY) * 0.01));
       lastX = x; lastY = y;
       this.render();
+      if (this.onCamera) this.onCamera();
     };
     const up = () => { dragging = false; };
 
@@ -460,6 +493,7 @@ class Viewer {
       e.preventDefault();
       this.camera.distance = Math.max(1.2, Math.min(12, this.camera.distance * Math.exp(e.deltaY * 0.001)));
       this.render();
+      if (this.onCamera) this.onCamera();
     }, { passive: false });
 
     canvas.addEventListener('touchstart', (e) => {

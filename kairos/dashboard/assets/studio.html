@@ -7,51 +7,173 @@
 <style>/*__STYLE__*/</style>
 </head>
 <body>
+<!--__ICONS__-->
 
 <div class="shell">
 
-  <header class="titlebar">
-    <div class="mark"><span class="glyph">[K]</span>KAIROS<span class="sub" id="suite"></span></div>
-    <nav class="viewtabs" aria-label="Workspace">
-      <button data-view="model" aria-selected="true">Model</button>
-      <button data-view="benchmark" aria-selected="false">Benchmark</button>
-      <button data-view="training" aria-selected="false">Training</button>
-      <button data-view="ablations" aria-selected="false">Ablations</button>
-    </nav>
+  <header class="appbar">
+    <div class="brand">
+      <svg class="mark-svg" viewBox="0 0 32 32" aria-hidden="true"><use href="#mark"></use></svg>
+      <span class="wordmark">KAIROS</span>
+      <span class="rev" id="suite">rev -</span>
+    </div>
+    <div class="doctabs">
+      <div class="doctab"><span class="dot"></span><span id="doctab-name">kairos-cad-v1</span></div>
+    </div>
     <span class="spacer"></span>
-    <div class="meta">
-      <span>DESIGNS <b id="meta-designs">-</b></span>
+    <div class="readouts">
+      <span>PARTS <b id="meta-designs">-</b></span>
       <span>POLICIES <b id="meta-policies">-</b></span>
       <span>TASKS <b id="meta-tasks">-</b></span>
     </div>
   </header>
 
-  <aside class="rail" id="rail">
-    <div class="rail-head">
+  <nav class="workspaces" aria-label="Workspace">
+    <button data-view="model" aria-selected="true">Model</button>
+    <button data-view="benchmark" aria-selected="false">Benchmark</button>
+    <button data-view="training" aria-selected="false">Training</button>
+    <button data-view="ablations" aria-selected="false">Ablations</button>
+  </nav>
+
+  <div class="ribbon" id="ribbon">
+    <div class="group" data-workspace="model">
+      <div class="commands">
+        <button class="cmd" id="cmd-prev" title="Previous part">
+          <svg class="icon" viewBox="0 0 16 16"><path d="M10 3 L5 8 L10 13"/></svg>Prev
+        </button>
+        <button class="cmd" id="cmd-next" title="Next part">
+          <svg class="icon" viewBox="0 0 16 16"><path d="M6 3 L11 8 L6 13"/></svg>Next
+        </button>
+      </div>
+      <span class="label">Browse</span>
+    </div>
+
+    <div class="group" data-workspace="model">
+      <div class="commands">
+        <button class="cmd" data-view3d="iso" aria-pressed="true" title="Isometric">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-iso"></use></svg>Iso
+        </button>
+        <button class="cmd" data-view3d="front" aria-pressed="false" title="Front">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-front"></use></svg>Front
+        </button>
+        <button class="cmd" data-view3d="top" aria-pressed="false" title="Top">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-top"></use></svg>Top
+        </button>
+        <button class="cmd" data-view3d="right" aria-pressed="false" title="Right">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-right"></use></svg>Right
+        </button>
+        <button class="cmd" id="cmd-fit" title="Fit to view">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-fit"></use></svg>Fit
+        </button>
+      </div>
+      <span class="label">Orient</span>
+    </div>
+
+    <div class="group" data-workspace="model">
+      <div class="commands">
+        <button class="cmd" id="cmd-grid" aria-pressed="true" title="Ground grid">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-grid"></use></svg>Grid
+        </button>
+        <button class="cmd" id="cmd-shade" aria-pressed="true" title="Shaded / wireframe">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-shaded"></use></svg>Shaded
+        </button>
+      </div>
+      <span class="label">Display</span>
+    </div>
+
+    <div class="group" data-workspace="model">
+      <div class="commands">
+        <button class="cmd" id="cmd-measure" title="Measured properties">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-measure"></use></svg>Measure
+        </button>
+        <button class="cmd" id="cmd-checks" title="Constraint report">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-finish"></use></svg>Checks
+        </button>
+      </div>
+      <span class="label">Inspect</span>
+    </div>
+
+    <div class="group" data-workspace="benchmark" hidden>
+      <div class="commands">
+        <button class="cmd" data-goto="leaderboard">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-body"></use></svg>Leaderboard
+        </button>
+        <button class="cmd" data-goto="success-curve">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-revolve"></use></svg>Curve
+        </button>
+        <button class="cmd" data-goto="comparisons">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-measure"></use></svg>Intervals
+        </button>
+      </div>
+      <span class="label">Results</span>
+    </div>
+
+    <div class="group" data-workspace="training" hidden>
+      <div class="commands">
+        <button class="cmd" data-goto="bc-chart">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-line"></use></svg>Accuracy
+        </button>
+        <button class="cmd" data-goto="bc-loss-chart">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-fillet"></use></svg>Loss
+        </button>
+        <button class="cmd" data-goto="ppo-reward-chart">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-orbit"></use></svg>PPO
+        </button>
+      </div>
+      <span class="label">Curves</span>
+    </div>
+
+    <div class="group" data-workspace="ablations" hidden>
+      <div class="commands">
+        <button class="cmd" data-goto="ablations">
+          <svg class="icon" viewBox="0 0 16 16"><use href="#i-pattern"></use></svg>Conditions
+        </button>
+      </div>
+      <span class="label">Ablate</span>
+    </div>
+  </div>
+
+  <aside class="browser" id="browser">
+    <div class="browser-head">
       <span class="label">Browser</span>
-      <span class="label" id="rail-count"></span>
+      <span class="label" id="browser-count"></span>
     </div>
     <div id="tree"></div>
   </aside>
 
-  <main class="stage" id="stage">
+  <main class="canvas" id="canvas">
     <canvas id="viewport" aria-label="3D view of the selected part"></canvas>
 
     <div class="hud tl" id="hud-orientation">ISO</div>
 
-    <div class="viewport-tools">
-      <button data-view3d="iso">ISO</button>
-      <button data-view3d="front">FRONT</button>
-      <button data-view3d="right">RIGHT</button>
-      <button data-view3d="top">TOP</button>
-      <button id="grid-toggle">GRID</button>
+    <div class="viewcube-wrap">
+      <div class="viewcube" id="viewcube">
+        <button class="cube-f" data-view3d="front">FRONT</button>
+        <button class="cube-b" data-view3d="back">BACK</button>
+        <button class="cube-r" data-view3d="right">RIGHT</button>
+        <button class="cube-l" data-view3d="left">LEFT</button>
+        <button class="cube-u" data-view3d="top">TOP</button>
+        <button class="cube-d" data-view3d="bottom">BOTTOM</button>
+      </div>
+    </div>
+
+    <div class="navbar">
+      <button id="nav-orbit" aria-pressed="true" title="Orbit (drag)">
+        <svg class="icon" viewBox="0 0 16 16"><use href="#i-orbit"></use></svg>
+      </button>
+      <button id="nav-pan" title="Pan (shift-drag)">
+        <svg class="icon" viewBox="0 0 16 16"><use href="#i-pan"></use></svg>
+      </button>
+      <button id="nav-zoom" title="Zoom (scroll)">
+        <svg class="icon" viewBox="0 0 16 16"><use href="#i-zoom"></use></svg>
+      </button>
+      <button id="nav-fit" title="Fit">
+        <svg class="icon" viewBox="0 0 16 16"><use href="#i-fit"></use></svg>
+      </button>
     </div>
 
     <div class="hud bl">
-      <div class="scalebar">
-        <span id="scale-label">-</span>
-        <span class="bar" aria-hidden="true"></span>
-      </div>
+      <span class="scalebar"><span id="scale-label">-</span> <span class="bar"></span></span>
     </div>
 
     <p class="viewer-error" id="viewer-error" hidden></p>
@@ -69,7 +191,6 @@
       <div class="statgrid" id="benchmark-stats"></div>
       <div class="tablewrap" id="leaderboard"></div>
     </section>
-
     <section>
       <h2>Compounding error</h2>
       <p class="note">
@@ -78,7 +199,6 @@
       </p>
       <div class="chart" id="success-curve"></div>
     </section>
-
     <section>
       <h2>Paired comparisons</h2>
       <p class="note">
@@ -100,12 +220,10 @@
       <div class="statgrid" id="training-stats"></div>
       <div class="chart" id="bc-chart"></div>
     </section>
-
     <section>
       <h2>Loss</h2>
       <div class="chart" id="bc-loss-chart"></div>
     </section>
-
     <section>
       <h2>PPO</h2>
       <p class="note">
@@ -113,7 +231,7 @@
         dense over milestones.
       </p>
       <div class="chart" id="ppo-reward-chart"></div>
-      <div class="chart" id="ppo-rate-chart" style="margin-top:14px"></div>
+      <div class="chart" id="ppo-rate-chart" style="margin-top:13px"></div>
     </section>
   </section>
 
@@ -136,24 +254,26 @@
       <span class="label">Requirement</span>
       <p class="requirement" id="requirement"></p>
     </div>
-    <div class="panel">
+    <div class="panel" id="panel-measure">
       <span class="label">Measured</span>
       <dl class="props" id="props"></dl>
     </div>
-    <div class="panel">
+    <div class="panel" id="panel-checks">
       <span class="label">Constraint report</span>
       <div id="checks"></div>
-    </div>
-    <div class="panel">
-      <span class="label">Expert trajectory</span>
-      <div class="ops" id="ops"></div>
     </div>
     <div class="titleblock" id="titleblock"></div>
   </aside>
 
+  <div class="timeline" id="timeline">
+    <span class="label">Timeline</span>
+    <div class="timeline-track" id="timeline-track"></div>
+  </div>
+
   <footer class="statusbar">
     <span id="status-part">-</span>
     <span id="status-mesh">-</span>
+    <span id="status-step"></span>
     <span class="spacer"></span>
     <span>UNITS mm</span>
     <span id="status-invariant" class="ok">-</span>
