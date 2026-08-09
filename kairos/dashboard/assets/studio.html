@@ -84,8 +84,12 @@
 
     <div class="group" data-workspace="model">
       <div class="commands">
-        <button class="cmd" id="cmd-measure" title="Measured properties">
+        <button class="cmd" id="cmd-measure" aria-pressed="false"
+                title="Measure between two points on the part (M)">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-measure"></use></svg>Measure
+        </button>
+        <button class="cmd" id="cmd-props" title="Measured properties">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-props"></use></svg>Props
         </button>
         <button class="cmd" id="cmd-checks" title="Constraint report">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-finish"></use></svg>Checks
@@ -175,6 +179,7 @@
     <canvas id="viewport" aria-label="3D view of the selected part"></canvas>
 
     <div class="hud tl" id="hud-orientation">ISO</div>
+    <div class="dim" id="dim-readout" hidden></div>
 
     <div class="viewcube-wrap">
       <div class="viewcube" id="viewcube">
@@ -336,6 +341,7 @@
         <dt>S</dt><dd>section view</dd>
         <dt>X</dt><dd>cycle cut axis</dd>
         <dt>E</dt><dd>export STL</dd>
+        <dt>M</dt><dd>measure between two points</dd>
         <dt>Space</dt><dd>play the build</dd>
         <dt>, .</dt><dd>roll back / forward one feature</dd>
         <dt>/</dt><dd>filter parts</dd>

@@ -654,7 +654,8 @@ function initViewer() {
 
   el('cmd-prev').addEventListener('click', () => select((selected - 1 + designs.length) % designs.length));
   el('cmd-next').addEventListener('click', () => select((selected + 1) % designs.length));
-  el('cmd-measure').addEventListener('click', () => el('panel-measure').scrollIntoView({ block: 'nearest' }));
+  el('cmd-props').addEventListener('click', () => el('panel-measure').scrollIntoView({ block: 'nearest' }));
+  el('cmd-measure').addEventListener('click', toggleMeasure);
   el('cmd-checks').addEventListener('click', () => el('panel-checks').scrollIntoView({ block: 'nearest' }));
 
   document.querySelectorAll('[data-goto]').forEach((button) => {
@@ -664,8 +665,23 @@ function initViewer() {
     });
   });
 
-  viewer.onCamera = syncViewCube;
+  // The dimension label is positioned in screen space, so it has to follow the
+  // camera; without this it detaches from the span the moment you orbit.
+  viewer.onCamera = () => { syncViewCube(); if (viewer.measure.length === 2) placeDimension(); };
   syncViewCube();
+
+  // Click, not drag: orbiting through the part must not drop a point.
+  const viewport = el('viewport');
+  let down = null;
+  viewport.addEventListener('pointerdown', (event) => {
+    down = { x: event.clientX, y: event.clientY };
+  });
+  viewport.addEventListener('pointerup', (event) => {
+    if (!down) return;
+    const moved = Math.hypot(event.clientX - down.x, event.clientY - down.y);
+    down = null;
+    if (moved < 4) pickMeasurePoint(event);
+  });
 }
 
 function initTabs() {
@@ -726,6 +742,65 @@ function initTransport() {
   el('tl-last').addEventListener('click', () => { stopPlayback(); rollTo(null); });
 }
 
+/* ---------------------------------------------------------------- measure */
+
+let measuring = false;
+
+/** Turn the measure tool on or off, clearing whatever was measured. */
+function toggleMeasure() {
+  measuring = !measuring;
+  if (!viewer) return;
+  viewer.measure = [];
+  el('cmd-measure').setAttribute('aria-pressed', String(measuring));
+  el('canvas').classList.toggle('measuring', measuring);
+  el('dim-readout').hidden = true;
+  el('status-section').textContent = measuring ? 'MEASURE: PICK A POINT' : '';
+  viewer.render();
+}
+
+/** Take a point off the part, and report the span once there are two.
+ *
+ * Two points then reset, rather than a growing chain: a chain reads as a
+ * polyline and the question this answers is always between two features.
+ */
+function pickMeasurePoint(event) {
+  if (!measuring || !viewer) return;
+  if (viewer.measure.length >= 2) viewer.measure = [];
+  const hit = viewer.pick(event.clientX, event.clientY);
+  if (!hit) {
+    el('status-section').textContent = 'MEASURE: NO PART UNDER THE CURSOR';
+    return;
+  }
+  viewer.measure.push(hit.point);
+  viewer.render();
+  placeDimension();
+}
+
+/** Put the readout at the midpoint of the span, and say what it spans. */
+function placeDimension() {
+  const readout = el('dim-readout');
+  const points = viewer.measure;
+  if (points.length < 2) {
+    readout.hidden = true;
+    el('status-section').textContent = 'MEASURE: PICK THE SECOND POINT';
+    return;
+  }
+  const [a, b] = points;
+  const span = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+  const middle = viewer.project([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2]);
+  // Axis components alongside the span: on a machined part the useful number
+  // is often one axis of it, not the diagonal.
+  el('status-section').textContent =
+    'MEASURE  dX ' + Math.abs(b[0] - a[0]).toFixed(2)
+    + '  dY ' + Math.abs(b[1] - a[1]).toFixed(2)
+    + '  dZ ' + Math.abs(b[2] - a[2]).toFixed(2) + ' mm';
+  if (!middle) { readout.hidden = true; return; }
+  readout.hidden = false;
+  readout.textContent = span.toFixed(2) + ' mm';
+  readout.style.left = middle.x + 'px';
+  readout.style.top = middle.y + 'px';
+}
+
 /** Keyboard commands, as a CAD tool has. */
 function initKeys() {
   const panel = el('keymap');
@@ -756,6 +831,7 @@ function initKeys() {
       case 's': case 'S': press('cmd-section'); break;
       case 'x': case 'X': press('cmd-axis'); break;
       case 'e': case 'E': press('cmd-export'); break;
+      case 'm': case 'M': press('cmd-measure'); break;
       case ' ': event.preventDefault(); playBuild(); break;
       case ',': stepBy(-1); break;
       case '.': stepBy(1); break;

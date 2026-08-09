@@ -35,6 +35,8 @@
   --ink-muted: #57616f;
   --ink-faint: #838d9b;
   --accent: #0f6d78;
+  /* The accent as a plain hex, for the renderer, which cannot read a var(). */
+  --accent-solid: #0f6d78;
   --accent-soft: rgba(15, 109, 120, 0.13);
   --pass: #2c7a4f;
   --warn: #8f6115;
@@ -71,6 +73,7 @@
     --ink-muted: #8b96a5;
     --ink-faint: #626d7c;
     --accent: #46c2cd;
+    --accent-solid: #46c2cd;
     --accent-soft: rgba(70, 194, 205, 0.15);
     --pass: #5cbd8a;
     --warn: #dba546;
@@ -96,6 +99,7 @@
   --ink-muted: #8b96a5;
   --ink-faint: #626d7c;
   --accent: #46c2cd;
+  --accent-solid: #46c2cd;
   --accent-soft: rgba(70, 194, 205, 0.15);
   --pass: #5cbd8a;
   --warn: #dba546;
@@ -496,6 +500,22 @@ svg.icon {
 .titleblock div:nth-child(2n) { border-right: 0; }
 .titleblock .k { color: var(--ink-faint); letter-spacing: 0.08em; display: block; }
 .titleblock .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Measurement readout: sits on the canvas at the midpoint of the span, the
+   way a dimension is labelled on a drawing. */
+.dim {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 7px;
+  background: var(--chrome);
+  border: 1px solid var(--accent);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.canvas.measuring { cursor: crosshair; }
 
 /* ------------------------------------------------------------------ timeline */
 
