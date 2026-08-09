@@ -44,6 +44,11 @@ jobs:
         # asset without rebuilding ships a page that renders fine and is simply
         # not the thing in the repository.
         run: python3 scripts/check_station.py
+      - name: The app's element lookups resolve
+        # el('x') on markup with no such id returns null and throws part way
+        # through init, silently unwiring everything after it while the page
+        # still renders. Both sides are text here, so this needs no browser.
+        run: python3 scripts/check_wiring.py
 
   cad:
     # FreeCAD's interpreter, which is where the CAD half of the project lives.
