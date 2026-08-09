@@ -414,6 +414,42 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** Milestone reach rates as a funnel per policy. */
+function renderFunnel() {
+  const data = DATA.funnel || {};
+  const rows = data.rows || [];
+  if (!rows.length) {
+    el('funnel').innerHTML = '<p class="empty">No milestone rates in this bundle.</p>';
+    return;
+  }
+  const ordered = rows.slice().sort((a, b) => {
+    const reach = (r) => (r.steps.length ? r.steps[r.steps.length - 1].rate : 0);
+    return reach(b) - reach(a);
+  });
+
+  el('funnel').innerHTML = `
+    <div class="funnel">
+      <div class="fhead">
+        <span></span>
+        ${(data.milestones || []).map((m) =>
+          `<span class="fname">${esc(m.replace(/_/g, ' '))}</span>`).join('')}
+      </div>
+      ${ordered.map((row) => `
+        <div class="frow">
+          <span class="fpolicy">${esc(row.policy)}</span>
+          ${row.steps.map((step) => `
+            <span class="fbar${step.milestone === row.wall ? ' wall' : ''}"
+                  title="${esc(step.milestone)}: ${fmt(step.rate * 100, 0)}% reached${
+                    step.drop > 0 ? `, ${fmt(step.drop * 100, 0)}% lost here` : ''}">
+              <i style="height:${(step.rate * 100).toFixed(1)}%"></i>
+              <b>${fmt(step.rate * 100, 0)}</b>
+            </span>`).join('')}
+        </div>
+        ${row.wall ? `<div class="fwall">loses most at <strong>${
+          esc(row.wall.replace(/_/g, ' '))}</strong>, ${fmt(row.wall_drop * 100, 0)}% of episodes</div>` : ''}`).join('')}
+    </div>`;
+}
+
 /** The leaderboard split by task kind. */
 function renderTaskTypes() {
   const data = DATA.task_types || {};
@@ -743,7 +779,8 @@ function renderRollouts() {
   body.querySelectorAll('.track').forEach((track) => {
     track.addEventListener('click', () => {
       rolloutPolicy = track.dataset.policy;
-      renderTaskTypes();
+      renderFunnel();
+  renderTaskTypes();
   renderMatrix();
   renderFailures();
   renderRollouts();
@@ -1358,6 +1395,7 @@ function init() {
   renderComparisons();
   renderTraining();
   renderAblations();
+  renderFunnel();
   renderTaskTypes();
   renderMatrix();
   renderFailures();

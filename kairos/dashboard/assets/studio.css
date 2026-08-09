@@ -526,6 +526,41 @@ svg.icon {
 .titleblock .k { color: var(--ink-faint); letter-spacing: 0.08em; display: block; }
 .titleblock .v { color: var(--ink); font-variant-numeric: tabular-nums; }
 
+/* ------------------------------------------------------------------ funnel */
+
+.funnel { border: 1px solid var(--rule); background: var(--chrome); padding: 12px 13px; }
+.fhead, .frow {
+  display: grid; grid-template-columns: 118px repeat(7, minmax(0, 1fr));
+  gap: 6px; align-items: end;
+}
+.fhead { margin-bottom: 6px; }
+.fname {
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.05em;
+  color: var(--ink-faint); text-transform: uppercase; line-height: 1.2;
+}
+.fpolicy { font-family: var(--mono); font-size: 11px; color: var(--ink); align-self: center; }
+/* Height carries the rate; the number is there because a reader comparing two
+   policies needs the value, not an impression of it. */
+.fbar {
+  position: relative; display: flex; align-items: flex-end; justify-content: center;
+  height: 58px; background: var(--sunken); border-radius: 1px;
+}
+.fbar i {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: var(--accent); opacity: 0.82; border-radius: 1px;
+}
+.fbar b {
+  position: relative; font-family: var(--mono); font-size: 9.5px;
+  font-weight: 500; color: var(--ink); padding-bottom: 3px;
+  text-shadow: 0 1px 2px var(--sunken);
+}
+.fbar.wall { outline: 1px solid var(--warn); outline-offset: 1px; }
+.fwall {
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint);
+  margin: 3px 0 11px 124px;
+}
+.fwall strong { color: var(--warn); font-weight: 500; }
+
 td.stacked { line-height: 1.25; }
 td .sub { display: block; font-size: 9.5px; color: var(--ink-faint); }
 td.wide-gap { color: var(--warn); }
