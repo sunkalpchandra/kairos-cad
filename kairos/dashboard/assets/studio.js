@@ -1624,6 +1624,41 @@ function applyRoute(hash) {
   writeRoute();
 }
 
+/** Orbit, pan and zoom from the keyboard while the viewport has focus.
+ *
+ * A canvas is not reachable by keyboard at all unless it is given a tab stop,
+ * and giving it one without controls would only trap a keyboard user on an
+ * image they cannot turn.
+ */
+function initViewportKeys() {
+  const canvas = el('viewport');
+  canvas.addEventListener('keydown', (event) => {
+    if (!viewer || event.metaKey || event.ctrlKey || event.altKey) return;
+    const step = event.shiftKey ? 0 : 0.12;
+    const slide = event.shiftKey ? 0.08 : 0;
+    let handled = true;
+    switch (event.key) {
+      case 'ArrowLeft': viewer.camera.yaw -= step; viewer.pan[0] += slide; break;
+      case 'ArrowRight': viewer.camera.yaw += step; viewer.pan[0] -= slide; break;
+      case 'ArrowUp': viewer.camera.pitch += step; viewer.pan[1] -= slide; break;
+      case 'ArrowDown': viewer.camera.pitch -= step; viewer.pan[1] += slide; break;
+      case '+': case '=': viewer.camera.distance = Math.max(0.6, viewer.camera.distance - 0.25); break;
+      case '-': case '_': viewer.camera.distance = Math.min(12, viewer.camera.distance + 0.25); break;
+      default: handled = false;
+    }
+    if (!handled) return;
+    // Same clamp the pointer orbit uses, or the camera flips through the pole.
+    const limit = Math.PI / 2 - 0.02;
+    viewer.camera.pitch = Math.max(-limit, Math.min(limit, viewer.camera.pitch));
+    event.preventDefault();
+    // The arrows also step the part list; stop the document handler seeing them.
+    event.stopPropagation();
+    viewer.render();
+    syncViewCube();
+    if (viewer.measure.length === 2) placeDimension();
+  });
+}
+
 /** Which workspace tab is selected. */
 function activeWorkspace() {
   const chosen = document.querySelector('.workspaces button[aria-selected="true"]');
@@ -1702,6 +1737,7 @@ function init() {
   initTabs();
   initFilter();
   initTransport();
+  initViewportKeys();
   initKeys();
   window.addEventListener('hashchange', () => applyRoute());
   renderBenchmark();

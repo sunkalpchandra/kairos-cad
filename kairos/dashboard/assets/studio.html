@@ -117,7 +117,8 @@
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-axis"></use></svg><span id="axis-label">X</span>
         </button>
         <label class="cmd slider" title="Cut position">
-          <input type="range" id="section-cut" min="0" max="100" value="50">
+          <input type="range" id="section-cut" min="0" max="100" value="50"
+                 aria-label="Cut position, percent through the part">
           <span>Cut</span>
         </label>
       </div>
@@ -213,7 +214,8 @@
   </aside>
 
   <main class="canvas" id="canvas">
-    <canvas id="viewport" aria-label="3D view of the selected part"></canvas>
+    <canvas id="viewport" tabindex="0"
+            aria-label="3D view of the selected part. Focus it and use the arrow keys to orbit, shift with the arrows to pan, plus and minus to zoom."></canvas>
 
     <div class="hud tl" id="hud-orientation">ISO</div>
     <div class="dim" id="dim-readout" hidden></div>
@@ -527,6 +529,7 @@
         <dt>M</dt><dd>measure between two points</dd>
         <dt>P</dt><dd>parallel projection</dd>
         <dt>B</dt><dd>bounding box</dd>
+        <dt>Tab</dt><dd>focus the viewport, then arrows orbit it</dd>
         <dt>Space</dt><dd>play the build</dd>
         <dt>, .</dt><dd>roll back / forward one feature</dd>
         <dt>/</dt><dd>filter parts</dd>
