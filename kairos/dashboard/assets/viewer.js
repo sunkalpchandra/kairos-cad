@@ -111,15 +111,26 @@ attribute vec3 aColor;
 uniform mat4 uModelView;
 uniform mat4 uProjection;
 varying vec3 vColor;
+varying vec3 vModelPosition;
 void main() {
   vColor = aColor;
+  vModelPosition = aPosition;
   gl_Position = uProjection * uModelView * vec4(aPosition, 1.0);
 }`;
 
+/* Model edges run through this program too, so it carries the same section
+ * clip. The grid does not: it is drawn in normalized space, where the plane's
+ * millimetre position means nothing, so it passes uSectioning false. */
 const LINE_FRAGMENT_SHADER = `
 precision mediump float;
 varying vec3 vColor;
-void main() { gl_FragColor = vec4(vColor, 1.0); }`;
+varying vec3 vModelPosition;
+uniform vec4 uSection;
+uniform bool uSectioning;
+void main() {
+  if (uSectioning && dot(vModelPosition, uSection.xyz) > uSection.w) discard;
+  gl_FragColor = vec4(vColor, 1.0);
+}`;
 
 function compile(gl, type, source) {
   const shader = gl.createShader(type);
@@ -227,6 +238,65 @@ function computeNormals(positions, indices) {
 }
 
 /** Decode the quantized bundle mesh into float positions in mm. */
+/** The edges a machinist would see: creases and open boundaries.
+ *
+ * A shaded solid with no edges reads as a blob. CAD viewports draw the model
+ * edges over the shading, and on a tessellated mesh those are exactly the
+ * edges where two faces meet at an angle -- the triangulation's own diagonals
+ * lie flat and must not be drawn, which is what the angle test separates.
+ *
+ * Welding is what makes this possible at all: two triangles only share an edge
+ * if they share vertex indices.
+ */
+function buildEdges(positions, indices, vertexCount, minAngleDegrees) {
+  const limit = Math.cos((minAngleDegrees * Math.PI) / 180);
+  const faces = new Map();
+  const normal = new Float32Array(3);
+
+  const faceNormal = (i, out) => {
+    const a = indices[i] * 3, b = indices[i + 1] * 3, c = indices[i + 2] * 3;
+    const ux = positions[b] - positions[a], uy = positions[b + 1] - positions[a + 1];
+    const uz = positions[b + 2] - positions[a + 2];
+    const vx = positions[c] - positions[a], vy = positions[c + 1] - positions[a + 1];
+    const vz = positions[c + 2] - positions[a + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const length = Math.hypot(nx, ny, nz) || 1;
+    out[0] = nx / length; out[1] = ny / length; out[2] = nz / length;
+  };
+
+  for (let i = 0; i < indices.length; i += 3) {
+    faceNormal(i, normal);
+    for (let e = 0; e < 3; e += 1) {
+      const v0 = indices[i + e], v1 = indices[i + ((e + 1) % 3)];
+      const low = Math.min(v0, v1), high = Math.max(v0, v1);
+      const key = low * vertexCount + high;
+      const seen = faces.get(key);
+      if (seen === undefined) {
+        faces.set(key, [low, high, normal[0], normal[1], normal[2], 1]);
+      } else {
+        // A third face on one edge means the mesh is not a clean manifold;
+        // keep the first pairing rather than dropping the edge entirely.
+        if (seen[5] === 1) {
+          seen[5] = 2;
+          seen[6] = normal[0] * seen[2] + normal[1] * seen[3] + normal[2] * seen[4];
+        }
+      }
+    }
+  }
+
+  const lines = [];
+  faces.forEach((edge) => {
+    // One face means an open boundary, which is always a real edge. Two means
+    // draw it only if the faces actually turn.
+    const draw = edge[5] === 1 || edge[6] < limit;
+    if (!draw) return;
+    const a = edge[0] * 3, b = edge[1] * 3;
+    lines.push(positions[a], positions[a + 1], positions[a + 2],
+               positions[b], positions[b + 1], positions[b + 2]);
+  });
+  return new Float32Array(lines);
+}
+
 function decodeMesh(mesh) {
   const quantum = mesh.quantum;
   const positions = new Float32Array(mesh.positions.length);
@@ -239,6 +309,7 @@ function decodeMesh(mesh) {
     indices: useUint32 ? new Uint32Array(indices) : new Uint16Array(indices),
     useUint32,
     count: indices.length,
+    edges: buildEdges(positions, indices, mesh.vertex_count, 22),
   };
 }
 
@@ -324,6 +395,7 @@ class Viewer {
       index: gl.createBuffer(),
       capPosition: gl.createBuffer(),
       capNormal: gl.createBuffer(),
+      edge: gl.createBuffer(),
     };
     this.mesh = null;
     this.color = [0.42, 0.58, 0.86];
@@ -332,6 +404,9 @@ class Viewer {
     //: darken a light ground and lighten nothing on a dark one.
     this.shadowTone = new Float32Array([0.02, 0.03, 0.05, 0.55]);
     this.showShadow = true;
+    //: Model edges over the shading, which is how a CAD viewport draws a part.
+    this.showEdges = true;
+    this.edgeTone = [0.10, 0.13, 0.18];
     this.background = [0.043, 0.055, 0.075];
     this.showGrid = true;
     this.wireframe = false;
@@ -354,6 +429,8 @@ class Viewer {
     this.lineUniforms = {
       modelView: gl.getUniformLocation(this.lineProgram, "uModelView"),
       projection: gl.getUniformLocation(this.lineProgram, "uProjection"),
+      section: gl.getUniformLocation(this.lineProgram, "uSection"),
+      sectioning: gl.getUniformLocation(this.lineProgram, "uSectioning"),
     };
     this.gridBuffers = { position: gl.createBuffer(), color: gl.createBuffer() };
     gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffers.position);
@@ -455,6 +532,7 @@ class Viewer {
     this.gridTone = parse('--grid-line', this.gridTone);
     const shade = parse('--viewport-shadow', null);
     if (shade) this.shadowTone.set(shade, 0);
+    this.edgeTone = parse('--viewport-edge', this.edgeTone);
     this.axisTone = [
       parse('--grid-axis-x', this.axisTone[0]),
       parse('--grid-axis-y', this.axisTone[1]),
@@ -513,6 +591,9 @@ class Viewer {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.index);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, decoded.indices, gl.STATIC_DRAW);
     this.indexType = decoded.useUint32 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.edge);
+    gl.bufferData(gl.ARRAY_BUFFER, decoded.edges, gl.STATIC_DRAW);
+    this.edgeCount = decoded.edges.length / 3;
 
     // Normalize every part to a unit-ish box so a 6 mm spacer and a 200 mm
     // rail both arrive framed, and one camera distance suits all of them.
@@ -607,12 +688,46 @@ class Viewer {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.index);
     // LINES over the triangle indices draws each triangle's three edges twice.
     // That is the cheap wireframe, and at these mesh sizes it is imperceptible.
+    if (this.showEdges && !this.wireframe) {
+      gl.enable(gl.POLYGON_OFFSET_FILL);
+      gl.polygonOffset(1.2, 1.2);
+    }
     gl.drawElements(this.wireframe ? gl.LINES : gl.TRIANGLES,
                     this.mesh.count, this.indexType, 0);
+    gl.disable(gl.POLYGON_OFFSET_FILL);
 
     if (this.section.on && !this.wireframe) {
       this._drawCap(modelView, projection, axis, where);
     }
+    if (this.showEdges && !this.wireframe && this.edgeCount) {
+      this._drawEdges(modelView, projection, axis, where);
+    }
+  }
+
+  /** Model edges over the shaded solid.
+   *
+   * Drawn after the fill, with the fill pushed back a hair: a line coplanar
+   * with the surface it bounds z-fights, and half of every edge drops out as
+   * the camera moves. Polygon offset moves the polygons, not the lines, which
+   * is why the offset goes on the fill pass rather than here.
+   */
+  _drawEdges(modelView, projection, axis, where) {
+    const gl = this.gl;
+    gl.useProgram(this.lineProgram);
+    gl.uniformMatrix4fv(this.lineUniforms.modelView, false, modelView);
+    gl.uniformMatrix4fv(this.lineUniforms.projection, false, projection);
+    gl.uniform4f(this.lineUniforms.section, axis[0], axis[1], axis[2], where);
+    gl.uniform1i(this.lineUniforms.sectioning, this.section.on ? 1 : 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.edge);
+    gl.enableVertexAttribArray(this.lineAttributes.position);
+    gl.vertexAttribPointer(this.lineAttributes.position, 3, gl.FLOAT, false, 0, 0);
+    // One tone for every edge, so the colour is a constant attribute rather
+    // than a buffer the same size as the geometry.
+    gl.disableVertexAttribArray(this.lineAttributes.color);
+    gl.vertexAttrib3fv(this.lineAttributes.color, this.edgeTone);
+    gl.drawArrays(gl.LINES, 0, this.edgeCount);
+    gl.uniform1i(this.lineUniforms.sectioning, 0);
   }
 
   /** Fill the cut face, so a sectioned solid reads as solid.
@@ -781,6 +896,7 @@ class Viewer {
     placed[13] += view[9] * (floor || 0);
     placed[12] += view[8] * (floor || 0);
     gl.useProgram(this.lineProgram);
+    gl.uniform1i(this.lineUniforms.sectioning, 0);
     gl.uniformMatrix4fv(this.lineUniforms.modelView, false, placed);
     gl.uniformMatrix4fv(this.lineUniforms.projection, false, projection);
 
