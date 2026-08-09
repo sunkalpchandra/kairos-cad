@@ -26,7 +26,6 @@ ASSETS = ROOT / "kairos/dashboard/assets"
 #: Built page -> the assets it inlines, from `build.LAYOUTS`.
 PAGES: dict[str, tuple[str, ...]] = {
     "docs/index.html": ("studio.css", "icons.html", "viewer.js", "charts.js", "studio.js"),
-    "docs/station.html": ("studio.css", "icons.html", "viewer.js", "charts.js", "studio.js"),
     "docs/dashboard.html": ("style.css", "viewer.js", "charts.js", "app.js"),
 }
 
