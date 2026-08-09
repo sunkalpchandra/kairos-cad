@@ -16,6 +16,7 @@ from kairos.dashboard.bundle import (
     _normalize_scores,
     collect_ablations,
     collect_designs,
+    collect_rollouts,
     collect_training,
 )
 
@@ -190,3 +191,88 @@ def test_missing_run_directories_degrade_to_empty(tmp_path):
     training = collect_training(tmp_path / "nope")
     assert training["bc"]["history"] == []
     assert training["ppo"]["history"] == []
+
+
+# ------------------------------------------------------------------- rollouts
+
+
+def _traces(tmp_path, policy, rows):
+    path = tmp_path / f"{policy}_traces.jsonl"
+    path.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    return path
+
+
+def _episode(task_id="build-design_000000", family="corner_bracket", **overrides):
+    row = {
+        "task_id": task_id,
+        "family": family,
+        "requirement": "Design a 90-degree corner bracket.",
+        "operations": ["CREATE_SKETCH", "PAD"],
+        "accepted": [True, False],
+        "rejections": ["", "no closed profile"],
+        "steps": 2,
+        "expert_steps": 20,
+        "invalid_actions": 1,
+        "progress_score": 0.25,
+        "opened_a_sketch": True,
+    }
+    row.update(overrides)
+    return row
+
+
+def test_rollouts_report_every_policy_on_the_same_task(tmp_path):
+    """Otherwise each strip describes a different task and comparing them lies."""
+    _traces(tmp_path, "aaa", [_episode(), _episode(task_id="build-design_000001",
+                                                  family="flange")])
+    _traces(tmp_path, "zzz", [_episode()])
+    out = collect_rollouts(tmp_path, per_family=1)
+
+    first = next(t for t in out["tasks"] if t["task_id"] == "build-design_000000")
+    assert sorted(e["policy"] for e in first["episodes"]) == ["aaa", "zzz"]
+
+
+def test_rollouts_take_build_tasks_only(tmp_path):
+    """A COMPLETE episode is mostly replayed expert prefix, so its strip would
+    credit the policy with actions it never chose."""
+    _traces(tmp_path, "bc", [
+        _episode(task_id="complete-2-design_000000"),
+        _episode(task_id="build-design_000000"),
+    ])
+    out = collect_rollouts(tmp_path)
+    assert [t["task_id"] for t in out["tasks"]] == ["build-design_000000"]
+
+
+def test_rollouts_keep_one_task_per_family(tmp_path):
+    _traces(tmp_path, "bc", [
+        _episode(task_id="build-design_000000", family="corner_bracket"),
+        _episode(task_id="build-design_000008", family="corner_bracket"),
+        _episode(task_id="build-design_000001", family="flange"),
+    ])
+    out = collect_rollouts(tmp_path, per_family=1)
+    assert sorted(t["family"] for t in out["tasks"]) == ["corner_bracket", "flange"]
+
+
+def test_an_older_trace_reports_no_per_step_record_rather_than_all_accepted(tmp_path):
+    """The page distinguishes the two. An empty list must not read as a clean
+    run: that would show a policy jamming as a policy succeeding."""
+    _traces(tmp_path, "bc", [_episode(accepted=None, rejections=None)])
+    episode = collect_rollouts(tmp_path)["tasks"][0]["episodes"][0]
+    assert episode["accepted"] == []
+    assert episode["operations"]
+
+
+def test_per_step_record_is_truncated_to_the_operations_it_describes(tmp_path):
+    """A longer accepted list than operations would shift every cell's meaning."""
+    _traces(tmp_path, "bc", [_episode(accepted=[True, False, True, True])])
+    episode = collect_rollouts(tmp_path)["tasks"][0]["episodes"][0]
+    assert episode["accepted"] == [True, False]
+
+
+def test_milestones_are_reported_in_reach_order(tmp_path):
+    _traces(tmp_path, "bc", [_episode(drew_geometry=True, made_a_solid=True)])
+    episode = collect_rollouts(tmp_path)["tasks"][0]["episodes"][0]
+    assert episode["milestones"] == ["opened_a_sketch", "drew_geometry", "made_a_solid"]
+
+
+def test_rollouts_without_traces_degrade_to_empty(tmp_path):
+    assert collect_rollouts(tmp_path) == {"tasks": []}

@@ -205,6 +205,79 @@ def collect_benchmark(runs: str | Path) -> dict[str, Any]:
     }
 
 
+#: Milestones in the order a build reaches them, matching the scorer.
+MILESTONES = (
+    "opened_a_sketch", "drew_geometry", "made_a_solid", "solid_is_valid",
+    "has_any_hole", "all_constraints_met", "finished_successfully",
+)
+
+
+def collect_rollouts(runs: str | Path, per_family: int = 1) -> dict[str, Any]:
+    """What each policy actually did, step by step, on a handful of tasks.
+
+    The leaderboard says bc scores 0.458. It does not say why, and the answer
+    is not subtle once you can see it: on some tasks the policy emits one
+    operation for the rest of the episode and the environment rejects every
+    one. That is visible in the traces and in nothing else the page shows.
+
+    One BUILD task per family: BUILD starts from nothing, so the whole episode
+    is the policy's, where a COMPLETE task is mostly replayed expert prefix.
+    """
+    traces = _traces_by_policy(Path(runs))
+    if not traces:
+        return {"tasks": []}
+
+    # Pick the tasks first, from whichever policy ran, so every policy is
+    # reported on the same set rather than on whatever each one happened to do.
+    chosen: dict[str, str] = {}
+    for rows in traces.values():
+        for row in rows:
+            task = row.get("task_id", "")
+            if not task.startswith("build-"):
+                continue
+            family = row.get("family") or "unknown"
+            if len([t for t in chosen.values() if t == family]) < per_family:
+                chosen.setdefault(task, family)
+        break
+
+    out = []
+    for task_id, family in sorted(chosen.items()):
+        episodes = []
+        for policy in sorted(traces):
+            row = next((r for r in traces[policy] if r.get("task_id") == task_id), None)
+            if row is None:
+                continue
+            operations = row.get("operations") or []
+            accepted = row.get("accepted") or []
+            episodes.append({
+                "policy": policy,
+                "operations": operations,
+                # Older traces have no per-step record; an empty list reads as
+                # "not recorded" in the page rather than as "all accepted".
+                "accepted": [bool(a) for a in accepted][: len(operations)],
+                "rejections": (row.get("rejections") or [])[: len(operations)],
+                "steps": row.get("steps"),
+                "expert_steps": row.get("expert_steps"),
+                "invalid_actions": row.get("invalid_actions"),
+                "progress_score": row.get("progress_score"),
+                "milestones": [m for m in MILESTONES if row.get(m)],
+                "aborted": bool(row.get("aborted")),
+                "abort_reason": row.get("abort_reason") or "",
+            })
+        if episodes:
+            out.append({
+                "task_id": task_id,
+                "family": family,
+                "requirement": next(
+                    (r.get("requirement") for rows in traces.values()
+                     for r in rows if r.get("task_id") == task_id and r.get("requirement")),
+                    "",
+                ),
+                "episodes": episodes,
+            })
+    return {"tasks": out, "milestones": list(MILESTONES)}
+
+
 def collect_comparisons(runs: str | Path) -> dict[str, Any]:
     """Recompute paired bootstrap intervals from the traces on disk.
 
@@ -380,6 +453,7 @@ def build_bundle(
         "designs": designs,
         "benchmark": collect_benchmark(benchmark_runs),
         "comparisons": collect_comparisons(benchmark_runs),
+        "rollouts": collect_rollouts(benchmark_runs),
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
