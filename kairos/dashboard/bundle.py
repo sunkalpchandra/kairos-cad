@@ -316,6 +316,33 @@ def collect_training(runs_root: str | Path) -> dict[str, Any]:
     }
 
 
+def attach_step_meshes(designs: list[dict[str, Any]], root: str | Path) -> int:
+    """Attach per-action meshes where scripts/build_steps.py produced them.
+
+    A parametric timeline shows the part as it was at a feature. Without these
+    the station's timeline can only highlight a node. Present for a subset of
+    designs on purpose: every step mesh is bytes in a page that has to stay
+    openable, so `build_steps.py` covers one design per family.
+    """
+    from kairos.dashboard.mesh import mesh_from_stl
+
+    attached = 0
+    for design in designs:
+        steps_dir = Path(root) / "designs" / design["design_id"] / "steps"
+        if not steps_dir.is_dir():
+            continue
+        steps: dict[str, Any] = {}
+        for path in sorted(steps_dir.glob("*.stl")):
+            try:
+                steps[str(int(path.stem))] = mesh_from_stl(path)
+            except (OSError, ValueError):
+                continue
+        if steps:
+            design["step_meshes"] = steps
+            attached += 1
+    return attached
+
+
 def attach_meshes(designs: list[dict[str, Any]], root: str | Path) -> int:
     """Attach a viewer mesh to each design; returns how many succeeded.
 
@@ -348,6 +375,7 @@ def build_bundle(
     """Everything the dashboard renders, in one JSON-serializable dict."""
     designs = collect_designs(dataset, limit=limit)
     attached = attach_meshes(designs, dataset) if meshes else 0
+    scrubbable = attach_step_meshes(designs, dataset) if meshes else 0
     return {
         "designs": designs,
         "benchmark": collect_benchmark(benchmark_runs),
@@ -358,6 +386,7 @@ def build_bundle(
         "counts": {
             "designs_embedded": len(designs),
             "meshes_attached": attached,
+            "designs_with_step_meshes": scrubbable,
             # Non-empty means a trace file had lines that would not parse. The
             # affected policy is still charted, from fewer episodes than it ran.
             "unparsable_trace_lines": dict(_SKIPPED),

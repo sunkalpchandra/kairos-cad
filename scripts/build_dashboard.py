@@ -59,6 +59,9 @@ def main() -> int:
     print(f"wrote {path} ({size_kb:.0f} KB)")
     print(f"  designs embedded : {counts['designs_embedded']}")
     print(f"  meshes attached  : {counts['meshes_attached']}")
+    scrubbable = counts.get("designs_with_step_meshes", 0)
+    print(f"  scrubbable       : {scrubbable}"
+          + ("" if scrubbable else "  (run scripts/build_steps.py under FreeCAD)"))
     print(f"  policies scored  : {policies}")
     print(f"  comparisons      : {len(bundle['comparisons']['rows'])}")
     print(f"  ablation rows    : {len(bundle['ablations']['rows'])}")
