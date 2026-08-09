@@ -297,6 +297,13 @@ fails at zeroes everything after it. scripted-spec loses half its episodes at
 `has_any_hole`; immediate-finish 36% at `opened_a_sketch`; bc and ppo theirs at
 `all_constraints_met`.
 
+The funnel reads **prefix-reached** milestones, not the leaderboard's
+`milestone_rates`. Those count each flag independently and the flags are not
+nested: 8 of bc's 76 episodes drew geometry without the harness recording that
+a sketch was opened, so the raw rates run 0.89 then 1.00 and a funnel drawn
+from them goes *up* at the second rung. It did, until the views were made to
+check each other.
+
 **Mistakes, or a stop.** bc and ppo hit their first refusal a quarter of the
 way into an episode and then spend three quarters of it being refused,
 recovering in **2 of 31** and 2 of 30. legal-random is refused more often and
@@ -334,6 +341,23 @@ plate.
 
 This was already in [phase6.md](phase6.md). What was missing was that anyone
 reading the station would ever see it.
+
+## The views check each other
+
+Eight collectors reduce one run. Nothing forced them to agree, so a collector
+that filtered differently would put two numbers on the page that describe the
+same thing and disagree, with neither looking wrong alone.
+
+`tests/test_dashboard_consistency.py` asserts four things across the real
+artifacts: the per-family scores reweight to the leaderboard by episode count;
+the funnel only narrows; its last rung equals the success rate; and the
+task-type split covers every episode. The second failed on its first run and
+found the funnel bug above.
+
+The family scores do **not** equal the leaderboard unweighted -- bc reads 0.478
+as a mean of family means against 0.458 over episodes, because families have
+different episode counts. That difference is arithmetic. A difference after
+weighting would be a bug, which is why the test weights.
 
 ## Two gates the station needed
 
