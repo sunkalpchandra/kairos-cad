@@ -32,6 +32,8 @@
   --grid-line: #b9c2cd;
   --grid-axis-x: #7fa8ad;
   --grid-axis-y: #8fa4b5;
+  /* The part's ground shadow, read by the renderer. */
+  --viewport-shadow: #2a3340;
   --rule: #ccd2da;
   --rule-strong: #aab3bf;
   --ink: #1b212a;
@@ -66,6 +68,7 @@
     --grid-line: #29313c;
     --grid-axis-x: #4d6b70;
     --grid-axis-y: #425666;
+    --viewport-shadow: #05070a;
     --rule: #2a323d;
     --rule-strong: #3a4552;
     --ink: #e3e8ef;
@@ -89,6 +92,7 @@
   --grid-line: #29313c;
   --grid-axis-x: #4d6b70;
   --grid-axis-y: #425666;
+  --viewport-shadow: #05070a;
   --rule: #2a323d;
   --rule-strong: #3a4552;
   --ink: #e3e8ef;
@@ -1319,8 +1323,14 @@ uniform bool uFlat;
 // Fragments on the far side are discarded, which is what opens a solid up.
 uniform vec4 uSection;
 uniform bool uSectioning;
+// The stencil pass that caps a section counts the material the cut removed,
+// which is the same plane read the other way round.
+uniform bool uSectionInvert;
 void main() {
-  if (uSectioning && dot(vModelPosition, uSection.xyz) > uSection.w) discard;
+  if (uSectioning) {
+    float side = dot(vModelPosition, uSection.xyz) - uSection.w;
+    if (uSectionInvert ? (side <= 0.0) : (side > 0.0)) discard;
+  }
   vec3 viewDir = normalize(-vViewPosition);
   vec3 normal = normalize(vNormal);
   if (!gl_FrontFacing) normal = -normal;
@@ -1345,6 +1355,20 @@ void main() {
   vec3 color = uColor * (0.22 + 0.85 * key + fill) + vec3(rim * 0.55) + vec3(spec);
   gl_FragColor = vec4(color, 1.0);
 }`;
+
+/* The ground shadow: geometry flattened onto the floor plane, no shading. It
+ * is the cheapest thing that puts a part in contact with the ground instead of
+ * hovering over it, and a viewport that omits it reads as a model viewer. */
+const SHADOW_VERTEX_SHADER = `
+attribute vec3 aPosition;
+uniform mat4 uModelView;
+uniform mat4 uProjection;
+void main() { gl_Position = uProjection * uModelView * vec4(aPosition, 1.0); }`;
+
+const SHADOW_FRAGMENT_SHADER = `
+precision mediump float;
+uniform vec4 uShade;
+void main() { gl_FragColor = uShade; }`;
 
 const LINE_VERTEX_SHADER = `
 attribute vec3 aPosition;
@@ -1516,7 +1540,9 @@ class Viewer {
     // Transparent so the canvas composites over the CSS gradient ground. A
     // flat WebGL clear paints over it, and the graded ground is most of what
     // makes a viewport read as a room rather than a void.
-    const options = { antialias: true, alpha: true, depth: true,
+    // Stencil carries the section cap: without it the cut face is missing and
+    // a solid part reads as a hollow shell.
+    const options = { antialias: true, alpha: true, depth: true, stencil: true,
                       premultipliedAlpha: false };
     this.gl = canvas.getContext('webgl', options) || canvas.getContext('experimental-webgl', options);
     if (!this.gl) throw new Error('WebGL is unavailable in this browser');
@@ -1529,6 +1555,13 @@ class Viewer {
     this.derivatives = !!gl.getExtension('OES_standard_derivatives');
     this.program = linkProgram(gl);
     this.lineProgram = linkProgram(gl, LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER);
+    this.shadowProgram = linkProgram(gl, SHADOW_VERTEX_SHADER, SHADOW_FRAGMENT_SHADER);
+    this.shadowUniforms = {
+      modelView: gl.getUniformLocation(this.shadowProgram, 'uModelView'),
+      projection: gl.getUniformLocation(this.shadowProgram, 'uProjection'),
+      shade: gl.getUniformLocation(this.shadowProgram, 'uShade'),
+    };
+    this.shadowPosition = gl.getAttribLocation(this.shadowProgram, 'aPosition');
     this.attributes = {
       position: gl.getAttribLocation(this.program, 'aPosition'),
       normal: gl.getAttribLocation(this.program, 'aNormal'),
@@ -1541,17 +1574,29 @@ class Viewer {
       flat: gl.getUniformLocation(this.program, 'uFlat'),
       section: gl.getUniformLocation(this.program, 'uSection'),
       sectioning: gl.getUniformLocation(this.program, 'uSectioning'),
+      sectionInvert: gl.getUniformLocation(this.program, 'uSectionInvert'),
     };
     //: Section state: axis index (0..2), cut fraction through the bounds, on.
     this.section = { axis: 0, cut: 0.5, on: false };
     this.flatShading = this.derivatives;
+    // Some contexts refuse a stencil buffer; the cap is skipped rather than
+    // drawn wrong, so ask what was actually granted instead of what was asked.
+    const granted = gl.getContextAttributes();
+    this.hasStencil = !!(granted && granted.stencil);
     this.buffers = {
       position: gl.createBuffer(),
       normal: gl.createBuffer(),
       index: gl.createBuffer(),
+      capPosition: gl.createBuffer(),
+      capNormal: gl.createBuffer(),
     };
     this.mesh = null;
     this.color = [0.42, 0.58, 0.86];
+    this.capColor = this._cutTone(this.color);
+    //: Ground shadow, as premultiplied-free RGBA. Read from --shadow so it can
+    //: darken a light ground and lighten nothing on a dark one.
+    this.shadowTone = new Float32Array([0.02, 0.03, 0.05, 0.55]);
+    this.showShadow = true;
     this.background = [0.043, 0.055, 0.075];
     this.showGrid = true;
     this.wireframe = false;
@@ -1673,6 +1718,8 @@ class Viewer {
       ];
     };
     this.gridTone = parse('--grid-line', this.gridTone);
+    const shade = parse('--viewport-shadow', null);
+    if (shade) this.shadowTone.set(shade, 0);
     this.axisTone = [
       parse('--grid-axis-x', this.axisTone[0]),
       parse('--grid-axis-y', this.axisTone[1]),
@@ -1692,7 +1739,21 @@ class Viewer {
       parseInt(hex.slice(3, 5), 16) / 255,
       parseInt(hex.slice(5, 7), 16) / 255,
     ];
+    this.capColor = this._cutTone(this.color);
     this.render();
+  }
+
+  /** The cut face's tone: the part's brightness, pulled warm.
+   *
+   * A cut face shaded like the part is invisible -- it was, until this was
+   * measured: the cap drew, and read as more of the same surface. CAD tools
+   * give the section a colour of its own for the same reason, so the hue
+   * moves and the brightness does not, which keeps it in the part's key
+   * rather than looking like a decal.
+   */
+  _cutTone(color) {
+    const luminance = 0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2];
+    return [luminance * 1.18, luminance * 0.76, luminance * 0.44];
   }
 
   /** Upload a mesh.
@@ -1771,7 +1832,19 @@ class Viewer {
     const aspect = this.canvas.width / Math.max(1, this.canvas.height);
     const projection = perspective(Math.PI / 4, aspect, 0.05, 100);
 
-    if (this.showGrid) this._drawGrid(view, projection);
+    // The grid is the ground the part stands on, so it belongs at the part's
+    // underside. Drawn at z=0 it cut through the middle of every part, because
+    // the model transform centres the part on the origin, and its lines showed
+    // through the solid wherever they came out nearer than the far wall.
+    const floor = this.bounds
+      ? (this.bounds.min[2] - this.center[2]) * this.scale : 0;
+    // Grid first, shadow over it. On a dark ground a darkening shadow has
+    // almost no room to read against the background, and what does read is the
+    // grid dimming inside the silhouette. On a light ground both do.
+    if (this.showGrid) this._drawGrid(view, projection, floor);
+    if (this.mesh && this.showShadow) {
+      this._drawShadow(view, projection, model, floor);
+    }
     if (!this.mesh) return;
 
     gl.useProgram(this.program);
@@ -1801,13 +1874,179 @@ class Viewer {
     // That is the cheap wireframe, and at these mesh sizes it is imperceptible.
     gl.drawElements(this.wireframe ? gl.LINES : gl.TRIANGLES,
                     this.mesh.count, this.indexType, 0);
+
+    if (this.section.on && !this.wireframe) {
+      this._drawCap(modelView, projection, axis, where);
+    }
   }
 
-  /** Ground grid, drawn in the part's own normalized space. */
-  _drawGrid(view, projection) {
+  /** Fill the cut face, so a sectioned solid reads as solid.
+   *
+   * Clipping alone deletes fragments and leaves the inside of the far wall
+   * showing through an open mouth: the part looks like a shell. A CAD tool
+   * caps the cut, and the standard way is the stencil buffer.
+   *
+   * Count the front and back faces the cut removed, which are exactly the
+   * surfaces between the eye and the plane. Where entries outnumber exits the
+   * plane is passing through material, so that pixel is cut face. Then draw a
+   * quad on the plane wherever the count is nonzero.
+   *
+   * Needs a stencil buffer and consistent winding. Without either the cap is
+   * skipped and the section still works, uncapped, as before.
+   */
+  _drawCap(modelView, projection, axis, where) {
     const gl = this.gl;
+    if (!this.hasStencil || !this.bounds) return;
+
+    gl.enable(gl.STENCIL_TEST);
+    gl.clearStencil(0);
+    gl.clear(gl.STENCIL_BUFFER_BIT);
+    gl.colorMask(false, false, false, false);
+    gl.depthMask(false);
+    // Every crossing counts, not just the nearest, so depth cannot gate this.
+    gl.disable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
+    gl.stencilFunc(gl.ALWAYS, 0, 0xff);
+    gl.uniform1i(this.uniforms.sectionInvert, 1);
+
+    gl.cullFace(gl.BACK);
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR_WRAP);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, this.indexType, 0);
+    gl.cullFace(gl.FRONT);
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.DECR_WRAP);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, this.indexType, 0);
+
+    gl.uniform1i(this.uniforms.sectionInvert, 0);
+    gl.disable(gl.CULL_FACE);
+    gl.colorMask(true, true, true, true);
+    gl.depthMask(true);
+    gl.enable(gl.DEPTH_TEST);
+    gl.stencilFunc(gl.NOTEQUAL, 0, 0xff);
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+
+    // The quad lies on the plane and spans the part, so it covers any
+    // cross-section the cut can produce. Depth test stays on: with an oblique
+    // cut, material can sit nearer the eye than the plane at the same pixel.
+    this._updateCapQuad(axis, where);
+    gl.uniform3fv(this.uniforms.color, this.capColor);
+    // A single flat quad has no derivative to take a face normal from that
+    // would differ from its own; keep the smooth path so it shades evenly.
+    gl.uniform1i(this.uniforms.flat, 0);
+    gl.uniform1i(this.uniforms.sectioning, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.capPosition);
+    gl.vertexAttribPointer(this.attributes.position, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.capNormal);
+    gl.vertexAttribPointer(this.attributes.normal, 3, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    gl.disable(gl.STENCIL_TEST);
+    gl.uniform1i(this.uniforms.sectioning, 1);
+    gl.uniform3fv(this.uniforms.color, this.color);
+    gl.uniform1i(this.uniforms.flat, this.flatShading ? 1 : 0);
+    // The mesh buffers were bound before the cap; put them back for the next
+    // caller, which assumes the attribute pointers still address the part.
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
+    gl.vertexAttribPointer(this.attributes.position, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.normal);
+    gl.vertexAttribPointer(this.attributes.normal, 3, gl.FLOAT, false, 0, 0);
+  }
+
+  /** A quad on the section plane, big enough to cover the part's widest cut. */
+  _updateCapQuad(axis, where) {
+    const gl = this.gl;
+    const key = axis.join(',') + ':' + where;
+    if (this._capKey === key) return;
+    this._capKey = key;
+
+    const index = axis[0] ? 0 : (axis[1] ? 1 : 2);
+    const u = (index + 1) % 3, v = (index + 2) % 3;
+    const min = this.bounds.min, max = this.bounds.max;
+    // A margin covers the diagonal case, where the visible cross-section can
+    // reach past the axis-aligned extents of the two in-plane axes.
+    const pad = 0.05 * Math.max(max[u] - min[u], max[v] - min[v], 1);
+    const corner = (su, sv) => {
+      const point = [0, 0, 0];
+      point[index] = where;
+      point[u] = su ? max[u] + pad : min[u] - pad;
+      point[v] = sv ? max[v] + pad : min[v] - pad;
+      return point;
+    };
+    const a = corner(0, 0), b = corner(1, 0), c = corner(1, 1), d = corner(0, 1);
+    const positions = new Float32Array([...a, ...b, ...c, ...a, ...c, ...d]);
+    // Face the cap out of the cut, which is the side the camera is on.
+    const normals = new Float32Array(18);
+    for (let i = 0; i < 6; i += 1) normals.set(axis, i * 3);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.capPosition);
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.capNormal);
+    gl.bufferData(gl.ARRAY_BUFFER, normals, gl.DYNAMIC_DRAW);
+  }
+
+  /** The part flattened onto the floor plane, blended dark.
+   *
+   * A directional light projects each vertex down the light ray to the plane,
+   * which is one matrix, so the shadow costs a second pass over the same
+   * buffers and no extra geometry.
+   *
+   * The stencil is what keeps it from going blotchy: a part is many triangles
+   * deep along the light ray, and blending each one darkens overlaps into a
+   * silhouette of the tessellation. Shading each pixel once fixes that.
+   */
+  _drawShadow(view, projection, model, floor) {
+    const gl = this.gl;
+    // Down and to one side, so the shadow reads as a shadow rather than a
+    // reflection. Roughly under the shader's key light.
+    const light = normalize3([0.30, 0.42, -1.0]);
+    const k = 1 / light[2];
+    const flatten = new Float32Array([
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      -light[0] * k, -light[1] * k, 0, 0,
+      light[0] * k * floor, light[1] * k * floor, floor, 1,
+    ]);
+    const modelView = multiply(view, multiply(flatten, model));
+
+    gl.useProgram(this.shadowProgram);
+    gl.uniformMatrix4fv(this.shadowUniforms.modelView, false, modelView);
+    gl.uniformMatrix4fv(this.shadowUniforms.projection, false, projection);
+    gl.uniform4fv(this.shadowUniforms.shade, this.shadowTone);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    // No depth write: the part draws over the shadow, and so does the grid.
+    gl.depthMask(false);
+    if (this.hasStencil) {
+      gl.enable(gl.STENCIL_TEST);
+      gl.clearStencil(0);
+      gl.clear(gl.STENCIL_BUFFER_BIT);
+      gl.stencilFunc(gl.EQUAL, 0, 0xff);
+      gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR);
+    }
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
+    gl.enableVertexAttribArray(this.shadowPosition);
+    gl.vertexAttribPointer(this.shadowPosition, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.index);
+    gl.drawElements(gl.TRIANGLES, this.mesh.count, this.indexType, 0);
+
+    if (this.hasStencil) gl.disable(gl.STENCIL_TEST);
+    gl.disableVertexAttribArray(this.shadowPosition);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+  }
+
+  /** Ground grid, drawn in the part's own normalized space at `floor`. */
+  _drawGrid(view, projection, floor) {
+    const gl = this.gl;
+    const placed = new Float32Array(view);
+    // Column-major: row 3 of the translation column carries the z offset, so
+    // sliding the grid down is one term rather than another matrix multiply.
+    placed[14] += view[10] * (floor || 0);
+    placed[13] += view[9] * (floor || 0);
+    placed[12] += view[8] * (floor || 0);
     gl.useProgram(this.lineProgram);
-    gl.uniformMatrix4fv(this.lineUniforms.modelView, false, view);
+    gl.uniformMatrix4fv(this.lineUniforms.modelView, false, placed);
     gl.uniformMatrix4fv(this.lineUniforms.projection, false, projection);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffers.position);
