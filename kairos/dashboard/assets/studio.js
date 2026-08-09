@@ -46,9 +46,9 @@ function buildTree() {
         <button class="leaf" data-index="${index}" aria-current="false">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-body"></use></svg>
           <span class="name">${esc(design.design_id.replace('design_', ''))}</span>
-          <svg class="icon eye ${design.all_satisfied ? '' : 'warn'}" viewBox="0 0 24 24"
-               aria-label="${design.all_satisfied ? 'all constraints met' : 'constraints unmet'}">
-            <use href="#i-eye"></use></svg>
+          <span class="flag ${design.all_satisfied ? 'pass' : 'warn'}"
+                title="${design.all_satisfied ? 'all constraints met' : 'constraints unmet'}"
+                role="img" aria-label="${design.all_satisfied ? 'all constraints met' : 'constraints unmet'}"></span>
         </button>`).join('')}
       </div>
     </div>`).join('');
@@ -360,6 +360,77 @@ function renderAblations() {
     : '<strong>Read these together.</strong> Requirement ablations test whether the '
       + 'policy is conditioned on the text at all; the mask ablation isolates how much '
       + 'of its action legality belongs to the environment rather than the policy.';
+}
+
+/* ---------------------------------------------------------------- rollouts */
+
+let rolloutTask = 0;
+
+/** One task, every policy's episode, laid against the expert's step count.
+ *
+ * Read as a strip per policy: one cell per action, accepted or rejected, with
+ * the milestones it reached beneath. A policy that jams shows as a solid run
+ * of rejected cells, which no aggregate on the leaderboard can show.
+ */
+function renderRollouts() {
+  const data = DATA.rollouts || {};
+  const tasks = data.tasks || [];
+  const head = el('rollout-head');
+  const body = el('rollout-tracks');
+  if (!tasks.length) {
+    head.innerHTML = '';
+    body.innerHTML = '<p class="empty">No traces in this bundle.</p>';
+    return;
+  }
+  rolloutTask = ((rolloutTask % tasks.length) + tasks.length) % tasks.length;
+  const task = tasks[rolloutTask];
+  const expert = (task.episodes.find((e) => /oracle/.test(e.policy)) || {}).expert_steps
+    || (task.episodes[0] || {}).expert_steps || 0;
+
+  head.innerHTML = `
+    <div class="rollout-meta">
+      <div><span class="k">TASK</span><span class="v">${esc(task.task_id)}</span></div>
+      <div><span class="k">FAMILY</span><span class="v">${esc(task.family)}</span></div>
+      <div><span class="k">EXPERT STEPS</span><span class="v">${expert}</span></div>
+      <div><span class="k">SHOWING</span><span class="v">${rolloutTask + 1} / ${tasks.length}</span></div>
+    </div>
+    <p class="requirement-line">${esc(task.requirement)}</p>`;
+
+  // Widest episode sets the strip scale, so the strips are comparable.
+  const longest = Math.max(1, ...task.episodes.map((e) => (e.operations || []).length));
+  const ordered = task.episodes.slice().sort(
+    (a, b) => (b.progress_score || 0) - (a.progress_score || 0));
+
+  body.innerHTML = ordered.map((episode) => {
+    const ops = episode.operations || [];
+    const accepted = episode.accepted || [];
+    const known = accepted.length === ops.length && ops.length > 0;
+    const cells = ops.map((op, i) => {
+      const state = known ? (accepted[i] ? 'ok' : 'bad') : 'unknown';
+      const why = known && !accepted[i] && episode.rejections
+        ? ' - ' + (episode.rejections[i] || 'rejected') : '';
+      return `<span class="cell ${state}" title="${i + 1}. ${esc(op)}${esc(why)}"></span>`;
+    }).join('');
+    const reached = (episode.milestones || []).length;
+    const total = (data.milestones || []).length || 7;
+    return `
+      <div class="track">
+        <div class="track-head">
+          <span class="name">${esc(episode.policy)}</span>
+          <span class="score">${fmt(episode.progress_score)}</span>
+        </div>
+        <div class="strip" style="--slots:${longest}">${cells}</div>
+        <div class="track-foot">
+          <span>${ops.length} action${ops.length === 1 ? '' : 's'}</span>
+          <span class="${episode.invalid_actions ? 'warn-text' : ''}">${
+            known ? episode.invalid_actions + ' rejected'
+                  : 'per-step record not in this trace'}</span>
+          <span>${reached}/${total} milestones${
+            reached ? ': ' + esc((episode.milestones || []).join(', ')) : ''}</span>
+          ${episode.aborted ? `<span class="warn-text">aborted: ${esc(episode.abort_reason)}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 /* ---------------------------------------------------------------- shell */
@@ -708,7 +779,7 @@ function initTabs() {
       document.querySelectorAll('.group[data-workspace]').forEach((group) => {
         group.hidden = group.dataset.workspace !== view;
       });
-      ['benchmark', 'training', 'ablations'].forEach((name) => {
+      ['benchmark', 'training', 'rollouts', 'ablations'].forEach((name) => {
         el('sheet-' + name).hidden = view !== name;
       });
       // A canvas has no size while hidden, so the first draw into a zero-width
@@ -885,6 +956,9 @@ function init() {
   renderComparisons();
   renderTraining();
   renderAblations();
+  renderRollouts();
+  el('cmd-rollout-prev').addEventListener('click', () => { rolloutTask -= 1; renderRollouts(); });
+  el('cmd-rollout-next').addEventListener('click', () => { rolloutTask += 1; renderRollouts(); });
   if ((DATA.designs || []).length) select(0);
 }
 

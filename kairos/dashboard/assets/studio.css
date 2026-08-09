@@ -129,7 +129,6 @@ svg.icon {
 .cmd svg.icon { width: 19px; height: 19px; stroke-width: 1.75; }
 .tl-node svg.icon { width: 15px; height: 15px; }
 .leaf svg.icon, .node svg.icon { width: 13px; height: 13px; stroke-width: 2; }
-.leaf .eye { width: 12px; height: 12px; }
 .navbar svg.icon { width: 15px; height: 15px; }
 
 .label {
@@ -376,8 +375,16 @@ svg.icon {
 }
 .leaf:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .leaf .name { font-family: var(--mono); font-size: 11px; }
-.leaf .eye { margin-left: auto; color: var(--ink-faint); opacity: 0.55; }
-.leaf .eye.warn { color: var(--warn); opacity: 1; }
+/* A status square, not an eye. An eye in a CAD browser is a visibility toggle,
+   and this one only ever reported whether the constraints were met -- an
+   affordance for a control that does not exist. The square matches the flags
+   in the constraint report, which is where the same fact is spelled out. */
+.leaf .flag {
+  margin-left: auto; flex: none;
+  width: 8px; height: 8px; background: var(--ink-faint);
+}
+.leaf .flag.pass { background: var(--pass); }
+.leaf .flag.warn { background: var(--warn); }
 
 /* ------------------------------------------------------------------ canvas */
 
@@ -518,6 +525,50 @@ svg.icon {
 .titleblock div:nth-child(2n) { border-right: 0; }
 .titleblock .k { color: var(--ink-faint); letter-spacing: 0.08em; display: block; }
 .titleblock .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* --------------------------------------------------------------- rollouts */
+
+.rollout-meta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 10px; margin-bottom: 10px;
+}
+.rollout-meta div { background: var(--chrome); padding: 7px 10px; }
+.rollout-meta .k { color: var(--ink-faint); letter-spacing: 0.08em; display: block; }
+.rollout-meta .v { color: var(--ink); }
+.requirement-line {
+  margin: 0 0 16px; color: var(--ink-muted); font-size: 12px; max-width: 92ch;
+  border-left: 2px solid var(--accent); padding-left: 10px;
+}
+
+.track { border: 1px solid var(--rule); background: var(--chrome); padding: 9px 11px; margin-bottom: 9px; }
+.track-head { display: flex; align-items: baseline; gap: 10px; }
+.track-head .name { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.track-head .score {
+  font-family: var(--mono); font-size: 12px; color: var(--ink-muted);
+  font-variant-numeric: tabular-nums; margin-left: auto;
+}
+
+/* One cell per action. The strip is the episode, and a jammed policy reads as
+   a solid run of rejected cells -- which is the thing no aggregate shows. */
+.strip {
+  display: grid;
+  grid-template-columns: repeat(var(--slots), minmax(0, 1fr));
+  gap: 1px; margin: 7px 0 6px; height: 15px;
+  align-items: stretch;
+}
+/* Height carries the same signal as the colour, so accepted and rejected stay
+   apart for a reader who cannot separate the two hues. */
+.strip .cell { background: var(--rule-strong); border-radius: 1px; }
+.strip .cell.ok { background: var(--pass); }
+.strip .cell.bad { background: var(--fail); align-self: end; height: 55%; }
+.strip .cell.unknown { background: var(--rule-strong); align-self: center; height: 25%; }
+
+.track-foot {
+  display: flex; flex-wrap: wrap; gap: 4px 16px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-faint);
+}
+.track-foot .warn-text { color: var(--warn); }
 
 /* Measurement readout: sits on the canvas at the midpoint of the span, the
    way a dimension is labelled on a drawing. */

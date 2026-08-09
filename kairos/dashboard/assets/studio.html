@@ -32,6 +32,7 @@
     <button data-view="model" aria-selected="true">Model</button>
     <button data-view="benchmark" aria-selected="false">Benchmark</button>
     <button data-view="training" aria-selected="false">Training</button>
+    <button data-view="rollouts" aria-selected="false">Rollouts</button>
     <button data-view="ablations" aria-selected="false">Ablations</button>
   </nav>
 
@@ -153,6 +154,18 @@
       <span class="label">Curves</span>
     </div>
 
+    <div class="group" data-workspace="rollouts" hidden>
+      <div class="commands">
+        <button class="cmd" id="cmd-rollout-prev" title="Previous task">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-prev"></use></svg>Prev
+        </button>
+        <button class="cmd" id="cmd-rollout-next" title="Next task">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-next"></use></svg>Next
+        </button>
+      </div>
+      <span class="label">Task</span>
+    </div>
+
     <div class="group" data-workspace="ablations" hidden>
       <div class="commands">
         <button class="cmd" data-goto="ablations">
@@ -267,6 +280,20 @@
       </p>
       <div class="chart" id="ppo-reward-chart"></div>
       <div class="chart" id="ppo-rate-chart" style="margin-top:13px"></div>
+    </section>
+  </section>
+
+  <section class="sheet" id="sheet-rollouts" hidden>
+    <section class="span">
+      <h2>What the policies did</h2>
+      <p class="note">
+        The leaderboard says a policy scored 0.458. It does not say what it
+        did. One BUILD task per family, every policy's episode laid against
+        the expert's: BUILD starts from nothing, so the whole sequence is the
+        policy's own, where a COMPLETE task is mostly replayed expert prefix.
+      </p>
+      <div class="rollout-head" id="rollout-head"></div>
+      <div id="rollout-tracks"></div>
     </section>
   </section>
 
