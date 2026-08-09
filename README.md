@@ -1,5 +1,8 @@
 # KAIROS
 
+[![ci](https://github.com/sunkalpchandra/kairos-cad/actions/workflows/ci.yml/badge.svg)](https://github.com/sunkalpchandra/kairos-cad/actions/workflows/ci.yml)
+[![review station](https://img.shields.io/badge/review%20station-live-0f6d78)](https://sunkalpchandra.github.io/kairos-cad/)
+
 **Knowledge-Augmented Interactive Reinforcement Optimization System**
 
 KAIROS is a research prototype for **sequential geometric decision-making**: an

@@ -46,47 +46,35 @@ jobs:
         run: python3 scripts/check_station.py
 
   cad:
-    # FreeCAD's bundled interpreter, which is where the CAD half of the project
-    # lives. These tests had never run anywhere but a developer machine.
+    # FreeCAD's interpreter, which is where the CAD half of the project lives.
+    # These tests had never run anywhere but a developer machine.
     #
-    # Run inside Debian rather than on the Ubuntu runner: noble has neither
-    # freecad-python3 nor an installable freecad ("no installation candidate"),
-    # while Debian bookworm ships freecad-python3 providing `freecadcmd`. That
-    # is also the base deploy/Dockerfile builds on, so this job doubles as a
-    # check on the image's package assumption.
+    # Debian rather than the Ubuntu runner: noble has neither freecad-python3
+    # nor an installable freecad ("no installation candidate"), while bookworm
+    # ships freecad-python3. That is also what deploy/Dockerfile builds on, so
+    # this job doubles as a check on the image's package assumption.
+    #
+    # On Debian, freecad-python3 installs its modules into the SYSTEM python,
+    # so `import FreeCAD` works from python3 directly and there is no separate
+    # interpreter to install pytest into. That differs from macOS, where
+    # FreeCAD.app bundles its own python and the Makefile targets it via
+    # FREECAD_PY.
     runs-on: ubuntu-latest
     container: debian:bookworm-slim
     steps:
-      - name: Install FreeCAD and checkout tooling
+      - name: Install FreeCAD
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            freecad-python3 git ca-certificates python3-pip
+            freecad-python3 git ca-certificates python3-pip python3-numpy
       - uses: actions/checkout@v4
-      - name: Locate the console interpreter
-        id: freecad
+      - name: Confirm FreeCAD imports from the system interpreter
         run: |
-          for candidate in freecadcmd FreeCADCmd; do
-            if command -v "$candidate" >/dev/null 2>&1; then
-              echo "binary=$candidate" >> "$GITHUB_OUTPUT"
-              echo "found $candidate"
-              exit 0
-            fi
-          done
-          echo "no FreeCAD console binary on PATH:" >&2
-          ls /usr/bin | grep -i freecad >&2 || echo "(nothing matching freecad)" >&2
-          exit 1
-      - name: Install pytest into FreeCAD's interpreter
-        run: |
-          # FreeCAD's python is not the system one, so pytest has to reach it.
-          ${{ steps.freecad.outputs.binary }} -c "
-          import subprocess, sys
-          subprocess.check_call([sys.executable, '-m', 'pip', 'install',
-                                 '--break-system-packages', 'pytest'])
+          python3 -c "
+          import FreeCAD
+          print('FreeCAD', FreeCAD.Version()[0] + '.' + FreeCAD.Version()[1])
           "
+      - name: Install test dependencies
+        run: pip3 install --break-system-packages pytest
       - name: CAD tests
-        run: |
-          PYTHONPATH="$PWD" ${{ steps.freecad.outputs.binary }} -c "
-          import sys, pytest
-          sys.exit(pytest.main(['-m', 'cad', '-q', 'tests']))
-          "
+        run: PYTHONPATH="$PWD" python3 -m pytest -m cad -q tests

@@ -323,8 +323,8 @@ svg.icon {
 /* ViewCube: a real CSS 3D cube driven by the camera, clickable per face. */
 .viewcube-wrap {
   position: absolute; top: 14px; right: 16px;
-  width: 78px; height: 78px;
-  perspective: 420px;
+  width: 92px; height: 92px;
+  perspective: 500px;
 }
 .viewcube {
   position: absolute; inset: 0;
@@ -335,8 +335,8 @@ svg.icon {
 .viewcube button {
   position: absolute;
   left: 50%; top: 50%;
-  width: 46px; height: 46px;
-  margin: -23px 0 0 -23px;
+  width: 56px; height: 56px;
+  margin: -28px 0 0 -28px;
   /* Opaque: a translucent cube reads as haze against the shaded part behind it,
      and the whole point is that it stays legible over any geometry. */
   background: var(--chrome);
@@ -344,19 +344,20 @@ svg.icon {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chrome-2) 60%, transparent);
   color: var(--ink);
   font-family: var(--mono);
-  font-size: 8.5px;
-  letter-spacing: 0.08em;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   cursor: pointer;
-  opacity: 0.94;
+  opacity: 0.96;
 }
 .viewcube button:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 .viewcube button:focus-visible { outline: 2px solid var(--accent); }
-.cube-f { transform: translateZ(23px); }
-.cube-b { transform: rotateY(180deg) translateZ(23px); }
-.cube-r { transform: rotateY(90deg) translateZ(23px); }
-.cube-l { transform: rotateY(-90deg) translateZ(23px); }
-.cube-u { transform: rotateX(90deg) translateZ(23px); }
-.cube-d { transform: rotateX(-90deg) translateZ(23px); }
+.cube-f { transform: translateZ(28px); }
+.cube-b { transform: rotateY(180deg) translateZ(28px); }
+.cube-r { transform: rotateY(90deg) translateZ(28px); }
+.cube-l { transform: rotateY(-90deg) translateZ(28px); }
+.cube-u { transform: rotateX(90deg) translateZ(28px); }
+.cube-d { transform: rotateX(-90deg) translateZ(28px); }
 
 /* Navigation bar, bottom-centre of the canvas as in a CAD tool. */
 .navbar {
