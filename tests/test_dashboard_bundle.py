@@ -25,6 +25,7 @@ from kairos.dashboard.bundle import (
     collect_jam,
     collect_matrix,
     collect_rollouts,
+    collect_sources,
     collect_task_types,
     collect_training,
 )
@@ -650,3 +651,30 @@ def test_ablation_intervals_orient_every_row_as_ablated_minus_intact(tmp_path):
 def test_ablation_intervals_without_the_baseline_degrade_to_empty(tmp_path):
     _traces(tmp_path, "bc+no-mask", [_episode()])
     assert collect_ablation_intervals(tmp_path)["rows"] == []
+
+
+# ----------------------------------------------------------------- sources
+
+
+def test_sources_report_a_missing_artifact_as_missing(tmp_path):
+    """Every collector degrades to empty on an absent artifact, so without
+    this the page shows a blank section and no reason for it."""
+    rows = {r["label"]: r for r in collect_sources(
+        tmp_path / "dataset", tmp_path / "bench", tmp_path / "abl", tmp_path / "runs")}
+    assert all(not r["present"] for r in rows.values())
+    assert "codec audit" in rows
+
+
+def test_sources_count_what_they_found(tmp_path):
+    for i in range(3):
+        _design(tmp_path / "dataset", f"design_{i:06d}")
+    bench = tmp_path / "bench"
+    bench.mkdir()
+    (bench / "bc_traces.jsonl").write_text("{}\n")
+    (bench / "ppo_traces.jsonl").write_text("{}\n")
+
+    rows = {r["label"]: r for r in collect_sources(
+        tmp_path / "dataset", bench, tmp_path / "abl", tmp_path / "runs")}
+    assert rows["dataset"]["count"] == 3
+    assert rows["benchmark traces"]["count"] == 2
+    assert rows["dataset"]["present"] is True
