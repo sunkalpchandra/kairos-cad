@@ -67,11 +67,27 @@ rather than restarting if it is interrupted.
 
 **[sunkalpchandra.github.io/kairos-cad](https://sunkalpchandra.github.io/kairos-cad/)**
 
-A CAD review station over the committed artifacts: browser tree of parts, an
-orbitable viewport with a ViewCube, the expert trajectory as a feature
-timeline, and the benchmark, training and ablation results. One static file,
-built from `dataset/` and `runs/` by `make dashboard-studio`, so every figure
-on screen traces to a file on disk.
+A CAD review station over the committed artifacts. One static file, built from
+`dataset/` and `runs/` by `make dashboard-studio`, so every figure on screen
+traces to a file on disk. Six workspaces:
+
+- **Model**: hand-written WebGL viewport with model edges, a stencil-capped
+  section, a ground shadow, point-to-point measurement, orthographic
+  projection and STL/PNG export. The expert trajectory is a feature timeline
+  that rebuilds the actual geometry at each step.
+- **Dataset**: what the browser's 24 parts are a sample of -- 1,080 designs,
+  8 families, the mass distribution.
+- **Benchmark**: the leaderboard, and four views that read its mean apart --
+  BUILD versus COMPLETE, per-family difficulty, the milestone funnel, and the
+  suite un-averaged task by task.
+- **Training**: BC accuracy and loss, PPO reward and rates.
+- **Rollouts**: what each policy actually did, action by action, against the
+  expert -- with the solid it built rebuilt from its own trace and shown
+  beside the expert's.
+- **Ablations**: the requirement and mask conditions.
+
+Views are addressable: `#model/design_000017`,
+`#rollouts/build-design_000010/ppo`.
 
 ## Project status
 
@@ -101,10 +117,13 @@ Development proceeds in phases (see `docs/`):
       replaying the expert through the action codec sets the **ceiling**, not
       1.0, and BC and PPO **do not separate** from each other on it
       ([docs/phase7.md](docs/phase7.md)).
-- [x] **Phase 8: Interactive dashboard**: one standalone HTML file with a
-      WebGL viewer over the real tessellated solids, the leaderboard, the
-      success(k) curve and the ablations, built from committed artifacts by
-      `make dashboard` ([docs/phase8.md](docs/phase8.md)).
+- [x] **Phase 8: Review station**: one standalone HTML file with a hand-written
+      WebGL viewer over the real tessellated solids, and the analysis views
+      that read the leaderboard's mean apart. The learned policies score
+      **0.069 on BUILD with 0.000 success**; their 0.458 headline comes from
+      COMPLETE tasks where an expert prefix had already built most of the
+      part. Built from committed artifacts by `make dashboard-studio`
+      ([docs/phase8.md](docs/phase8.md)).
 
 ### What the pipeline audits about itself
 
