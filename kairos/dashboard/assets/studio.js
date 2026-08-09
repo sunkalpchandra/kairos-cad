@@ -414,6 +414,54 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** The leaderboard split by task kind. */
+function renderTaskTypes() {
+  const data = DATA.task_types || {};
+  const rows = data.rows || [];
+  const kinds = data.kinds || [];
+  if (!rows.length) {
+    el('task-types').innerHTML = '<p class="empty">No split recorded in this bundle.</p>';
+    el('task-types-note').textContent = '';
+    return;
+  }
+  const cell = (entry) => (entry && entry.progress !== null && entry.progress !== undefined
+    ? `${fmt(entry.progress)}<span class="sub">${fmt(entry.success)} success</span>`
+    : '<span class="sub">not run</span>');
+
+  el('task-types').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Policy</th>
+        ${kinds.map((k) => `<th>${esc(k.toUpperCase())}</th>`).join('')}
+        <th>Gap</th>
+      </tr></thead>
+      <tbody>${rows.map((row) => {
+        const build = row.build || {};
+        const complete = row.complete || {};
+        const gap = (build.progress !== null && build.progress !== undefined
+          && complete.progress !== null && complete.progress !== undefined)
+          ? complete.progress - build.progress : null;
+        return `<tr>
+          <td><code>${esc(row.policy)}</code></td>
+          ${kinds.map((k) => `<td class="stacked">${cell(row[k])}</td>`).join('')}
+          <td class="${gap !== null && gap > 0.3 ? 'wide-gap' : ''}">${
+            gap === null ? '—' : (gap > 0 ? '+' : '') + fmt(gap)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+
+  // Name the thing the table shows rather than leaving it to be inferred from
+  // two columns of numbers.
+  const learned = rows.filter((r) => /^(bc|ppo)$/.test(r.policy));
+  el('task-types-note').innerHTML = learned.length
+    ? '<strong>The learned policies do not build from scratch.</strong> '
+      + learned.map((r) => `${esc(r.policy)} scores ${fmt(r.build.progress)} on BUILD `
+        + `with ${fmt(r.build.success)} success`).join(', and ')
+      + '. Their headline comes from COMPLETE, where the expert prefix has '
+      + 'already built most of the part.'
+    : '';
+}
+
 /** How each policy's actions were refused, over the whole suite. */
 function renderFailures() {
   const data = DATA.failures || {};
@@ -695,7 +743,8 @@ function renderRollouts() {
   body.querySelectorAll('.track').forEach((track) => {
     track.addEventListener('click', () => {
       rolloutPolicy = track.dataset.policy;
-      renderMatrix();
+      renderTaskTypes();
+  renderMatrix();
   renderFailures();
   renderRollouts();
     });
@@ -1309,6 +1358,7 @@ function init() {
   renderComparisons();
   renderTraining();
   renderAblations();
+  renderTaskTypes();
   renderMatrix();
   renderFailures();
   renderRollouts();

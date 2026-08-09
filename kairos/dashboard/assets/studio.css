@@ -526,6 +526,10 @@ svg.icon {
 .titleblock .k { color: var(--ink-faint); letter-spacing: 0.08em; display: block; }
 .titleblock .v { color: var(--ink); font-variant-numeric: tabular-nums; }
 
+td.stacked { line-height: 1.25; }
+td .sub { display: block; font-size: 9.5px; color: var(--ink-faint); }
+td.wide-gap { color: var(--warn); }
+
 /* ------------------------------------------------------ failure taxonomy */
 
 .fail-row { border: 1px solid var(--rule); background: var(--chrome); padding: 9px 11px; margin-bottom: 9px; }
