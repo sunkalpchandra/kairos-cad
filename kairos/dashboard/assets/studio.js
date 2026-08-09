@@ -784,6 +784,42 @@ function renderJam() {
     : '';
 }
 
+/** Steps spent against the expert's, all episodes and finished ones. */
+function renderEffort() {
+  const rows = (DATA.effort || {}).rows || [];
+  if (!rows.length) {
+    el('effort').innerHTML = '<p class="empty">No traces in this bundle.</p>';
+    el('effort-note').textContent = '';
+    return;
+  }
+  el('effort').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Policy</th><th>Episodes</th><th>All episodes</th>
+        <th>Finished</th><th>When it finished</th>
+      </tr></thead>
+      <tbody>${rows.map((row) => `
+        <tr>
+          <td><code>${esc(row.policy)}</code></td>
+          <td>${row.episodes}</td>
+          <td class="${row.ratio > 2 ? 'wide-gap' : ''}">${fmt(row.ratio, 2)}x</td>
+          <td>${row.finished}</td>
+          <td>${row.ratio_finished === null || row.ratio_finished === undefined
+            ? '<span class="sub">never finished</span>'
+            : fmt(row.ratio_finished, 2) + 'x'}</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+
+  const learned = rows.filter((r) => /^(bc|ppo)$/.test(r.policy) && r.ratio_finished);
+  el('effort-note').innerHTML = learned.length
+    ? '<strong>The waste is the jams, not the building.</strong> '
+      + learned.map((r) => `${esc(r.policy)} spends ${fmt(r.ratio, 2)}x the expert `
+        + `over all episodes and ${fmt(r.ratio_finished, 2)}x over the ${r.finished} `
+        + 'it finishes').join('; ')
+      + '. When they get there they get there at close to the expert\'s cost.'
+    : '';
+}
+
 /** Every task against every policy, un-averaged.
  *
  * Shaded by milestones reached rather than success: success is 0.000 for three
@@ -1024,6 +1060,7 @@ function renderRollouts() {
   renderMatrix();
   renderFailures();
   renderJam();
+  renderEffort();
   renderRollouts();
     });
   });
@@ -1681,6 +1718,7 @@ function init() {
   renderMatrix();
   renderFailures();
   renderJam();
+  renderEffort();
   renderRollouts();
   el('cmd-rollout-prev').addEventListener('click', () => { rolloutTask -= 1; renderRollouts(); });
   el('cmd-rollout-next').addEventListener('click', () => { rolloutTask += 1; renderRollouts(); });
