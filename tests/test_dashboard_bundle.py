@@ -14,9 +14,11 @@ from kairos.dashboard.bundle import (
     _bucket,
     _measured,
     _normalize_scores,
+    collect_ablation_intervals,
     collect_ablations,
     collect_dataset,
     collect_designs,
+    collect_effort,
     collect_failures,
     collect_families,
     collect_funnel,
@@ -592,3 +594,59 @@ def test_the_heaviest_design_lands_in_the_last_bucket(tmp_path):
 
 def test_dataset_without_designs_degrades_to_empty(tmp_path):
     assert collect_dataset(tmp_path) == {}
+
+
+# ------------------------------------------------------------------- effort
+
+
+def test_effort_separates_finished_episodes_from_all(tmp_path):
+    """A policy that burns the budget and never finishes is unfinished, not
+    inefficient, and one average over both says neither."""
+    _traces(tmp_path, "bc", [
+        _episode(task_id="a", steps=40, expert_steps=20, finished_successfully=False),
+        _episode(task_id="b", steps=24, expert_steps=20, finished_successfully=True),
+    ])
+    row = collect_effort(tmp_path)["rows"][0]
+    assert row["ratio"] == 1.6
+    assert row["finished"] == 1
+    assert row["ratio_finished"] == 1.2
+
+
+def test_a_policy_that_never_finished_has_no_finished_ratio(tmp_path):
+    _traces(tmp_path, "bc", [_episode(steps=40, expert_steps=20,
+                                      finished_successfully=False)])
+    assert collect_effort(tmp_path)["rows"][0]["ratio_finished"] is None
+
+
+def test_effort_skips_episodes_with_no_expert_count(tmp_path):
+    """Dividing by zero would produce Infinity and poison the mean."""
+    _traces(tmp_path, "bc", [
+        _episode(task_id="a", steps=10, expert_steps=0),
+        _episode(task_id="b", steps=10, expert_steps=5),
+    ])
+    row = collect_effort(tmp_path)["rows"][0]
+    assert row["episodes"] == 1 and row["ratio"] == 2.0
+
+
+# ------------------------------------------------------- ablation intervals
+
+
+def test_ablation_intervals_orient_every_row_as_ablated_minus_intact(tmp_path):
+    """Otherwise the sign depends on alphabetical order of the pair names and
+    a reader cannot tell a cost from a gain."""
+    _traces(tmp_path, "bc", [
+        _episode(task_id=f"t{i}", progress_score=0.8) for i in range(6)])
+    _traces(tmp_path, "bc+shuffled-req", [
+        _episode(task_id=f"t{i}", progress_score=0.2) for i in range(6)])
+
+    rows = collect_ablation_intervals(tmp_path)["rows"]
+    assert len(rows) == 1
+    assert rows[0]["condition"] == "bc+shuffled-req"
+    # The ablation scored lower, so the difference must be negative.
+    assert rows[0]["difference"] < 0
+    assert rows[0]["low"] <= rows[0]["difference"] <= rows[0]["high"]
+
+
+def test_ablation_intervals_without_the_baseline_degrade_to_empty(tmp_path):
+    _traces(tmp_path, "bc+no-mask", [_episode()])
+    assert collect_ablation_intervals(tmp_path)["rows"] == []
