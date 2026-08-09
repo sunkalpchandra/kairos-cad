@@ -89,7 +89,23 @@ jobs:
           fi
           dir=$(dirname "$module")
           echo "FreeCAD module at $module"
-          echo "pythonpath=$dir" >> "$GITHUB_OUTPUT"
+
+          # The workbenches (PartDesign, Sketcher, Part) are not importable
+          # from that directory: they live in Mod/<Workbench>/ and FreeCADCmd
+          # adds them during startup. Plain python does not, which is why every
+          # recipe died at CREATE_SKETCH with "No module named PartDesign"
+          # even after installing the full package.
+          mod=$(find / -type d -name PartDesign -path '*/Mod/*' 2>/dev/null | head -1)
+          if [ -z "$mod" ]; then
+            echo "no Mod/PartDesign directory found:" >&2
+            find / -type d -name Mod -maxdepth 6 2>/dev/null | head -10 >&2
+            exit 1
+          fi
+          modroot=$(dirname "$mod")
+          echo "workbenches under $modroot"
+          # Every workbench directory, colon-joined.
+          wb=$(find "$modroot" -mindepth 1 -maxdepth 1 -type d | tr '\n' ':')
+          echo "pythonpath=$dir:$wb" >> "$GITHUB_OUTPUT"
       - name: Confirm FreeCAD imports
         run: |
           PYTHONPATH="${{ steps.freecad.outputs.pythonpath }}" python3 -c "
