@@ -187,11 +187,18 @@ and the result pointed the expected way at the expected magnitude.
 The pipeline now checks itself, and the checks are the deliverable:
 
 ```bash
+make lint                               # ruff, plus text hygiene and page staleness
 make audit-codec                        # every expert step must round-trip, targets included
 python3 scripts/audit_dataset.py --root dataset
 python3 scripts/sync_docs.py --check    # fails if a doc disagrees with the artifacts
 make benchmark PRESET=core              # exits non-zero if a harness invariant breaks
 ```
+
+CI runs the pure-python suite on 3.10 and 3.12, the text and page-staleness
+gates, and the CAD suite inside FreeCAD's interpreter on Debian. That last job
+found a stale test within minutes of first running: it had been passing a
+directory into what became a boolean `render` flag after an earlier refactor,
+and no `-m "not cad"` run could ever have caught it.
 
 Two baselines audit the benchmark rather than a policy. `oracle-replay` replays
 ground truth through the agent's own action space and **must score 1.000**;

@@ -83,6 +83,20 @@ job runs in the same `debian:bookworm-slim` image and installs the same
 `FreeCADCmd` rather than a bare import, since an import proves less than it
 appears to (see above).
 
+### FreeCAD versions differ in ways the tests can see
+
+CI runs Debian bookworm's **FreeCAD 0.20**; development is on **1.1.3**. One
+behavioural difference showed up immediately: 1.1 keeps a disjoint pattern
+result as a multi-solid compound, while 0.20 discards the instances and raises
+`FeatureError`. `test_disjoint_mirror_yields_two_solid_compound` skips below
+1.1 rather than failing, so the boundary is recorded rather than hidden.
+
+The bridge tests do not run on Debian at all. They spawn a second FreeCAD
+interpreter, and there is no python binary there that carries the workbenches:
+`freecadcmd` is a wrapper that does not accept `-m`, and system `python3`
+imports FreeCAD without `Mod/`. On macOS, `FreeCAD.app` bundles a real python
+binary, which is what `FREECAD_PY` points at and why the bridge works there.
+
 ### Sizing
 
 | resource | requirement | why |
