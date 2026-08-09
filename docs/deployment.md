@@ -35,6 +35,14 @@ Host it anywhere that serves a file:
 There is no build pipeline to configure because there is nothing to build: the
 file is already assembled.
 
+This repository serves it from `docs/` on `main` at
+<https://sunkalpchandra.github.io/kairos-cad/>. Republish by rebuilding and
+pushing:
+
+```bash
+make dashboard-studio && git add docs && git commit -m "rebuild station" && git push
+```
+
 ## Live sandbox (container)
 
 The awkward part is that the two halves cannot share an interpreter. FreeCAD

@@ -60,6 +60,16 @@ python3 scripts/dataset_stats.py --root dataset --out docs/dataset.md
 The shard seeds are recorded in `dataset/manifest.json`, and the run resumes
 rather than restarting if it is interrupted.
 
+## Review station
+
+**[sunkalpchandra.github.io/kairos-cad](https://sunkalpchandra.github.io/kairos-cad/)**
+
+A CAD review station over the committed artifacts: browser tree of parts, an
+orbitable viewport with a ViewCube, the expert trajectory as a feature
+timeline, and the benchmark, training and ablation results. One static file,
+built from `dataset/` and `runs/` by `make dashboard-studio`, so every figure
+on screen traces to a file on disk.
+
 ## Project status
 
 Development proceeds in phases (see `docs/`):
