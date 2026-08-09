@@ -489,6 +489,10 @@ function renderRollouts() {
         ? ' - ' + (episode.rejections[i] || 'rejected') : '';
       return `<span class="cell ${state}" title="${i + 1}. ${esc(op)}${esc(why)}"></span>`;
     }).join('');
+    // The first rejection is the one that matters: after it these policies
+    // repeat the same action and collect the same refusal for the rest of the
+    // episode, so the later messages are echoes of this one.
+    const firstBad = (episode.rejections || []).find((m) => m);
     const reached = (episode.milestones || []).length;
     const total = (data.milestones || []).length || 7;
     return `
@@ -507,6 +511,8 @@ function renderRollouts() {
           <span>${reached}/${total} milestones${
             reached ? ': ' + esc((episode.milestones || []).join(', ')) : ''}</span>
           ${episode.mesh ? '<span>solid rebuilt from the trace</span>' : ''}
+          ${firstBad ? `<span class="why" title="${esc(firstBad)}">first refusal: ${
+            esc(firstBad.length > 76 ? firstBad.slice(0, 76) + '...' : firstBad)}</span>` : ''}
           ${episode.aborted ? `<span class="warn-text">aborted: ${esc(episode.abort_reason)}</span>` : ''}
         </div>
       </div>`;

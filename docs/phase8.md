@@ -201,9 +201,14 @@ solids is **0.00%**: the replay reproduces the episodes exactly. The number is
 printed rather than a bare pass, since a threshold with nothing behind it hides
 a check drifting toward its own limit.
 
+Each strip also carries its first refusal. After it these policies repeat the
+same action and collect the same message for the rest of the episode, so the
+later ones are echoes and the first is the diagnosis.
+
 On `build-design_000006` the expert builds a base plate, a wall, a triangular
 rib and two holes. bc builds the plate and the wall and nothing else, then
-jams for the remaining 31 steps. Both viewers share a camera and the expert's
+jams for the remaining 31 steps on `Pad failed to build: ["Pad002:
+state=['Touched', 'Invalid']"]`. ppo fails identically. Both viewers share a camera and the expert's
 framing, or the comparison would be between two framings rather than two
 parts.
 
