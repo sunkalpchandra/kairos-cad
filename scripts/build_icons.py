@@ -54,7 +54,6 @@ ICONS: dict[str, str] = {
     "i-pan": "move",
     "i-zoom": "zoom-in",
     # Browser
-    "i-eye": "eye",
     "i-folder": "folder",
     "i-body": "boxes",
     "i-prev": "chevron-left",
