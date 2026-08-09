@@ -293,6 +293,16 @@
         policy's own, where a COMPLETE task is mostly replayed expert prefix.
       </p>
       <div class="rollout-head" id="rollout-head"></div>
+      <div class="rollout-compare" id="rollout-compare" hidden>
+        <figure>
+          <figcaption><span class="label">Expert</span><span id="rollout-expert-note"></span></figcaption>
+          <canvas id="rollout-expert" aria-label="the solid the expert built"></canvas>
+        </figure>
+        <figure>
+          <figcaption><span class="label" id="rollout-policy-name">Policy</span><span id="rollout-policy-note"></span></figcaption>
+          <canvas id="rollout-policy" aria-label="the solid the selected policy built"></canvas>
+        </figure>
+      </div>
       <div id="rollout-tracks"></div>
     </section>
   </section>

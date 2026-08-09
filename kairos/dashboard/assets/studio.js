@@ -365,6 +365,79 @@ function renderAblations() {
 /* ---------------------------------------------------------------- rollouts */
 
 let rolloutTask = 0;
+let rolloutPolicy = null;
+let expertView = null;
+let policyView = null;
+
+/** The two comparison viewers, built the first time the workspace is shown.
+ *
+ * A canvas has no size while its sheet is hidden, so one built at load would
+ * come up zero-width and draw nothing.
+ */
+function ensureRolloutViews() {
+  if (expertView || typeof Viewer === 'undefined') return;
+  try {
+    expertView = new Viewer(el('rollout-expert'));
+    policyView = new Viewer(el('rollout-policy'));
+  } catch (err) {
+    expertView = policyView = null;
+    return;
+  }
+  const styles = getComputedStyle(document.documentElement);
+  [expertView, policyView].forEach((view) => {
+    view.setPalette(styles);
+    view.showGrid = false;
+    // Both cameras move together: a comparison between two framings is not a
+    // comparison between two parts.
+    view.onCamera = () => {
+      const other = view === expertView ? policyView : expertView;
+      if (!other) return;
+      other.camera.yaw = view.camera.yaw;
+      other.camera.pitch = view.camera.pitch;
+      other.camera.distance = view.camera.distance;
+      other.render();
+    };
+  });
+}
+
+/** Load the two solids for the selected task and policy. */
+function showRolloutSolids(task) {
+  ensureRolloutViews();
+  const compare = el('rollout-compare');
+  if (!expertView) { compare.hidden = true; return; }
+
+  const episodes = task.episodes || [];
+  const oracle = episodes.find((e) => /oracle/.test(e.policy));
+  const chosen = episodes.find((e) => e.policy === rolloutPolicy)
+    || episodes.find((e) => e.mesh && !/oracle/.test(e.policy))
+    || episodes.find((e) => !/oracle/.test(e.policy));
+  // Nothing to compare if the rebuild has not been run for this bundle.
+  if (!oracle || !oracle.mesh) { compare.hidden = true; return; }
+  compare.hidden = false;
+
+  expertView.load(oracle.mesh);
+  el('rollout-expert-note').textContent =
+    oracle.mesh.triangle_count + ' tri';
+
+  el('rollout-policy-name').textContent = chosen ? chosen.policy : 'Policy';
+  if (chosen && chosen.mesh) {
+    policyView.load(chosen.mesh);
+    el('rollout-policy-note').textContent = chosen.mesh.triangle_count + ' tri';
+  } else {
+    policyView.mesh = null;
+    policyView.render();
+    el('rollout-policy-note').textContent = chosen
+      ? 'left no solid' : 'no episode';
+  }
+  // Same camera on both, and the expert's framing on both, so a policy part
+  // that is half the size reads as half the size.
+  policyView.camera.yaw = expertView.camera.yaw;
+  policyView.camera.pitch = expertView.camera.pitch;
+  policyView.camera.distance = expertView.camera.distance;
+  policyView.center = expertView.center;
+  policyView.scale = expertView.scale;
+  policyView.render();
+}
 
 /** One task, every policy's episode, laid against the expert's step count.
  *
@@ -401,6 +474,11 @@ function renderRollouts() {
   const ordered = task.episodes.slice().sort(
     (a, b) => (b.progress_score || 0) - (a.progress_score || 0));
 
+  if (!ordered.some((e) => e.policy === rolloutPolicy)) {
+    const first = ordered.find((e) => !/oracle/.test(e.policy));
+    rolloutPolicy = first ? first.policy : null;
+  }
+
   body.innerHTML = ordered.map((episode) => {
     const ops = episode.operations || [];
     const accepted = episode.accepted || [];
@@ -414,7 +492,8 @@ function renderRollouts() {
     const reached = (episode.milestones || []).length;
     const total = (data.milestones || []).length || 7;
     return `
-      <div class="track">
+      <div class="track" data-policy="${esc(episode.policy)}"
+           aria-current="${episode.policy === rolloutPolicy}">
         <div class="track-head">
           <span class="name">${esc(episode.policy)}</span>
           <span class="score">${fmt(episode.progress_score)}</span>
@@ -427,10 +506,19 @@ function renderRollouts() {
                   : 'per-step record not in this trace'}</span>
           <span>${reached}/${total} milestones${
             reached ? ': ' + esc((episode.milestones || []).join(', ')) : ''}</span>
+          ${episode.mesh ? '<span>solid rebuilt from the trace</span>' : ''}
           ${episode.aborted ? `<span class="warn-text">aborted: ${esc(episode.abort_reason)}</span>` : ''}
         </div>
       </div>`;
   }).join('');
+
+  body.querySelectorAll('.track').forEach((track) => {
+    track.addEventListener('click', () => {
+      rolloutPolicy = track.dataset.policy;
+      renderRollouts();
+    });
+  });
+  showRolloutSolids(task);
 }
 
 /* ---------------------------------------------------------------- shell */
@@ -785,6 +873,9 @@ function initTabs() {
       // A canvas has no size while hidden, so the first draw into a zero-width
       // viewport produces nothing; redraw on reveal.
       if (isModel && viewer) viewer.render();
+      // Same reason the model canvas is redrawn on reveal: these had no size
+      // while the sheet was hidden, so the first draw went into nothing.
+      if (view === 'rollouts') renderRollouts();
       // The part readouts describe something that is not on screen in a data
       // workspace, so they go quiet rather than reporting a stale part.
       ['status-part', 'status-mesh', 'status-style', 'status-step',
