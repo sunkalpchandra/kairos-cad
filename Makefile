@@ -7,7 +7,7 @@ PYTHON ?= python3
 FREECAD_APP ?= /Applications/FreeCAD.app
 FREECAD_PY ?= $(shell ls $(FREECAD_APP)/Contents/Resources/bin/python* 2>/dev/null | head -1)
 
-.PHONY: setup setup-learn test test-cad test-all lint check-text check-station check-docs sync-docs generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard dashboard-studio demo clean
+.PHONY: setup setup-learn test test-cad test-all lint check-text check-station check-docs sync-docs generate-data dataset-report train-bc eval-bc train-ppo eval-ppo optimize benchmark-suite benchmark audit-codec dashboard dashboard-studio step-meshes rollout-meshes demo clean
 
 setup:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -97,6 +97,18 @@ benchmark:
 ## This is the ceiling on every learned policy; it must stay at 0.
 audit-codec:
 	$(PYTHON) scripts/audit_codec.py --root dataset --json runs/codec_audit.json --max-rate 0.0
+
+## Geometry for the station's timeline: the solid after each expert action.
+## Runs under FreeCAD's interpreter; the learning stack cannot drive FreeCAD.
+step-meshes:
+	@test -n "$(FREECAD_PY)" || (echo "FreeCAD python not found at $(FREECAD_APP); set FREECAD_PY=" && exit 1)
+	PYTHONPATH=$(CURDIR) $(FREECAD_PY) scripts/build_steps.py --root dataset
+
+## Geometry for the Rollouts workspace: the solid each policy left behind,
+## replayed from its trace and checked against the mass the runner recorded.
+rollout-meshes:
+	@test -n "$(FREECAD_PY)" || (echo "FreeCAD python not found at $(FREECAD_APP); set FREECAD_PY=" && exit 1)
+	PYTHONPATH=$(CURDIR) $(FREECAD_PY) scripts/build_rollout_meshes.py --runs runs/benchmark_core
 
 ## Phase 8: the review station, a CAD-workstation layout over the artifacts.
 dashboard-studio:
