@@ -15,6 +15,7 @@ from kairos.dashboard.bundle import (
     _measured,
     _normalize_scores,
     collect_ablations,
+    collect_dataset,
     collect_designs,
     collect_failures,
     collect_families,
@@ -558,3 +559,36 @@ def test_aborted_episodes_do_not_drag_a_family_down(tmp_path):
         _episode(task_id="build-b", family="plate", aborted=True, progress_score=0.0),
     ])
     assert collect_families(tmp_path)["cells"]["bc"] == [0.8]
+
+
+# ------------------------------------------------------------------ dataset
+
+
+def test_dataset_counts_every_design_not_the_embedded_cap(tmp_path):
+    """The bundle carries 24. The dataset is 1,080, and the page says so only
+    if this reads the files rather than the embedded list."""
+    for i in range(30):
+        _design(tmp_path, f"design_{i:06d}")
+    assert collect_dataset(tmp_path)["designs"] == 30
+
+
+def test_dataset_buckets_mass_across_the_observed_range(tmp_path):
+    for i, mass in enumerate([10.0, 20.0, 30.0]):
+        _design(tmp_path, f"design_{i:06d}", mass_g=mass)
+    stats = collect_dataset(tmp_path, buckets=2)
+    assert stats["mass_min"] == 10.0 and stats["mass_max"] == 30.0
+    assert sum(b["count"] for b in stats["mass_histogram"]) == 3
+
+
+def test_the_heaviest_design_lands_in_the_last_bucket(tmp_path):
+    """A value equal to the maximum divides to exactly `buckets` and would
+    index one past the end."""
+    for i, mass in enumerate([1.0, 100.0]):
+        _design(tmp_path, f"design_{i:06d}", mass_g=mass)
+    histogram = collect_dataset(tmp_path, buckets=4)["mass_histogram"]
+    assert len(histogram) == 4
+    assert histogram[-1]["count"] == 1
+
+
+def test_dataset_without_designs_degrades_to_empty(tmp_path):
+    assert collect_dataset(tmp_path) == {}
