@@ -18,6 +18,7 @@ from kairos.dashboard.bundle import (
     collect_designs,
     collect_failures,
     collect_funnel,
+    collect_jam,
     collect_matrix,
     collect_rollouts,
     collect_task_types,
@@ -481,3 +482,46 @@ def test_a_policy_that_loses_nothing_has_no_wall(tmp_path):
 
 def test_funnel_without_a_leaderboard_degrades_to_empty(tmp_path):
     assert collect_funnel(tmp_path)["rows"] == []
+
+
+# ---------------------------------------------------------------------- jam
+
+
+def test_jam_measures_the_tail_not_the_total(tmp_path):
+    """Four refusals scattered and four in a row waste the same number of
+    steps and mean different things."""
+    _traces(tmp_path, "scattered", [_episode(
+        operations=["PAD"] * 8,
+        accepted=[True, False, True, False, True, False, True, False])])
+    _traces(tmp_path, "jammed", [_episode(
+        operations=["PAD"] * 8,
+        accepted=[True, True, True, True, False, False, False, False])])
+
+    rows = {r["policy"]: r for r in collect_jam(tmp_path)["rows"]}
+    assert rows["scattered"]["tail_share"] == 0.125
+    assert rows["jammed"]["tail_share"] == 0.5
+
+
+def test_jam_counts_an_episode_as_recovered_on_any_later_acceptance(tmp_path):
+    _traces(tmp_path, "back", [_episode(
+        operations=["PAD"] * 4, accepted=[True, False, True, True])])
+    _traces(tmp_path, "stopped", [_episode(
+        operations=["PAD"] * 4, accepted=[True, False, False, False])])
+    rows = {r["policy"]: r for r in collect_jam(tmp_path)["rows"]}
+    assert rows["back"]["recovered"] == 1
+    assert rows["stopped"]["recovered"] == 0
+
+
+def test_an_episode_with_no_refusal_is_not_a_jam(tmp_path):
+    _traces(tmp_path, "clean", [_episode(
+        operations=["PAD"] * 3, accepted=[True, True, True])])
+    row = collect_jam(tmp_path)["rows"][0]
+    assert row["episodes"] == 1
+    assert row["jammed"] == 0
+
+
+def test_jam_skips_traces_with_no_per_step_record(tmp_path):
+    """An older trace has no acceptance list; counting it as clean would put a
+    jamming policy at zero."""
+    _traces(tmp_path, "old", [_episode(accepted=None)])
+    assert collect_jam(tmp_path)["rows"][0]["episodes"] == 0
