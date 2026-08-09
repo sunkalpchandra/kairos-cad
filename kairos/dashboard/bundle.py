@@ -322,6 +322,39 @@ def _failure_kind(message: str) -> str:
     return head or kind[:80]
 
 
+def collect_funnel(runs: str | Path) -> dict[str, Any]:
+    """Milestone reach rates as a funnel, with the drop at each rung.
+
+    Progress is prefix-scored, so the rung a policy stops at is the whole
+    story of its score. The rates are in the leaderboard already; the drops
+    are not, and the drop is what names the wall.
+    """
+    leaderboard = _read_json(Path(runs) / "leaderboard.json") or {}
+    rows = []
+    for score in leaderboard.get("scores") or []:
+        rates = score.get("milestone_rates") or {}
+        if not rates:
+            continue
+        steps = []
+        previous = 1.0
+        for name in MILESTONES:
+            rate = rates.get(name)
+            if rate is None:
+                continue
+            steps.append({"milestone": name, "rate": rate, "drop": previous - rate})
+            previous = rate
+        worst = max(steps, key=lambda s: s["drop"], default=None)
+        rows.append({
+            "policy": score.get("policy"),
+            "steps": steps,
+            # The rung where the most episodes were lost. For a policy that
+            # never finishes, this is the sentence the funnel is drawing.
+            "wall": worst["milestone"] if worst and worst["drop"] > 0 else None,
+            "wall_drop": worst["drop"] if worst and worst["drop"] > 0 else 0.0,
+        })
+    return {"milestones": list(MILESTONES), "rows": rows}
+
+
 def collect_task_types(runs: str | Path) -> dict[str, Any]:
     """The leaderboard split into BUILD and COMPLETE.
 
@@ -607,6 +640,7 @@ def build_bundle(
         "matrix": collect_matrix(benchmark_runs),
         "failures": collect_failures(benchmark_runs),
         "task_types": collect_task_types(benchmark_runs),
+        "funnel": collect_funnel(benchmark_runs),
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
