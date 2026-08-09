@@ -1214,7 +1214,13 @@ function initViewer() {
   document.querySelectorAll('[data-goto]').forEach((button) => {
     button.addEventListener('click', () => {
       const target = el(button.dataset.goto);
-      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // A CSS scroll-behavior override cannot reach a behavior passed here,
+      // so the preference has to be read rather than declared.
+      const still = window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (target) {
+        target.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+      }
     });
   });
 

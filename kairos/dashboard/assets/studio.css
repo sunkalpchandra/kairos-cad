@@ -106,6 +106,17 @@
   --fail: #e07068;
 }
 
+/* Motion is used for state changes only, and a viewer who has asked for less
+   of it should get none. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 
