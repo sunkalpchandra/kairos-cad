@@ -47,18 +47,19 @@ jobs:
 
   cad:
     # FreeCAD's interpreter, which is where the CAD half of the project lives.
-    # These tests had never run anywhere but a developer machine.
+    # These tests (90 of them, deselected from every other job) had never run
+    # anywhere but a developer machine.
     #
     # Debian rather than the Ubuntu runner: noble has neither freecad-python3
     # nor an installable freecad ("no installation candidate"), while bookworm
     # ships freecad-python3. That is also what deploy/Dockerfile builds on, so
     # this job doubles as a check on the image's package assumption.
     #
-    # On Debian, freecad-python3 installs its modules into the SYSTEM python,
-    # so `import FreeCAD` works from python3 directly and there is no separate
-    # interpreter to install pytest into. That differs from macOS, where
-    # FreeCAD.app bundles its own python and the Makefile targets it via
-    # FREECAD_PY.
+    # The module path is DISCOVERED from the package manifest, not assumed.
+    # Getting here took four wrong guesses: the Ubuntu package name, an
+    # installable freecad on Ubuntu at all, `freecadcmd -m pip` (freecadcmd is
+    # not a python binary), and finally that freecad-python3 lands on the
+    # default sys.path (it does not).
     runs-on: ubuntu-latest
     container: debian:bookworm-slim
     steps:
@@ -68,13 +69,29 @@ jobs:
           apt-get install -y --no-install-recommends \
             freecad-python3 git ca-certificates python3-pip python3-numpy
       - uses: actions/checkout@v4
-      - name: Confirm FreeCAD imports from the system interpreter
+      - name: Discover the FreeCAD module path
+        id: freecad
         run: |
-          python3 -c "
+          # Ask dpkg where the extension module actually landed rather than
+          # hardcoding a directory that differs across releases.
+          module=$(dpkg -L freecad-python3 | grep -E '/FreeCAD\.so$' | head -1)
+          if [ -z "$module" ]; then
+            echo "freecad-python3 installed no FreeCAD.so; package contents:" >&2
+            dpkg -L freecad-python3 | grep -iE 'freecad.*\.(so|py)$' | head -20 >&2
+            exit 1
+          fi
+          dir=$(dirname "$module")
+          echo "FreeCAD.so at $module"
+          echo "pythonpath=$dir" >> "$GITHUB_OUTPUT"
+      - name: Confirm FreeCAD imports
+        run: |
+          PYTHONPATH="${{ steps.freecad.outputs.pythonpath }}" python3 -c "
           import FreeCAD
-          print('FreeCAD', FreeCAD.Version()[0] + '.' + FreeCAD.Version()[1])
+          print('FreeCAD', '.'.join(FreeCAD.Version()[:2]))
           "
       - name: Install test dependencies
         run: pip3 install --break-system-packages pytest
       - name: CAD tests
-        run: PYTHONPATH="$PWD" python3 -m pytest -m cad -q tests
+        run: |
+          PYTHONPATH="$PWD:${{ steps.freecad.outputs.pythonpath }}" \
+            python3 -m pytest -m cad -q tests
