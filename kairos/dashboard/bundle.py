@@ -322,6 +322,35 @@ def _failure_kind(message: str) -> str:
     return head or kind[:80]
 
 
+def collect_task_types(runs: str | Path) -> dict[str, Any]:
+    """The leaderboard split into BUILD and COMPLETE.
+
+    This is the number the headline hides. bc scores 0.458 over the suite and
+    0.069 on BUILD alone, because a COMPLETE task hands it an expert prefix and
+    asks for the last k actions. Both are honest; only one of them is a policy
+    building a part from a sentence.
+    """
+    leaderboard = _read_json(Path(runs) / "leaderboard.json") or {}
+    split = leaderboard.get("by_task_type") or {}
+    if not split:
+        return {"kinds": [], "rows": []}
+
+    kinds = sorted({kind for policy in split.values() for kind in policy})
+    rows = []
+    for policy, kinds_for_policy in split.items():
+        entry: dict[str, Any] = {"policy": policy}
+        for kind in kinds:
+            scores = kinds_for_policy.get(kind) or {}
+            entry[kind] = {
+                "progress": scores.get("progress_score"),
+                "success": scores.get("success_rate"),
+                "episodes": scores.get("episodes"),
+            }
+        rows.append(entry)
+    rows.sort(key=lambda r: -( (r.get(kinds[0]) or {}).get("progress") or 0))
+    return {"kinds": kinds, "rows": rows}
+
+
 def collect_failures(runs: str | Path, top: int = 8) -> dict[str, Any]:
     """How each policy's actions were refused, across the whole suite.
 
@@ -577,6 +606,7 @@ def build_bundle(
         "rollouts": collect_rollouts(benchmark_runs),
         "matrix": collect_matrix(benchmark_runs),
         "failures": collect_failures(benchmark_runs),
+        "task_types": collect_task_types(benchmark_runs),
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
