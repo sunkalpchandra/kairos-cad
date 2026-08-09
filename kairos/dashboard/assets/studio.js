@@ -374,8 +374,17 @@ function renderTraining() {
   if (!iterations.length) {
     el('ppo-reward-chart').innerHTML = '<p class="empty">No PPO history in this bundle.</p>';
     el('ppo-rate-chart').innerHTML = '';
+    el('ppo-kl-chart').innerHTML = '';
     return;
   }
+
+  const kl = iterations
+    .filter((r) => r.approx_kl !== null && r.approx_kl !== undefined)
+    .map((r) => [r.iteration, r.approx_kl]);
+  el('ppo-kl-chart').innerHTML = kl.length
+    ? lineChart([{ name: 'approx KL', points: kl }],
+        { xLabel: 'iteration', yLabel: 'approx KL' }) + legend(['approx KL'])
+    : '<p class="empty">This run recorded no KL.</p>';
   el('ppo-reward-chart').innerHTML =
     lineChart([{ name: 'mean episode reward', points: iterations.map((r) => [r.iteration, r.reward_mean]) }],
       { xLabel: 'iteration', yLabel: 'reward' }) + legend(['mean episode reward']);
@@ -496,6 +505,50 @@ function renderAblationIntervals() {
       + 'estimates of that difference were reported and retracted before these '
       + 'intervals existed; they disagreed on the sign.'
     : '';
+}
+
+/** What the expert trajectories could and could not supervise. */
+function renderCoverage() {
+  const bc = (DATA.training || {}).bc || {};
+  const data = bc.dataset || {};
+  if (!data.steps_seen) {
+    el('coverage-stats').innerHTML = '<p class="empty">No training run in this bundle.</p>';
+    el('coverage-note').textContent = '';
+    return;
+  }
+  const dropped = (data.dropped_unrepresentable || 0)
+    + (data.dropped_unknown_operation || 0);
+  el('coverage-stats').innerHTML = `
+    <div class="stat">
+      <div class="stat-value ${data.coverage >= 0.999 ? 'good' : ''}">${fmt(data.coverage)}</div>
+      <span class="label">Coverage</span>
+      <div class="stat-sub">${data.steps_kept.toLocaleString()} of ${data.steps_seen.toLocaleString()} steps</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${(data.trajectories || 0).toLocaleString()}</div>
+      <span class="label">Trajectories</span>
+      <div class="stat-sub">every design in the corpus</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${dropped}</div>
+      <span class="label">Dropped</span>
+      <div class="stat-sub">unrepresentable or unknown</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${data.expert_action_illegal || 0}</div>
+      <span class="label">Illegal by the mask</span>
+      <div class="stat-sub">expert steps the mask forbids</div>
+    </div>`;
+
+  el('coverage-note').innerHTML = (dropped === 0 && !data.expert_action_illegal)
+    ? '<strong>Nothing was dropped.</strong> Every expert step is expressible in '
+      + 'the action space and legal under the mask, so what the policy learned is '
+      + 'bounded by the policy rather than by what it was shown. An expert step '
+      + 'the mask forbids would be worse than a dropped one: the loader would '
+      + 'teach an action the environment then refuses.'
+    : `<strong>${dropped} steps were dropped and ${data.expert_action_illegal || 0} `
+      + 'are illegal under the mask.</strong> Those are a ceiling on the policy '
+      + 'that has nothing to do with the policy.';
 }
 
 /** The corpus the browser samples from. */
@@ -1073,7 +1126,8 @@ function renderRollouts() {
   body.querySelectorAll('.track').forEach((track) => {
     track.addEventListener('click', () => {
       rolloutPolicy = track.dataset.policy;
-      renderDataset();
+      renderCoverage();
+  renderDataset();
   renderSources();
   renderCodec();
   renderFamilies();
@@ -1768,6 +1822,7 @@ function init() {
   renderTraining();
   renderAblations();
   renderAblationIntervals();
+  renderCoverage();
   renderDataset();
   renderSources();
   renderCodec();

@@ -370,6 +370,18 @@
   </section>
 
   <section class="sheet" id="sheet-training" hidden>
+    <section class="span">
+      <h2>What the expert could supervise</h2>
+      <p class="note">
+        Every expert step the loader had to drop is a step the policy never
+        saw. This is the training-side counterpart of the codec audit: the
+        codec bounds what a policy can express, and this bounds what it was
+        ever shown.
+      </p>
+      <div class="statgrid" id="coverage-stats"></div>
+      <p class="note" id="coverage-note"></p>
+    </section>
+
     <section>
       <h2>Behavioural cloning</h2>
       <p class="note">
@@ -382,6 +394,15 @@
     <section>
       <h2>Loss</h2>
       <div class="chart" id="bc-loss-chart"></div>
+    </section>
+    <section>
+      <h2>Trust region</h2>
+      <p class="note">
+        Approximate KL between the updated policy and the one that collected
+        the batch. A run that lets this grow has stopped doing PPO and is
+        doing policy gradient with a stale batch.
+      </p>
+      <div class="chart" id="ppo-kl-chart"></div>
     </section>
     <section>
       <h2>PPO</h2>
