@@ -163,3 +163,33 @@ def test_the_trace_carries_one_acceptance_flag_per_operation():
     assert len(row["accepted"]) == len(row["operations"]) == len(row["rejections"])
     assert row["accepted"] == [True, False]
     assert row["rejections"][1] == "no closed profile"
+
+
+def test_the_mask_hides_an_operation_the_environment_cannot_execute():
+    """A mask that advertises RENDER_VIEW without a render_dir is lying.
+
+    The action is legal from model state the moment there is a solid to look
+    at, and the executor refuses it every time: 15 for 15 across the core
+    benchmark, all of them legal-random's, every one counted against its
+    validity rate. `legal_operations` is right to answer from state alone --
+    it is the environment's mask that has to be true of the environment.
+    """
+    from kairos.actions.schema import Operation
+    from kairos.rl.action_space import OPERATIONS
+
+    class Executor:
+        render_dir = None
+
+    class Env:
+        _executor = Executor()
+        _unavailable = None
+
+    from kairos.rl.environment import KairosCADEnv
+
+    env = Env()
+    env._unavailable = KairosCADEnv._unavailable.__get__(env, Env)
+    assert env._unavailable() == (Operation.RENDER_VIEW,)
+
+    Executor.render_dir = "/somewhere"
+    assert env._unavailable() == ()
+    assert Operation.RENDER_VIEW in OPERATIONS

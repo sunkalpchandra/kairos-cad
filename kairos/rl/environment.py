@@ -21,6 +21,7 @@ from gymnasium import spaces
 
 from kairos.actions.executor import ActionExecutor
 from kairos.actions.masking import flags_from_engine, operation_mask
+from kairos.actions.schema import Operation
 from kairos.cad.engine import CADEngine
 from kairos.evaluation.constraints import check_constraints
 from kairos.language import parse_requirement
@@ -213,4 +214,19 @@ class KairosCADEnv(gym.Env):
         )
         flags = flags_from_engine(self.engine)
         mask = np.asarray(operation_mask(flags, list(OPERATIONS)), dtype=np.int8)
+        # `legal_operations` answers from model state, which is what it should
+        # do -- but the mask this environment hands a policy also has to be
+        # true of this environment. RENDER_VIEW is legal the moment there is a
+        # solid to look at, and is refused every time here because the executor
+        # has no render_dir: 15 for 15 across the benchmark, all of them
+        # legal-random's, all counted against its validity. Advertising an
+        # action that cannot be executed is the mask lying.
+        for operation in self._unavailable():
+            mask[OPERATIONS.index(operation)] = 0
         return {"numeric": numeric, "action_mask": mask, "targets": self._all_targets()}
+
+    def _unavailable(self) -> tuple[Operation, ...]:
+        """Operations this environment cannot carry out, whatever the state."""
+        if self._executor.render_dir is None:
+            return (Operation.RENDER_VIEW,)
+        return ()
