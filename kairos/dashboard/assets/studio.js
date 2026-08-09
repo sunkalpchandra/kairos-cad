@@ -413,6 +413,55 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** How each policy's actions were refused, over the whole suite. */
+function renderFailures() {
+  const data = DATA.failures || {};
+  const policies = data.policies || {};
+  const target = el('failures');
+  const rows = Object.keys(policies).filter((p) => policies[p].rejected > 0)
+    .sort((a, b) => policies[b].rejected - policies[a].rejected);
+  if (!rows.length) {
+    target.innerHTML = '<p class="empty">No refusals recorded in this bundle.</p>';
+    el('failures-note').textContent = '';
+    return;
+  }
+
+  target.innerHTML = rows.map((policy) => {
+    const row = policies[policy];
+    const share = row.steps ? (row.rejected / row.steps) * 100 : 0;
+    const parts = row.kinds.concat(
+      row.other ? [{ kind: `${row.distinct - row.kinds.length} rarer kinds`,
+                     count: row.other, tail: true }] : []);
+    return `
+      <div class="fail-row">
+        <div class="fail-head">
+          <span class="name">${esc(policy)}</span>
+          <span class="counts">${row.rejected} of ${row.steps} actions refused
+            (${share.toFixed(0)}%), ${row.distinct} distinct kind${row.distinct === 1 ? '' : 's'}</span>
+        </div>
+        <div class="fail-bar">${parts.map((part, index) => `
+          <span class="seg${part.tail ? ' tail' : ''}"
+                style="flex-grow:${part.count}; --tone:${index}"
+                title="${esc(part.kind)}: ${part.count}"></span>`).join('')}</div>
+        <div class="fail-legend">${parts.map((part, index) => `
+          <span class="key"><i style="--tone:${index}" class="${part.tail ? 'tail' : ''}"></i>${
+            esc(part.kind)} <b>${part.count}</b></span>`).join('')}</div>
+      </div>`;
+  }).join('');
+
+  // The contrast is the finding, so state it rather than leaving it to be
+  // spotted in two bars that look similar at a glance.
+  const narrow = rows.filter((p) => policies[p].distinct <= 5);
+  const wide = rows.filter((p) => policies[p].distinct > 20);
+  el('failures-note').innerHTML = narrow.length && wide.length
+    ? `<strong>${narrow.map(esc).join(' and ')}</strong> fail in `
+      + `${narrow.map((p) => policies[p].distinct).join(' and ')} distinct ways; `
+      + `<strong>${wide.map(esc).join(' and ')}</strong> in `
+      + `${wide.map((p) => policies[p].distinct).join(' and ')}. A learned policy `
+      + 'repeats one mistake; a random one makes many.'
+    : '';
+}
+
 /** Every task against every policy, un-averaged.
  *
  * Shaded by milestones reached rather than success: success is 0.000 for three
@@ -646,6 +695,7 @@ function renderRollouts() {
     track.addEventListener('click', () => {
       rolloutPolicy = track.dataset.policy;
       renderMatrix();
+  renderFailures();
   renderRollouts();
     });
   });
@@ -1187,6 +1237,7 @@ function init() {
   renderTraining();
   renderAblations();
   renderMatrix();
+  renderFailures();
   renderRollouts();
   el('cmd-rollout-prev').addEventListener('click', () => { rolloutTask -= 1; renderRollouts(); });
   el('cmd-rollout-next').addEventListener('click', () => { rolloutTask += 1; renderRollouts(); });

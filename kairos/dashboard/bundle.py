@@ -11,6 +11,7 @@ Pure python, so it builds under either interpreter.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -300,6 +301,61 @@ def collect_rollouts(runs: str | Path, per_family: int = 1) -> dict[str, Any]:
     return {"tasks": out, "milestones": list(MILESTONES)}
 
 
+#: A rejection message carries the FreeCAD object that failed, e.g. "Pad002".
+#: Two episodes that failed the same way in different places would otherwise
+#: count as two different failures and neither would look common.
+_INSTANCE = re.compile(r"\b([A-Za-z]+?)\d+\b")
+
+#: Trailing index tuples, e.g. "Perpendicular constraint (8, 8)". They name
+#: which geometry the constraint touched, not what went wrong, and leaving them
+#: in split one failure kind across 150 rows of count 1.
+_INDICES = re.compile(r"\s*\(\s*\d+(?:\s*,\s*\d+)*\s*\)")
+
+
+def _failure_kind(message: str) -> str:
+    """A rejection message reduced to the failure it describes."""
+    kind = _INDICES.sub("", message.strip())
+    kind = _INSTANCE.sub(r"\1", kind)
+    # Everything after the colon is FreeCAD's internal state dump; the part
+    # before it is the sentence a reader needs.
+    head = kind.split(":", 1)[0].strip()
+    return head or kind[:80]
+
+
+def collect_failures(runs: str | Path, top: int = 8) -> dict[str, Any]:
+    """How each policy's actions were refused, across the whole suite.
+
+    The rollout strips show seven tasks in detail. This is the same data over
+    all of them, which is the only way to see whether a failure is this task's
+    or the policy's.
+    """
+    traces = _traces_by_policy(Path(runs))
+    out: dict[str, Any] = {"policies": {}, "top": top}
+    for policy, rows in sorted(traces.items()):
+        counts: dict[str, int] = {}
+        steps = rejected = 0
+        for row in rows:
+            operations = row.get("operations") or []
+            steps += len(operations)
+            for message in (row.get("rejections") or []):
+                if not message:
+                    continue
+                rejected += 1
+                kind = _failure_kind(str(message))
+                counts[kind] = counts.get(kind, 0) + 1
+        ranked = sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))
+        out["policies"][policy] = {
+            "steps": steps,
+            "rejected": rejected,
+            "kinds": [{"kind": k, "count": n} for k, n in ranked[:top]],
+            # Say what the top-N left out rather than letting the listed counts
+            # look like the whole of it.
+            "other": sum(n for _, n in ranked[top:]),
+            "distinct": len(ranked),
+        }
+    return out
+
+
 def collect_matrix(runs: str | Path) -> dict[str, Any]:
     """Every task against every policy, as milestones reached out of seven.
 
@@ -520,6 +576,7 @@ def build_bundle(
         "comparisons": collect_comparisons(benchmark_runs),
         "rollouts": collect_rollouts(benchmark_runs),
         "matrix": collect_matrix(benchmark_runs),
+        "failures": collect_failures(benchmark_runs),
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),

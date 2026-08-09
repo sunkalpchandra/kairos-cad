@@ -526,6 +526,32 @@ svg.icon {
 .titleblock .k { color: var(--ink-faint); letter-spacing: 0.08em; display: block; }
 .titleblock .v { color: var(--ink); font-variant-numeric: tabular-nums; }
 
+/* ------------------------------------------------------ failure taxonomy */
+
+.fail-row { border: 1px solid var(--rule); background: var(--chrome); padding: 9px 11px; margin-bottom: 9px; }
+.fail-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.fail-head .name { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.fail-head .counts { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); margin-left: auto; }
+
+/* Segments sized by share, so the bar reads as a composition rather than a
+   ranking. Tones step through one hue: these are parts of one quantity, not
+   categories that need telling apart by colour. */
+.fail-bar { display: flex; gap: 1px; height: 15px; margin: 8px 0 7px; }
+.fail-bar .seg {
+  min-width: 2px; border-radius: 1px;
+  background: color-mix(in srgb, var(--fail) calc(88% - var(--tone) * 11%), var(--sunken));
+}
+.fail-bar .seg.tail { background: var(--rule-strong); }
+
+.fail-legend { display: flex; flex-wrap: wrap; gap: 3px 14px; font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); }
+.fail-legend .key { display: flex; align-items: center; gap: 5px; }
+.fail-legend .key b { color: var(--ink-muted); font-weight: 500; }
+.fail-legend i {
+  width: 8px; height: 8px; flex: none;
+  background: color-mix(in srgb, var(--fail) calc(88% - var(--tone) * 11%), var(--sunken));
+}
+.fail-legend i.tail { background: var(--rule-strong); }
+
 /* ----------------------------------------------------------- task matrix */
 
 .matrix { border: 1px solid var(--rule); background: var(--chrome); padding: 12px 13px; }

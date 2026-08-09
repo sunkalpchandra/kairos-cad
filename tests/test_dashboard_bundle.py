@@ -16,6 +16,7 @@ from kairos.dashboard.bundle import (
     _normalize_scores,
     collect_ablations,
     collect_designs,
+    collect_failures,
     collect_matrix,
     collect_rollouts,
     collect_training,
@@ -347,3 +348,57 @@ def test_matrix_counts_milestones_not_success(tmp_path):
 
 def test_matrix_without_traces_degrades_to_empty(tmp_path):
     assert collect_matrix(tmp_path) == {"tasks": [], "policies": [], "cells": {}}
+
+
+# ------------------------------------------------------------------ failures
+
+
+def test_failure_kind_collapses_the_instance_that_failed():
+    """Pad002 and Pad007 failing the same way are one failure, not two."""
+    from kairos.dashboard.bundle import _failure_kind
+
+    a = _failure_kind('Pad failed to build: ["Pad002: state=[\'Invalid\']"]')
+    b = _failure_kind('Pad failed to build: ["Pad007: state=[\'Invalid\']"]')
+    assert a == b == "Pad failed to build"
+
+
+def test_failure_kind_collapses_constraint_indices():
+    """The indices name which geometry, not what went wrong. Leaving them in
+    split one failure kind across 80 rows of count 1."""
+    from kairos.dashboard.bundle import _failure_kind
+
+    assert (_failure_kind("sketch rejected Coincident constraint (5, 2, 1, 1)")
+            == _failure_kind("sketch rejected Coincident constraint (8, 8)")
+            == "sketch rejected Coincident constraint")
+
+
+def test_failure_kind_keeps_different_failures_apart():
+    from kairos.dashboard.bundle import _failure_kind
+
+    assert _failure_kind("Pad failed to build: [...]") != _failure_kind(
+        "Pocket failed to build: [...]")
+
+
+def test_failures_count_only_refused_steps(tmp_path):
+    _traces(tmp_path, "bc", [_episode(
+        operations=["CREATE_SKETCH", "PAD", "PAD"],
+        accepted=[True, False, False],
+        rejections=["", 'Pad failed to build: ["Pad001: x"]',
+                    'Pad failed to build: ["Pad002: x"]'],
+    )])
+    row = collect_failures(tmp_path)["policies"]["bc"]
+    assert row["steps"] == 3
+    assert row["rejected"] == 2
+    assert row["kinds"] == [{"kind": "Pad failed to build", "count": 2}]
+    assert row["distinct"] == 1
+
+
+def test_failures_report_what_the_top_n_left_out(tmp_path):
+    """Otherwise the listed counts read as the whole of it."""
+    rejections = [f"failure {i} of many" for i in range(6)]
+    _traces(tmp_path, "bc", [_episode(
+        operations=["PAD"] * 6, accepted=[False] * 6, rejections=rejections)])
+    row = collect_failures(tmp_path, top=2)["policies"]["bc"]
+    assert len(row["kinds"]) == 2
+    assert row["other"] == 4
+    assert row["distinct"] == 6
