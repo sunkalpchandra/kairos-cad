@@ -322,6 +322,53 @@ def _failure_kind(message: str) -> str:
     return head or kind[:80]
 
 
+def collect_optimization(runs_root: str | Path, family: str = "plate") -> dict[str, Any]:
+    """The surrogate search: its fit, its recommendation, and the truth.
+
+    The interesting number here is not the mass saving. It is the distance
+    between what the surrogate predicted at its own optimum and what building
+    that part actually weighed. A search optimises the model it is given, and a
+    model is only trustworthy where it was fitted.
+    """
+    runs_root = Path(runs_root)
+    result = _read_json(runs_root / f"optimize/{family}_result.json") or {}
+    samples = _read_json(runs_root / f"optimize/{family}_samples.json") or {}
+    if not result:
+        return {}
+
+    best = result.get("result") or {}
+    metrics = result.get("metrics") or {}
+    return {
+        "family": family,
+        "parameters": samples.get("parameter_names") or [],
+        "samples": len(samples.get("samples") or []),
+        "fit": {
+            "mass_r2": metrics.get("mass_r2"),
+            "mass_mae": metrics.get("mass_mae"),
+            "thickness_r2": metrics.get("thickness_r2"),
+            "thickness_mae": metrics.get("thickness_mae"),
+            "train_rows": metrics.get("train_rows"),
+            "test_rows": metrics.get("test_rows"),
+        },
+        "search": {
+            "evaluations": best.get("evaluations"),
+            "iterations": best.get("iterations"),
+            "history": best.get("history") or [],
+        },
+        "best": {
+            "parameters": best.get("parameters") or {},
+            "predicted_mass_g": best.get("predicted_mass_g"),
+            "verified_mass_g": best.get("verified_mass_g"),
+            "predicted_thickness_mm": best.get("predicted_thickness_mm"),
+            "verified_thickness_mm": best.get("verified_thickness_mm"),
+            "baseline_mass_g": best.get("baseline_mass_g"),
+            "mass_saving_pct": best.get("mass_saving_pct"),
+            "surrogate_error_pct": best.get("surrogate_error_pct"),
+            "feasible": best.get("verified_feasible"),
+        },
+    }
+
+
 def collect_sources(
     dataset: str | Path, benchmark_runs: str | Path,
     ablation_runs: str | Path, runs_root: str | Path,
@@ -931,6 +978,7 @@ def build_bundle(
         "codec": collect_codec(runs_root),
         "dataset": collect_dataset(dataset),
         "sources": collect_sources(dataset, benchmark_runs, ablation_runs, runs_root),
+        "optimization": collect_optimization(runs_root),
         "ablations": collect_ablations(ablation_runs),
         "ablation_intervals": collect_ablation_intervals(ablation_runs),
         "training": collect_training(runs_root),
