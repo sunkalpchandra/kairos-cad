@@ -55,6 +55,13 @@ docker compose -f deploy/docker-compose.yml run --rm benchmark
 The build ends with an import check on both interpreters, so an image that
 would start and then fail to import FreeCAD fails at build time instead.
 
+**Not yet built.** The Dockerfile is written against the two-interpreter
+constraint verified on the development machine and Debian's `freecad-python3`
+packaging, but no image has been produced from it: the Docker daemon was not
+running when it was authored. Treat the first build as the test. The most
+likely thing to need adjusting is the `freecadcmd` binary name, which differs
+between Debian's `freecad-python3` and upstream AppImage builds.
+
 ### Sizing
 
 | resource | requirement | why |
