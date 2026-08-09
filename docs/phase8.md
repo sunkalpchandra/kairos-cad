@@ -149,6 +149,33 @@ The framing deliberately does not change between steps. An early step is
 genuinely smaller than the finished part, and re-normalizing each one would
 hide that by blowing every intermediate up to fill the viewport.
 
+## Rollouts: what the policies actually did
+
+The leaderboard says bc scores 0.458. It does not say what bc *did*, and on
+these tasks the answer is not subtle once it is visible: on
+`build-design_000000` it opens a sketch, draws five lines, and then emits PAD
+for the remaining thirty-four steps while the environment rejects every one.
+
+That needed a change to the runner. The trace recorded operation names, so it
+could say the policy emitted PAD thirty-four times; it could not say the
+environment refused thirty-four of them, which is the difference between a
+policy building badly and a policy not building at all. `TaskResult` now
+carries `accepted` and `rejections`, one entry per operation.
+
+The workspace draws each episode as a strip, one cell per action, accepted or
+rejected, with the milestones reached beneath. One BUILD task per family: BUILD
+starts from nothing, so the whole sequence belongs to the policy, where a
+COMPLETE task is mostly replayed expert prefix and would credit the policy with
+actions it never chose.
+
+Rejection is encoded in cell height as well as colour, so the strip still reads
+without separating red from green.
+
+A trace written before this change has no per-step record. The page says so
+rather than drawing the cells as accepted -- an empty list rendered as a clean
+run would show a policy jamming as a policy succeeding, which is the same
+class of silent failure the rest of this document is about.
+
 ## Verifying the render
 
 Lint cannot see any of the above. Screenshot it:
