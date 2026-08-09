@@ -1,0 +1,515 @@
+/* KAIROS review station.
+ *
+ * The visual language is a CAD workstation, because that is what the subject
+ * is: a viewport you orbit, a browser tree, an inspector, a status bar reading
+ * out units. Monospace carries the labels and every measurement, the way a CAD
+ * status bar does; the sans face is reserved for prose.
+ *
+ * Dark is the primary theme (a viewport is dark), but both are defined at token
+ * level so the page holds on either host ground.
+ */
+
+:root {
+  /* Drafting-paper light. Neutrals carry a slight cool bias toward the accent
+     so they read as chosen rather than inherited mid-grey. */
+  --ground: #eceef1;
+  --panel: #f7f8fa;
+  --panel-raised: #ffffff;
+  --viewport: #20262f;
+  --rule: #d3d8e0;
+  --rule-strong: #b3bcc9;
+  --ink: #171c24;
+  --ink-muted: #5d6879;
+  --ink-faint: #8b95a5;
+  --accent: #17707a;
+  --accent-soft: rgba(23, 112, 122, 0.12);
+  --pass: #2f7d52;
+  --warn: #96661a;
+  --fail: #a83c34;
+
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --rail: 232px;
+  --inspector: 320px;
+  --bar: 38px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0e1116;
+    --panel: #141920;
+    --panel-raised: #1a212a;
+    --viewport: #0b0e13;
+    --rule: #242c38;
+    --rule-strong: #333e4d;
+    --ink: #dee4ed;
+    --ink-muted: #808c9e;
+    --ink-faint: #5a6474;
+    --accent: #3fb8c4;
+    --accent-soft: rgba(63, 184, 196, 0.14);
+    --pass: #5db98a;
+    --warn: #d9a441;
+    --fail: #dc6b62;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0e1116;
+  --panel: #141920;
+  --panel-raised: #1a212a;
+  --viewport: #0b0e13;
+  --rule: #242c38;
+  --rule-strong: #333e4d;
+  --ink: #dee4ed;
+  --ink-muted: #808c9e;
+  --ink-faint: #5a6474;
+  --accent: #3fb8c4;
+  --accent-soft: rgba(63, 184, 196, 0.14);
+  --pass: #5db98a;
+  --warn: #d9a441;
+  --fail: #dc6b62;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Every label, readout and measurement is mono, as on an instrument. */
+.mono, .label, .readout, td.num, .tree-id, .chip, .stat-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ---------------------------------------------------------------- shell */
+
+.shell {
+  display: grid;
+  grid-template-rows: var(--bar) 1fr var(--bar);
+  grid-template-columns: var(--rail) 1fr var(--inspector);
+  grid-template-areas:
+    "titlebar titlebar titlebar"
+    "rail     stage    inspector"
+    "status   status   status";
+  height: 100vh;
+}
+
+.titlebar {
+  grid-area: titlebar;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--rule);
+}
+
+.mark {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-weight: 620;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.mark .glyph { color: var(--accent); font-family: var(--mono); letter-spacing: 0; }
+.mark .sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  text-transform: none;
+}
+
+.viewtabs { display: flex; gap: 1px; margin-left: 10px; }
+.viewtabs button {
+  font: inherit;
+  font-size: 12px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: var(--ink-muted);
+  padding: 4px 11px;
+  cursor: pointer;
+}
+.viewtabs button:hover { color: var(--ink); background: var(--panel-raised); }
+.viewtabs button[aria-selected="true"] {
+  color: var(--ink);
+  background: var(--panel-raised);
+  border-color: var(--rule-strong);
+}
+.viewtabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.titlebar .spacer { margin-left: auto; }
+.titlebar .meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  display: flex;
+  gap: 14px;
+}
+.titlebar .meta b { color: var(--ink-muted); font-weight: 500; }
+
+/* ---------------------------------------------------------------- rail */
+
+.rail {
+  grid-area: rail;
+  background: var(--panel);
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.rail-head {
+  padding: 10px 12px 7px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.family {
+  border-bottom: 1px solid var(--rule);
+}
+.family > .family-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+  background: color-mix(in srgb, var(--panel-raised) 55%, transparent);
+}
+.family > .family-name .count {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: 10px;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-left: 2px solid transparent;
+  color: var(--ink-muted);
+  padding: 5px 12px 5px 22px;
+  cursor: pointer;
+  font: inherit;
+}
+.tree-item:hover { background: var(--panel-raised); color: var(--ink); }
+.tree-item[aria-current="true"] {
+  background: var(--accent-soft);
+  border-left-color: var(--accent);
+  color: var(--ink);
+}
+.tree-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tree-id { font-size: 11px; }
+.tree-item .dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--pass); flex: none;
+}
+.tree-item .dot.partial { background: var(--warn); }
+
+/* ---------------------------------------------------------------- stage */
+
+.stage { grid-area: stage; position: relative; background: var(--viewport); overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.stage canvas:active { cursor: grabbing; }
+
+.hud {
+  position: absolute;
+  pointer-events: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.06em;
+}
+.hud.tl { top: 12px; left: 14px; }
+.hud.tr { top: 12px; right: 14px; text-align: right; }
+.hud.bl { bottom: 12px; left: 14px; display: flex; align-items: center; gap: 8px; }
+
+/* A scale bar, as on a drawing sheet: the viewport is metric and says so. */
+.scalebar { display: flex; align-items: center; gap: 6px; }
+.scalebar .bar {
+  width: 68px; height: 5px;
+  border: 1px solid var(--ink-faint);
+  border-top: 0;
+}
+
+.viewport-tools {
+  position: absolute;
+  top: 12px; right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.viewport-tools button {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  color: var(--ink-muted);
+  padding: 4px 8px;
+  cursor: pointer;
+  min-width: 42px;
+}
+.viewport-tools button:hover { color: var(--ink); border-color: var(--accent); }
+.viewport-tools button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.viewer-error {
+  position: absolute; inset: auto 14px 14px 14px;
+  background: var(--panel);
+  border: 1px solid var(--fail);
+  border-left-width: 2px;
+  padding: 9px 12px;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- inspector */
+
+.inspector {
+  grid-area: inspector;
+  background: var(--panel);
+  border-left: 1px solid var(--rule);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel { border-bottom: 1px solid var(--rule); padding: 12px 14px; }
+.panel > .label { display: block; margin-bottom: 9px; }
+
+.requirement {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink);
+  border-left: 2px solid var(--accent);
+  padding-left: 10px;
+}
+
+.props { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 12px; }
+.props dt { color: var(--ink-muted); }
+.props dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink);
+}
+
+.check {
+  display: grid;
+  grid-template-columns: 8px 1fr;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 11.5px;
+}
+.check:first-of-type { border-top: 0; }
+.check .flag {
+  width: 8px; height: 8px; margin-top: 4px; flex: none;
+  background: var(--ink-faint);
+}
+.check .flag.satisfied { background: var(--pass); }
+.check .flag.violated { background: var(--fail); }
+.check .flag.unmeasured { background: var(--warn); }
+.check .kind { font-family: var(--mono); font-size: 11px; color: var(--ink); }
+.check .detail { color: var(--ink-muted); font-size: 11px; margin-top: 1px; }
+
+.ops { display: flex; flex-wrap: wrap; gap: 2px; }
+.ops span {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+  padding: 2px 4px;
+  border: 1px solid var(--rule);
+  color: var(--ink-muted);
+  background: var(--panel-raised);
+}
+.ops span.terminal { border-color: var(--accent); color: var(--accent); }
+
+/* The title block every drawing sheet carries. Structural, not decorative:
+   it holds the identifying fields a part is filed under. */
+.titleblock {
+  margin-top: auto;
+  border-top: 1px solid var(--rule-strong);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.titleblock div {
+  padding: 7px 10px;
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.titleblock div:nth-child(2n) { border-right: 0; }
+.titleblock .k { color: var(--ink-faint); letter-spacing: 0.07em; display: block; }
+.titleblock .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- status */
+
+.statusbar {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+  background: var(--panel);
+  border-top: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  letter-spacing: 0.05em;
+}
+.statusbar .ok { color: var(--pass); }
+.statusbar .spacer { margin-left: auto; }
+
+/* ---------------------------------------------------------------- data views */
+
+.sheet {
+  grid-area: stage;
+  background: var(--ground);
+  overflow-y: auto;
+  padding: 22px 26px 40px;
+}
+.sheet[hidden], .stage[hidden], .rail[hidden], .inspector[hidden] { display: none; }
+
+.sheet h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 3px;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.sheet .note {
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  margin: 0 0 16px;
+  max-width: 68ch;
+  line-height: 1.55;
+}
+.sheet section + section { margin-top: 30px; }
+
+.statgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  margin-bottom: 22px;
+}
+.stat { background: var(--panel); padding: 11px 13px; }
+.stat .stat-value {
+  font-size: 21px;
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.stat .stat-value.good { color: var(--pass); }
+.stat .label { margin-top: 4px; display: block; }
+.stat .stat-sub { font-size: 10.5px; color: var(--ink-faint); margin-top: 2px; font-family: var(--mono); }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--rule); background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+thead th {
+  text-align: right;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--rule-strong);
+  white-space: nowrap;
+}
+thead th:first-child { text-align: left; }
+tbody td {
+  text-align: right;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--rule);
+  font-variant-numeric: tabular-nums;
+}
+tbody td:first-child { text-align: left; font-family: var(--mono); font-size: 11.5px; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr.ceiling td { background: var(--accent-soft); }
+tbody tr.ceiling td:first-child::after {
+  content: "CEILING";
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-left: 8px;
+}
+
+/* A bar that reads as measurement, drawn to the row it sits in. */
+.meter { display: block; height: 3px; background: var(--rule-strong); position: relative; }
+.meter i { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.meter.muted i { background: var(--ink-faint); }
+
+.verdict { font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; }
+.verdict.yes { color: var(--pass); }
+.verdict.no { color: var(--warn); }
+
+.chart {
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  padding: 14px;
+}
+.chart svg { display: block; width: 100%; max-width: 780px; height: auto; overflow: visible; }
+.chart .grid { stroke: var(--rule); stroke-width: 1; stroke-dasharray: 2 4; }
+.chart .axis { stroke: var(--rule-strong); stroke-width: 1; }
+.chart text { fill: var(--ink-faint); font-size: 10px; font-family: var(--mono); }
+
+.legend { display: flex; gap: 15px; flex-wrap: wrap; font-size: 11px; color: var(--ink-muted); margin-top: 10px; font-family: var(--mono); }
+.legend span { display: flex; align-items: center; gap: 6px; }
+.legend i { width: 13px; height: 2px; display: inline-block; }
+
+.callout {
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--warn);
+  background: var(--panel);
+  padding: 11px 14px;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  max-width: 72ch;
+  line-height: 1.55;
+  margin-top: 16px;
+}
+.callout strong { color: var(--ink); font-weight: 600; }
+
+.empty { color: var(--ink-faint); font-style: italic; padding: 18px 0; font-size: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 1000px) {
+  .shell { grid-template-columns: 1fr; grid-template-areas: "titlebar" "stage" "status"; }
+  .rail, .inspector { display: none; }
+}

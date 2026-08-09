@@ -77,6 +77,22 @@ void main() {
   gl_FragColor = vec4(color, 1.0);
 }`;
 
+const LINE_VERTEX_SHADER = `
+attribute vec3 aPosition;
+attribute vec3 aColor;
+uniform mat4 uModelView;
+uniform mat4 uProjection;
+varying vec3 vColor;
+void main() {
+  vColor = aColor;
+  gl_Position = uProjection * uModelView * vec4(aPosition, 1.0);
+}`;
+
+const LINE_FRAGMENT_SHADER = `
+precision mediump float;
+varying vec3 vColor;
+void main() { gl_FragColor = vec4(vColor, 1.0); }`;
+
 function compile(gl, type, source) {
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -87,10 +103,10 @@ function compile(gl, type, source) {
   return shader;
 }
 
-function linkProgram(gl) {
+function linkProgram(gl, vertexSource, fragmentSource) {
   const program = gl.createProgram();
-  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, VERTEX_SHADER));
-  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER));
+  gl.attachShader(program, compile(gl, gl.VERTEX_SHADER, vertexSource || VERTEX_SHADER));
+  gl.attachShader(program, compile(gl, gl.FRAGMENT_SHADER, fragmentSource || FRAGMENT_SHADER));
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     throw new Error('program link failed: ' + gl.getProgramInfoLog(program));
@@ -198,6 +214,33 @@ function decodeMesh(mesh) {
   };
 }
 
+/** Ground grid and origin axes, in the same normalized space as the part.
+ *
+ * The part is scaled into a roughly 2-unit box before drawing, so a grid built
+ * here reads the same whether the part is a 6 mm spacer or a 200 mm rail. That
+ * is what makes one camera distance work for every design.
+ */
+function buildGrid(divisions, half, faint, axisX, axisY) {
+  const positions = [];
+  const colors = [];
+  const step = (half * 2) / divisions;
+
+  const push = (x1, y1, z1, x2, y2, z2, c) => {
+    positions.push(x1, y1, z1, x2, y2, z2);
+    colors.push(c[0], c[1], c[2], c[0], c[1], c[2]);
+  };
+
+  for (let i = 0; i <= divisions; i++) {
+    const t = -half + i * step;
+    // The two lines through the origin are the axes and get their own colour,
+    // the way a CAD viewport marks X and Y.
+    const onAxis = Math.abs(t) < step * 0.5;
+    push(-half, t, 0, half, t, 0, onAxis ? axisX : faint);
+    push(t, -half, 0, t, half, 0, onAxis ? axisY : faint);
+  }
+  return { positions: new Float32Array(positions), colors: new Float32Array(colors) };
+}
+
 class Viewer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -212,6 +255,7 @@ class Viewer {
     // compiled, or the directive fails to link.
     this.derivatives = !!gl.getExtension('OES_standard_derivatives');
     this.program = linkProgram(gl);
+    this.lineProgram = linkProgram(gl, LINE_VERTEX_SHADER, LINE_FRAGMENT_SHADER);
     this.attributes = {
       position: gl.getAttribLocation(this.program, 'aPosition'),
       normal: gl.getAttribLocation(this.program, 'aNormal'),
@@ -231,7 +275,22 @@ class Viewer {
     };
     this.mesh = null;
     this.color = [0.42, 0.58, 0.86];
-    this.background = [0.07, 0.08, 0.11];
+    this.background = [0.043, 0.055, 0.075];
+    this.showGrid = true;
+    this._grid = buildGrid(20, 2.0, [0.16, 0.19, 0.24], [0.30, 0.42, 0.44], [0.26, 0.34, 0.40]);
+    this.lineAttributes = {
+      position: gl.getAttribLocation(this.lineProgram, "aPosition"),
+      color: gl.getAttribLocation(this.lineProgram, "aColor"),
+    };
+    this.lineUniforms = {
+      modelView: gl.getUniformLocation(this.lineProgram, "uModelView"),
+      projection: gl.getUniformLocation(this.lineProgram, "uProjection"),
+    };
+    this.gridBuffers = { position: gl.createBuffer(), color: gl.createBuffer() };
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffers.position);
+    gl.bufferData(gl.ARRAY_BUFFER, this._grid.positions, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffers.color);
+    gl.bufferData(gl.ARRAY_BUFFER, this._grid.colors, gl.STATIC_DRAW);
     this.camera = { yaw: -0.9, pitch: 0.5, distance: 3.0 };
     this.center = [0, 0, 0];
     this.scale = 1;
@@ -241,6 +300,30 @@ class Viewer {
     // than culling, so keep both sides drawn.
     gl.disable(gl.CULL_FACE);
     this._bindControls();
+  }
+
+  /** Standard CAD view presets, as yaw/pitch on the orbit camera. */
+  setView(name) {
+    const views = {
+      iso: [-0.9, 0.5],
+      front: [-Math.PI / 2, 0.0],
+      right: [0.0, 0.0],
+      top: [-Math.PI / 2, Math.PI / 2 - 0.02],
+    };
+    const view = views[name] || views.iso;
+    this.camera.yaw = view[0];
+    this.camera.pitch = view[1];
+    this.render();
+  }
+
+  toggleGrid() {
+    this.showGrid = !this.showGrid;
+    this.render();
+  }
+
+  /** Millimetres spanned by the longest edge of the part's bounding box. */
+  extentMm() {
+    return this.mesh ? 2.0 / this.scale : 0;
   }
 
   setColor(hex) {
@@ -294,7 +377,6 @@ class Viewer {
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(this.background[0], this.background[1], this.background[2], 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    if (!this.mesh) return;
 
     const { yaw, pitch, distance } = this.camera;
     const eye = [
@@ -316,6 +398,9 @@ class Viewer {
     const aspect = this.canvas.width / Math.max(1, this.canvas.height);
     const projection = perspective(Math.PI / 4, aspect, 0.05, 100);
 
+    if (this.showGrid) this._drawGrid(view, projection);
+    if (!this.mesh) return;
+
     gl.useProgram(this.program);
     gl.uniformMatrix4fv(this.uniforms.modelView, false, modelView);
     gl.uniformMatrix4fv(this.uniforms.projection, false, projection);
@@ -331,6 +416,23 @@ class Viewer {
     gl.vertexAttribPointer(this.attributes.normal, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.index);
     gl.drawElements(gl.TRIANGLES, this.mesh.count, this.indexType, 0);
+  }
+
+  /** Ground grid, drawn in the part's own normalized space. */
+  _drawGrid(view, projection) {
+    const gl = this.gl;
+    gl.useProgram(this.lineProgram);
+    gl.uniformMatrix4fv(this.lineUniforms.modelView, false, view);
+    gl.uniformMatrix4fv(this.lineUniforms.projection, false, projection);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffers.position);
+    gl.enableVertexAttribArray(this.lineAttributes.position);
+    gl.vertexAttribPointer(this.lineAttributes.position, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffers.color);
+    gl.enableVertexAttribArray(this.lineAttributes.color);
+    gl.vertexAttribPointer(this.lineAttributes.color, 3, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.LINES, 0, this._grid.positions.length / 3);
+    gl.disableVertexAttribArray(this.lineAttributes.color);
   }
 
   _bindControls() {
