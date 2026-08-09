@@ -306,3 +306,30 @@ four decimal places:
 Progress fell slightly while validity rose, which is what a changed sampling
 distribution does rather than an improvement: `legal-random` now spends those
 steps on other operations. Both harness invariants still pass.
+
+## The ablations do not separate
+
+The ablation table has always shown point deltas, and this document has
+retracted a claim built on one twice: two seeds gave opposite signs on the
+requirement ablation. Paired bootstrap intervals, each condition against the
+intact run it perturbs, over the same 76 tasks:
+
+| condition | difference | 95% interval | separates |
+| --- | --- | --- | --- |
+| `bc+shuffled-req` | -0.036 | [-0.091, +0.014] | no |
+| `bc+blank-req` | +0.053 | [-0.021, +0.125] | no |
+| `bc+no-mask` | -0.009 | [-0.018, -0.001] | yes |
+
+**Neither requirement ablation separates from zero.** Corrupting the
+requirement and blanking it both leave an interval spanning zero, so on this
+suite the benchmark cannot detect that the policy reads the text at all. That
+is a statement about what the suite can measure, not a proof that the policy
+ignores the requirement.
+
+The mask ablation does separate, by a small margin: some of the policy's
+action legality belongs to the environment rather than to the policy.
+
+Intervals across multiple training seeds are still not done. These are one
+run's tasks resampled, which answers whether the difference survives the
+choice of tasks and not whether it survives the choice of seed -- and the
+seed is exactly what the two retracted estimates disagreed about.
