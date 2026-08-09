@@ -45,11 +45,14 @@ make dashboard-studio && git add docs && git commit -m "rebuild station" && git 
 
 ## Live sandbox (container)
 
-The awkward part is that the two halves cannot share an interpreter. FreeCAD
-ships its own Python and cannot import torch; the learning stack needs torch
-and cannot import FreeCAD. They communicate over the newline-delimited JSON
-bridge in `kairos/rl/`, with the CAD side running as `env_server` under
-FreeCAD's interpreter.
+The two-interpreter split that shapes this project turns out to be a macOS
+artefact rather than a universal one. There, `FreeCAD.app` bundles its own
+Python which cannot import torch, so the CAD half runs as `env_server` behind
+the JSON bridge in `kairos/rl/` and the trainer spawns it.
+
+Debian's `freecad-python3` installs into the *system* Python, so in a container
+both stacks can share one interpreter. The bridge still works unchanged and is
+what the benchmark and PPO drive; it is simply no longer forced by packaging.
 
 `deploy/Dockerfile` puts both in one image on `freecad-python3`, which provides
 the headless `FreeCADCmd` binary. No X server: nothing in the agent path opens a
@@ -64,12 +67,24 @@ docker compose -f deploy/docker-compose.yml run --rm benchmark
 The build ends with an import check on both interpreters, so an image that
 would start and then fail to import FreeCAD fails at build time instead.
 
-**Not yet built.** The Dockerfile is written against the two-interpreter
-constraint verified on the development machine and Debian's `freecad-python3`
-packaging, but no image has been produced from it: the Docker daemon was not
-running when it was authored. Treat the first build as the test. The most
-likely thing to need adjusting is the `freecadcmd` binary name, which differs
-between Debian's `freecad-python3` and upstream AppImage builds.
+**Not yet built as an image.** No `docker build` has run against this file: the
+Docker daemon was not available when it was written. Treat the first build as
+the test.
+
+Two of its assumptions are now exercised on every push, because the CI `cad`
+job runs in the same `debian:bookworm-slim` base and installs the same package:
+that `freecad-python3` exists there, and that it is importable. CI had to learn
+the second one the hard way. The package does **not** land on the default
+`sys.path`, so anything importing FreeCAD needs the module directory on
+`PYTHONPATH`:
+
+```dockerfile
+ENV PYTHONPATH=/app:/usr/lib/freecad-python3/lib
+```
+
+Read the real path from `dpkg -L freecad-python3 | grep FreeCAD.so` rather than
+trusting that line; it has moved between releases, which is why CI discovers it
+instead of hardcoding it.
 
 ### Sizing
 
