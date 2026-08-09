@@ -56,8 +56,17 @@ def _episodes(runs: Path, per_family: int) -> list[dict]:
     return [row for task_id in sorted(keep) for row in rows[task_id]]
 
 
-def export_episode(row: dict, out_dir: Path) -> bool:
-    """Replay one episode's accepted actions and export the solid it left."""
+def export_episode(
+    row: dict, out_dir: Path, tolerance: float = 0.01
+) -> tuple[bool, str, float]:
+    """Replay one episode's accepted actions and export the solid it left.
+
+    Returns ``(wrote, complaint, drift)``. The rebuild happens outside the environment
+    that scored the episode, so a discrepancy between the two would show up as
+    a wrong part rather than an error. The trace recorded the mass the runner
+    measured; this checks the rebuilt solid against it, which is the one
+    number that catches a replay that silently diverged.
+    """
     from kairos.actions.executor import ActionExecutor
     from kairos.actions.schema import Action
     from kairos.cad.engine import CADEngine
@@ -65,7 +74,7 @@ def export_episode(row: dict, out_dir: Path) -> bool:
     actions = row.get("actions") or []
     accepted = row.get("accepted") or []
     if not actions:
-        return False
+        return False, "", 0.0
 
     engine = CADEngine(f"rollout_{row['policy']}")
     try:
@@ -82,12 +91,22 @@ def export_episode(row: dict, out_dir: Path) -> bool:
             except Exception:
                 break
         if not engine.has_solid():
-            return False
+            return False, "", 0.0
+        complaint = ""
+        drift = 0.0
+        recorded = float(row.get("mass_g") or 0.0)
+        if recorded > 0:
+            rebuilt = float(engine.measure_mass())
+            drift = abs(rebuilt - recorded) / recorded
+            if drift > tolerance:
+                complaint = (f"{row['task_id']} {row['policy']}: rebuilt mass "
+                             f"{rebuilt:.3f} g vs {recorded:.3f} g recorded "
+                             f"({drift * 100:.1f}% off)")
         out_dir.mkdir(parents=True, exist_ok=True)
         engine.export_stl(out_dir / f"{row['policy']}.stl")
-        return True
+        return True, complaint, drift
     except Exception:
-        return False
+        return False, "", 0.0
     finally:
         engine.close()
 
@@ -96,6 +115,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runs", type=Path, default=Path("runs/benchmark_core"))
     parser.add_argument("--per-family", type=int, default=1)
+    parser.add_argument("--tolerance", type=float, default=0.01,
+                        help="allowed relative drift from the recorded mass")
     args = parser.parse_args()
 
     from kairos.cad.backend import freecad_available
@@ -116,12 +137,31 @@ def main() -> int:
 
     root = args.runs / "rollout_meshes"
     built = 0
+    complaints = []
+    worst = 0.0
     for row in episodes:
-        if export_episode(row, root / row["task_id"]):
-            built += 1
+        wrote, complaint, drift = export_episode(
+            row, root / row["task_id"], args.tolerance
+        )
+        built += int(wrote)
+        worst = max(worst, drift)
+        if complaint:
+            complaints.append(complaint)
+
     # Say what did not build as well as what did: a policy that never made a
     # solid is a result, not a gap in the export.
     print(f"{built} of {len(episodes)} episodes left a solid; wrote {root}")
+    if complaints:
+        print(f"\n{len(complaints)} rebuilt solids disagree with the recorded mass:",
+              file=sys.stderr)
+        for line in complaints:
+            print(f"  {line}", file=sys.stderr)
+        print("\nThe replay diverged from the episode it is meant to reproduce.",
+              file=sys.stderr)
+        return 1
+    # The worst drift, not just that it passed: a threshold with no number
+    # behind it hides a check that is drifting toward its own limit.
+    print(f"every rebuilt solid matches its recorded mass; worst drift {worst:.2%}")
     return 0
 
 

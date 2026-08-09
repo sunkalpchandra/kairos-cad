@@ -193,6 +193,14 @@ than at the end of what the policy actually built.
 did not, because a policy that never made a solid is a result rather than a
 gap in the export.
 
+The rebuild happens outside the environment that scored the episode, so a
+replay that diverged would show as a wrong part rather than an error. The
+trace records the mass the runner measured, so the export checks every rebuilt
+solid against it and exits non-zero on a mismatch. Worst drift across the 20
+solids is **0.00%**: the replay reproduces the episodes exactly. The number is
+printed rather than a bare pass, since a threshold with nothing behind it hides
+a check drifting toward its own limit.
+
 On `build-design_000006` the expert builds a base plate, a wall, a triangular
 rib and two holes. bc builds the plate and the wall and nothing else, then
 jams for the remaining 31 steps. Both viewers share a camera and the expert's
@@ -237,10 +245,6 @@ Software rendering (swiftshader) is enough to judge shading, layout and colour.
   no radius. It snaps to triangle corners, which on these parts are the model
   corners, but on a curved face that is a tessellation vertex and not a
   feature.
-- **Rollout geometry is only as good as the replay.** The solid is rebuilt
-  outside the environment that scored the episode, so a discrepancy between
-  the two would show as a wrong part rather than an error. Nothing currently
-  cross-checks the rebuilt mass against the mass the runner recorded.
 - **16 of 24 designs have no step meshes.** Their timelines highlight a node
   and nothing else, exactly as before. The build report prints the scrubbable
   count so a page built without `build_steps.py` says so.
