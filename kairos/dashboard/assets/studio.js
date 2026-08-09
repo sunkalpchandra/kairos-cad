@@ -413,6 +413,79 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** Every task against every policy, un-averaged.
+ *
+ * Shaded by milestones reached rather than success: success is 0.000 for three
+ * of the six policies, so a success matrix would be one colour and would say
+ * nothing about where they differ.
+ */
+function renderMatrix() {
+  const data = DATA.matrix || {};
+  const tasks = data.tasks || [];
+  const target = el('matrix');
+  if (!tasks.length || !(data.policies || []).length) {
+    target.innerHTML = '<p class="empty">No traces in this bundle.</p>';
+    return;
+  }
+  const total = data.milestones || 7;
+  const rows = data.policies.slice().sort((a, b) => {
+    const mean = (p) => (data.cells[p] || []).reduce((sum, v) => sum + (v || 0), 0);
+    return mean(b) - mean(a);
+  });
+
+  // A rule wherever the task kind changes, so BUILD and each COMPLETE-k band
+  // is visible without a label per column.
+  const breaks = new Set();
+  tasks.forEach((task, index) => {
+    if (index && task.kind !== tasks[index - 1].kind) breaks.add(index);
+  });
+
+  // Band labels across the top. Without them the strongest pattern in the
+  // grid -- immediate-finish scoring nothing on BUILD and well on COMPLETE --
+  // is a shape with nothing naming it.
+  const bands = [];
+  tasks.forEach((task, index) => {
+    const last = bands[bands.length - 1];
+    if (last && last.kind === task.kind) last.span += 1;
+    else bands.push({ kind: task.kind, span: 1, start: index });
+  });
+  // _bucket answers "1", "2", "4", "8" for COMPLETE tasks, which is the value
+  // of k and not a name. Naming it is what makes the band mean something.
+  const bandName = (kind) => (kind === 'build' ? 'BUILD' : `COMPLETE k=${kind}`);
+  const bandRow = bands.map((band) =>
+    `<span class="mband" style="grid-column: span ${band.span}"
+      title="${esc(bandName(band.kind))}, ${band.span} tasks">${esc(bandName(band.kind))}</span>`
+  ).join('');
+
+  const legend = Array.from({ length: total + 1 }, (_, m) =>
+    `<span class="swatch" style="--fill:${(m / total).toFixed(3)}"></span>`).join('');
+
+  target.innerHTML = `
+    <div class="matrix-grid" style="--cols:${tasks.length}">
+      <div></div>
+      <div class="mbands" style="--cols:${tasks.length}">${bandRow}</div>
+      ${rows.map((policy) => {
+        const column = data.cells[policy] || [];
+        const full = column.filter((v) => v === total).length;
+        return `
+          <div class="mrow-name">${esc(policy)}<span class="mrow-count">${full}/${tasks.length}</span></div>
+          <div class="mrow">${tasks.map((task, index) => {
+            const value = column[index];
+            const cls = ['mcell'];
+            if (breaks.has(index)) cls.push('band');
+            if (value === null || value === undefined) return `<span class="${cls.join(' ')} absent" title="${esc(task.id)}: not attempted"></span>`;
+            return `<span class="${cls.join(' ')}" style="--fill:${(value / total).toFixed(3)}"
+              title="${esc(task.id)} (${esc(task.family)}): ${value}/${total} milestones"></span>`;
+          }).join('')}</div>`;
+      }).join('')}
+    </div>
+    <div class="matrix-legend">
+      <span>0 milestones</span>${legend}<span>${total}</span>
+      <span class="spacer"></span>
+      <span>${tasks.length} tasks, ordered ${esc(tasks[0].kind)} first</span>
+    </div>`;
+}
+
 /* ---------------------------------------------------------------- rollouts */
 
 let rolloutTask = 0;
@@ -572,7 +645,8 @@ function renderRollouts() {
   body.querySelectorAll('.track').forEach((track) => {
     track.addEventListener('click', () => {
       rolloutPolicy = track.dataset.policy;
-      renderRollouts();
+      renderMatrix();
+  renderRollouts();
     });
   });
   showRolloutSolids(task);
@@ -1112,6 +1186,7 @@ function init() {
   renderComparisons();
   renderTraining();
   renderAblations();
+  renderMatrix();
   renderRollouts();
   el('cmd-rollout-prev').addEventListener('click', () => { rolloutTask -= 1; renderRollouts(); });
   el('cmd-rollout-next').addEventListener('click', () => { rolloutTask += 1; renderRollouts(); });

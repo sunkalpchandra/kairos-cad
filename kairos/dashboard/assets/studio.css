@@ -526,6 +526,53 @@ svg.icon {
 .titleblock .k { color: var(--ink-faint); letter-spacing: 0.08em; display: block; }
 .titleblock .v { color: var(--ink); font-variant-numeric: tabular-nums; }
 
+/* ----------------------------------------------------------- task matrix */
+
+.matrix { border: 1px solid var(--rule); background: var(--chrome); padding: 12px 13px; }
+.matrix-grid {
+  display: grid; grid-template-columns: auto minmax(0, 1fr);
+  align-items: center; gap: 3px 12px;
+}
+.mrow-name {
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink); white-space: nowrap;
+}
+.mrow-count { color: var(--ink-faint); font-size: 9.5px; }
+.mrow {
+  display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: 1px; height: 17px;
+}
+/* One shade per milestone count, mixed over the sunken ground so a cell reads
+   as a fraction of the whole rather than as a colour of its own. */
+.mcell {
+  background: color-mix(in srgb, var(--pass) calc(var(--fill) * 100%), var(--sunken));
+  border-radius: 1px;
+}
+.mcell.absent { background: repeating-linear-gradient(45deg, var(--sunken), var(--sunken) 2px, var(--chrome-2) 2px, var(--chrome-2) 4px); }
+.mcell.band { box-shadow: inset 2px 0 0 var(--rule-strong); }
+
+.mbands {
+  display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: 1px; margin-bottom: 2px;
+}
+.mband {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.06em;
+  color: var(--ink-faint); text-transform: uppercase;
+  border-bottom: 1px solid var(--rule-strong);
+  padding-bottom: 2px; overflow: hidden; white-space: nowrap;
+}
+.mband + .mband { border-left: 1px solid var(--rule-strong); padding-left: 4px; }
+
+.matrix-legend {
+  display: flex; align-items: center; gap: 5px; margin-top: 10px;
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint);
+}
+.matrix-legend .swatch {
+  width: 13px; height: 11px; border-radius: 1px;
+  background: color-mix(in srgb, var(--pass) calc(var(--fill) * 100%), var(--sunken));
+}
+.matrix-legend .spacer { margin-left: auto; }
+
 /* --------------------------------------------------- requirement parse */
 
 .parse-row {

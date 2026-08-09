@@ -16,6 +16,7 @@ from kairos.dashboard.bundle import (
     _normalize_scores,
     collect_ablations,
     collect_designs,
+    collect_matrix,
     collect_rollouts,
     collect_training,
 )
@@ -308,3 +309,41 @@ def test_a_rebuilt_solid_is_attached_to_its_own_policy(tmp_path):
     episodes = {e["policy"]: e for e in collect_rollouts(tmp_path)["tasks"][0]["episodes"]}
     assert episodes["ppo"]["mesh"]["triangle_count"] == 1
     assert episodes["bc"]["mesh"] is None
+
+
+# --------------------------------------------------------------------- matrix
+
+
+def test_matrix_columns_line_up_across_policies(tmp_path):
+    """Every row indexes the same task list. A policy missing a task must leave
+    a hole in place, or every cell after it describes the wrong task."""
+    _traces(tmp_path, "aaa", [
+        _episode(task_id="build-design_000000"),
+        _episode(task_id="build-design_000001"),
+    ])
+    _traces(tmp_path, "zzz", [_episode(task_id="build-design_000001")])
+
+    matrix = collect_matrix(tmp_path)
+    assert [t["id"] for t in matrix["tasks"]] == [
+        "build-design_000000", "build-design_000001"]
+    assert matrix["cells"]["zzz"][0] is None
+    assert matrix["cells"]["zzz"][1] is not None
+    assert len(matrix["cells"]["aaa"]) == len(matrix["tasks"])
+
+
+def test_an_aborted_episode_is_a_hole_not_a_zero(tmp_path):
+    """A task the harness could not run is not a task the policy failed."""
+    _traces(tmp_path, "bc", [_episode(aborted=True)])
+    assert collect_matrix(tmp_path)["cells"]["bc"] == [None]
+
+
+def test_matrix_counts_milestones_not_success(tmp_path):
+    """Success is 0.000 for three of six policies; a success matrix would be
+    one colour and would say nothing about where they differ."""
+    _traces(tmp_path, "bc", [_episode(drew_geometry=True, made_a_solid=True,
+                                      finished_successfully=False)])
+    assert collect_matrix(tmp_path)["cells"]["bc"] == [3]
+
+
+def test_matrix_without_traces_degrades_to_empty(tmp_path):
+    assert collect_matrix(tmp_path) == {"tasks": [], "policies": [], "cells": {}}

@@ -300,6 +300,49 @@ def collect_rollouts(runs: str | Path, per_family: int = 1) -> dict[str, Any]:
     return {"tasks": out, "milestones": list(MILESTONES)}
 
 
+def collect_matrix(runs: str | Path) -> dict[str, Any]:
+    """Every task against every policy, as milestones reached out of seven.
+
+    The leaderboard is a mean over 76 tasks. Two policies with the same mean
+    can be solving disjoint halves of the suite, and nothing on the page could
+    tell them apart. This is the un-averaged version of the same number.
+
+    Milestones rather than success: success is 0 for three of six policies, so
+    a success matrix is mostly one colour and says nothing about where the
+    difference is.
+    """
+    traces = _traces_by_policy(Path(runs))
+    if not traces:
+        return {"tasks": [], "policies": [], "cells": {}}
+
+    tasks: dict[str, str] = {}
+    for rows in traces.values():
+        for row in rows:
+            tasks.setdefault(row["task_id"], row.get("family") or "unknown")
+
+    order = sorted(tasks)
+    cells: dict[str, list[int | None]] = {}
+    for policy, rows in traces.items():
+        by_task = {row["task_id"]: row for row in rows}
+        column = []
+        for task_id in order:
+            row = by_task.get(task_id)
+            if row is None or row.get("aborted"):
+                # A task a policy never attempted is not a task it failed.
+                column.append(None)
+                continue
+            column.append(sum(1 for m in MILESTONES if row.get(m)))
+        cells[policy] = column
+
+    return {
+        "tasks": [{"id": task_id, "family": tasks[task_id], "kind": _bucket(task_id)}
+                  for task_id in order],
+        "policies": sorted(cells),
+        "cells": cells,
+        "milestones": len(MILESTONES),
+    }
+
+
 def collect_comparisons(runs: str | Path) -> dict[str, Any]:
     """Recompute paired bootstrap intervals from the traces on disk.
 
@@ -476,6 +519,7 @@ def build_bundle(
         "benchmark": collect_benchmark(benchmark_runs),
         "comparisons": collect_comparisons(benchmark_runs),
         "rollouts": collect_rollouts(benchmark_runs),
+        "matrix": collect_matrix(benchmark_runs),
         "ablations": collect_ablations(ablation_runs),
         "training": collect_training(runs_root),
         "families": sorted({d["family"] for d in designs}),
