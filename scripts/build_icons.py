@@ -49,6 +49,7 @@ ICONS: dict[str, str] = {
     "i-edges": "box",
     "i-wire": "frame",
     "i-ortho": "square-dashed",
+    "i-bounds": "scan",
     "i-measure": "ruler",
     "i-props": "table-properties",
     "i-orbit": "orbit",

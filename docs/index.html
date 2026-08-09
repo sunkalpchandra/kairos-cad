@@ -994,6 +994,12 @@ tbody tr.ceiling td:first-child::after {
     <path d="m12 8 4.74-2.85" />
     <path d="M12 13.5V8" />
   </symbol>
+  <symbol id="i-bounds" viewBox="0 0 24 24">
+    <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+    <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+    <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+    <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+  </symbol>
   <symbol id="i-chamfer" viewBox="0 0 24 24">
     <path d="M13.73 4a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
   </symbol>
@@ -1278,6 +1284,10 @@ tbody tr.ceiling td:first-child::after {
       <div class="commands">
         <button class="cmd" id="cmd-grid" aria-pressed="true" title="Ground grid">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-grid"></use></svg>Grid
+        </button>
+        <button class="cmd" id="cmd-bounds" aria-pressed="false"
+                title="Bounding box (B)">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-bounds"></use></svg>Bounds
         </button>
         <button class="cmd" id="cmd-ortho" aria-pressed="false"
                 title="Parallel projection (P)">
@@ -1651,6 +1661,7 @@ tbody tr.ceiling td:first-child::after {
         <dt>E</dt><dd>export STL</dd>
         <dt>M</dt><dd>measure between two points</dd>
         <dt>P</dt><dd>parallel projection</dd>
+        <dt>B</dt><dd>bounding box</dd>
         <dt>Space</dt><dd>play the build</dd>
         <dt>, .</dt><dd>roll back / forward one feature</dd>
         <dt>/</dt><dd>filter parts</dd>
@@ -2075,6 +2086,7 @@ class Viewer {
       capNormal: gl.createBuffer(),
       edge: gl.createBuffer(),
       measure: gl.createBuffer(),
+      bounds: gl.createBuffer(),
     };
     this.mesh = null;
     this.color = [0.42, 0.58, 0.86];
@@ -2087,6 +2099,9 @@ class Viewer {
     //: object, and this viewport is for looking at parts before it is for
     //: measuring them.
     this.orthographic = false;
+    //: The bounding box as a cage. Off by default: it is an inspection aid,
+    //: not part of the part.
+    this.showBounds = false;
     //: Model edges over the shading, which is how a CAD viewport draws a part.
     this.showEdges = true;
     this.edgeTone = [0.10, 0.13, 0.18];
@@ -2396,7 +2411,44 @@ class Viewer {
     if ((this.showEdges || this.wireframe) && this.edgeCount) {
       this._drawEdges(modelView, projection, axis, where);
     }
+    if (this.showBounds) this._drawBounds(modelView, projection);
     if (this.measure.length) this._drawMeasure(modelView, projection);
+  }
+
+  /** The part's bounding box, as a wireframe cage in millimetres.
+   *
+   * The inspector reports the extents as three numbers. Drawn on the part they
+   * say which number is which axis, which no column of figures can.
+   */
+  _drawBounds(modelView, projection) {
+    const gl = this.gl;
+    if (!this.bounds) return;
+    const { min, max } = this.bounds;
+    const corner = (i) => [
+      i & 1 ? max[0] : min[0],
+      i & 2 ? max[1] : min[1],
+      i & 4 ? max[2] : min[2],
+    ];
+    // The twelve edges of a box: every pair of corners differing in one bit.
+    const line = [];
+    for (let a = 0; a < 8; a += 1) {
+      for (const bit of [1, 2, 4]) {
+        const b = a ^ bit;
+        if (b > a) line.push(...corner(a), ...corner(b));
+      }
+    }
+
+    gl.useProgram(this.lineProgram);
+    gl.uniform1i(this.lineUniforms.sectioning, 0);
+    gl.uniformMatrix4fv(this.lineUniforms.modelView, false, modelView);
+    gl.uniformMatrix4fv(this.lineUniforms.projection, false, projection);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.bounds);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(line), gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(this.lineAttributes.position);
+    gl.vertexAttribPointer(this.lineAttributes.position, 3, gl.FLOAT, false, 0, 0);
+    gl.disableVertexAttribArray(this.lineAttributes.color);
+    gl.vertexAttrib3fv(this.lineAttributes.color, this.measureTone);
+    gl.drawArrays(gl.LINES, 0, line.length / 3);
   }
 
   /** Model edges over the shaded solid.
@@ -4083,6 +4135,13 @@ function initViewer() {
     // an artifact of meshing, and drawing them buries the part in noise.
     { name: 'Wire', icon: 'i-wire', edges: true, wireframe: true },
   ];
+  const bounds = el('cmd-bounds');
+  bounds.addEventListener('click', () => {
+    viewer.showBounds = !viewer.showBounds;
+    bounds.setAttribute('aria-pressed', String(viewer.showBounds));
+    viewer.render();
+  });
+
   const ortho = el('cmd-ortho');
   ortho.addEventListener('click', () => {
     viewer.orthographic = !viewer.orthographic;
@@ -4432,6 +4491,7 @@ function initKeys() {
       case 'e': case 'E': press('cmd-export'); break;
       case 'm': case 'M': press('cmd-measure'); break;
       case 'p': case 'P': press('cmd-ortho'); break;
+      case 'b': case 'B': press('cmd-bounds'); break;
       case ' ': event.preventDefault(); playBuild(); break;
       case ',': stepBy(-1); break;
       case '.': stepBy(1); break;

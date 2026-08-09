@@ -1053,6 +1053,13 @@ function initViewer() {
     // an artifact of meshing, and drawing them buries the part in noise.
     { name: 'Wire', icon: 'i-wire', edges: true, wireframe: true },
   ];
+  const bounds = el('cmd-bounds');
+  bounds.addEventListener('click', () => {
+    viewer.showBounds = !viewer.showBounds;
+    bounds.setAttribute('aria-pressed', String(viewer.showBounds));
+    viewer.render();
+  });
+
   const ortho = el('cmd-ortho');
   ortho.addEventListener('click', () => {
     viewer.orthographic = !viewer.orthographic;
@@ -1402,6 +1409,7 @@ function initKeys() {
       case 'e': case 'E': press('cmd-export'); break;
       case 'm': case 'M': press('cmd-measure'); break;
       case 'p': case 'P': press('cmd-ortho'); break;
+      case 'b': case 'B': press('cmd-bounds'); break;
       case ' ': event.preventDefault(); playBuild(); break;
       case ',': stepBy(-1); break;
       case '.': stepBy(1); break;
