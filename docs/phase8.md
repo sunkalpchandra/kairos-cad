@@ -319,6 +319,37 @@ The families are near-even by construction and not exactly so, because
 generation rejects parts that fail their own constraints and some families
 fail more often than others.
 
+## The surrogate, on the page
+
+Phase 6 had no representation here at all, and its headline is the least
+interesting thing in it. The Optimize workspace shows the fit (R2 0.923 on
+mass, 0.972 on thickness, 8 held-out rows), the search descending toward zero
+predicted mass over 1,803 evaluations, and the number that matters:
+
+**0.32 g predicted, 29.16 g built. The surrogate was 98.9% wrong at the
+parameters it recommended.** The answer is still right -- 54.1% lighter than
+the baseline, still manufacturable -- because the reported number is the built
+one. A search that skipped the verification build would have reported a 0.3 g
+plate.
+
+This was already in [phase6.md](phase6.md). What was missing was that anyone
+reading the station would ever see it.
+
+## Two gates the station needed
+
+**`check_station.py --staged`** asks the built-page gate about the commit
+rather than the working tree. `make lint` reads the tree, which passes after a
+rebuild whether or not the page was staged; two commits went red in CI that
+way, and neither reproduced locally because locally there was nothing to
+reproduce.
+
+**`check_wiring.py`** fails when the app looks up an element id the markup does
+not define. `el('x')` returning null throws part way through `init`, so
+everything wired after that point is silently never wired while the page still
+renders -- most of it was built before the throw. That happened while these
+sections were being written, and the only signal was a heading missing from a
+screenshot.
+
 ## Verifying the render
 
 Lint cannot see any of the above. Screenshot it:
