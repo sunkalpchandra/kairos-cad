@@ -17,6 +17,7 @@ from kairos.dashboard.bundle import (
     collect_ablations,
     collect_designs,
     collect_failures,
+    collect_funnel,
     collect_matrix,
     collect_task_types,
     collect_rollouts,
@@ -439,3 +440,44 @@ def test_a_policy_missing_a_kind_reports_none_not_zero(tmp_path):
 
 def test_task_types_without_a_leaderboard_degrade_to_empty(tmp_path):
     assert collect_task_types(tmp_path) == {"kinds": [], "rows": []}
+
+
+# ------------------------------------------------------------------- funnel
+
+
+def test_funnel_drop_is_measured_against_the_rung_before(tmp_path):
+    (tmp_path / "leaderboard.json").write_text(json.dumps({"scores": [{
+        "policy": "bc",
+        "milestone_rates": {"opened_a_sketch": 0.9, "drew_geometry": 0.9,
+                            "made_a_solid": 0.4},
+    }]}))
+    steps = collect_funnel(tmp_path)["rows"][0]["steps"]
+    assert [round(s["drop"], 3) for s in steps] == [0.1, 0.0, 0.5]
+
+
+def test_funnel_names_the_rung_that_lost_the_most(tmp_path):
+    (tmp_path / "leaderboard.json").write_text(json.dumps({"scores": [{
+        "policy": "scripted-spec",
+        "milestone_rates": {"opened_a_sketch": 1.0, "drew_geometry": 1.0,
+                            "made_a_solid": 1.0, "has_any_hole": 0.5},
+    }]}))
+    row = collect_funnel(tmp_path)["rows"][0]
+    assert row["wall"] == "has_any_hole"
+    assert row["wall_drop"] == 0.5
+
+
+def test_a_policy_that_loses_nothing_has_no_wall(tmp_path):
+    """The oracle reaches every rung; calling one of them its wall would be a
+    label with no failure behind it."""
+    (tmp_path / "leaderboard.json").write_text(json.dumps({"scores": [{
+        "policy": "oracle-replay",
+        "milestone_rates": {name: 1.0 for name in
+                            ["opened_a_sketch", "drew_geometry", "made_a_solid"]},
+    }]}))
+    row = collect_funnel(tmp_path)["rows"][0]
+    assert row["wall"] is None
+    assert row["wall_drop"] == 0.0
+
+
+def test_funnel_without_a_leaderboard_degrades_to_empty(tmp_path):
+    assert collect_funnel(tmp_path)["rows"] == []
