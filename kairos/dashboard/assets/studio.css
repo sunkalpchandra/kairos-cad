@@ -759,6 +759,28 @@ td.sep-no { color: var(--ink-faint); }
 .track { cursor: pointer; }
 .track[aria-current="true"] { border-color: var(--accent); }
 
+/* The held part, pinned over the viewport. Comparing two designs by flipping
+   between them relies on memory; side by side does not. */
+.compare-pane {
+  position: absolute; right: 12px; bottom: 12px;
+  width: 268px; background: var(--chrome);
+  border: 1px solid var(--rule-strong);
+}
+.compare-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px 4px 9px; border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 10px; color: var(--ink-muted);
+}
+.compare-head button {
+  margin-left: auto; background: none; border: 0; cursor: pointer;
+  color: var(--ink-faint); font-size: 15px; line-height: 1; padding: 0 3px;
+}
+.compare-head button:hover { color: var(--ink); }
+.compare-pane canvas {
+  display: block; width: 100%; height: 176px;
+  background: linear-gradient(var(--viewport-top), var(--viewport-bottom));
+}
+
 /* Measurement readout: sits on the canvas at the midpoint of the span, the
    way a dimension is labelled on a drawing. */
 .dim {

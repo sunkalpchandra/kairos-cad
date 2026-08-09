@@ -141,6 +141,7 @@ function select(index) {
     </div>`).join('') : '<p class="empty">No constraints recorded.</p>';
 
   renderTimeline(design);
+  refreshCompare();
   writeRoute();
   el('dim-readout').hidden = true;
   if (measuring) el('status-measure').textContent = 'MEASURE: PICK A POINT';
@@ -1434,6 +1435,9 @@ function initViewer() {
     // an artifact of meshing, and drawing them buries the part in noise.
     { name: 'Wire', icon: 'i-wire', edges: true, wireframe: true },
   ];
+  el('cmd-compare').addEventListener('click', toggleCompare);
+  el('compare-close').addEventListener('click', closeCompare);
+
   const bounds = el('cmd-bounds');
   bounds.addEventListener('click', () => {
     viewer.showBounds = !viewer.showBounds;
@@ -1642,6 +1646,68 @@ function initTransport() {
   el('tl-last').addEventListener('click', () => { stopPlayback(); rollTo(null); });
 }
 
+/* ---------------------------------------------------------------- compare */
+
+let heldDesign = null;
+let compareView = null;
+
+/** Hold the current part, or drop the one being held. */
+function toggleCompare() {
+  const design = designs[selected];
+  if (!design) return;
+  if (heldDesign && heldDesign.design_id === design.design_id) {
+    closeCompare();
+    return;
+  }
+  heldDesign = design;
+  el('compare-pane').hidden = false;
+  el('cmd-compare').setAttribute('aria-pressed', 'true');
+
+  if (!compareView) {
+    try {
+      compareView = new Viewer(el('compare-canvas'));
+      compareView.setPalette(getComputedStyle(document.documentElement));
+      compareView.showGrid = false;
+      compareView.showShadow = false;
+    } catch (err) {
+      compareView = null;
+      el('compare-pane').hidden = true;
+      return;
+    }
+  }
+  if (heldDesign.mesh) compareView.load(heldDesign.mesh);
+  refreshCompare();
+}
+
+function closeCompare() {
+  heldDesign = null;
+  el('compare-pane').hidden = true;
+  el('cmd-compare').setAttribute('aria-pressed', 'false');
+}
+
+/** Label the held part and state how the current one differs. */
+function refreshCompare() {
+  if (!heldDesign) return;
+  const current = designs[selected];
+  el('compare-name').textContent = heldDesign.design_id.replace('design_', 'HELD ');
+
+  if (!current || current.design_id === heldDesign.design_id) {
+    el('compare-delta').textContent = 'pick another part';
+    return;
+  }
+  const change = (now, then) => {
+    if (!then || now === null || now === undefined) return null;
+    return ((now - then) / then) * 100;
+  };
+  const mass = change(current.mass_g, heldDesign.mass_g);
+  // Mass is the number these parts are optimised for, so it is the one worth
+  // spelling out; the rest is a click away in the inspector.
+  el('compare-delta').textContent = mass === null ? ''
+    : `${esc(current.design_id.replace('design_', ''))} is ${
+      mass > 0 ? '+' : ''}${mass.toFixed(1)}% mass`;
+  if (compareView) compareView.render();
+}
+
 /* ---------------------------------------------------------------- measure */
 
 let measuring = false;
@@ -1843,6 +1909,7 @@ function initKeys() {
       case 'm': case 'M': press('cmd-measure'); break;
       case 'p': case 'P': press('cmd-ortho'); break;
       case 'b': case 'B': press('cmd-bounds'); break;
+      case 'c': case 'C': press('cmd-compare'); break;
       case ' ': event.preventDefault(); playBuild(); break;
       case ',': stepBy(-1); break;
       case '.': stepBy(1); break;

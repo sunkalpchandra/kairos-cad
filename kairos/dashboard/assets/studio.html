@@ -77,6 +77,10 @@
         <button class="cmd" id="cmd-grid" aria-pressed="true" title="Ground grid">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-grid"></use></svg>Grid
         </button>
+        <button class="cmd" id="cmd-compare" aria-pressed="false"
+                title="Hold this part, then pick another to compare (C)">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-intervals"></use></svg>Compare
+        </button>
         <button class="cmd" id="cmd-bounds" aria-pressed="false"
                 title="Bounding box (B)">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-bounds"></use></svg>Bounds
@@ -231,6 +235,14 @@
             aria-label="3D view of the selected part. Focus it and use the arrow keys to orbit, shift with the arrows to pan, plus and minus to zoom."></canvas>
 
     <div class="hud tl" id="hud-orientation">ISO</div>
+    <div class="compare-pane" id="compare-pane" hidden>
+      <div class="compare-head">
+        <span class="label" id="compare-name">Reference</span>
+        <span id="compare-delta"></span>
+        <button id="compare-close" aria-label="Close the comparison">&times;</button>
+      </div>
+      <canvas id="compare-canvas" aria-label="the part held for comparison"></canvas>
+    </div>
     <div class="dim" id="dim-readout" hidden></div>
 
     <div class="viewcube-wrap">
@@ -602,6 +614,7 @@
         <dt>M</dt><dd>measure between two points</dd>
         <dt>P</dt><dd>parallel projection</dd>
         <dt>B</dt><dd>bounding box</dd>
+        <dt>C</dt><dd>hold this part to compare against</dd>
         <dt>Tab</dt><dd>focus the viewport, then arrows orbit it</dd>
         <dt>Space</dt><dd>play the build</dd>
         <dt>, .</dt><dd>roll back / forward one feature</dd>

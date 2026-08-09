@@ -765,6 +765,28 @@ td.sep-no { color: var(--ink-faint); }
 .track { cursor: pointer; }
 .track[aria-current="true"] { border-color: var(--accent); }
 
+/* The held part, pinned over the viewport. Comparing two designs by flipping
+   between them relies on memory; side by side does not. */
+.compare-pane {
+  position: absolute; right: 12px; bottom: 12px;
+  width: 268px; background: var(--chrome);
+  border: 1px solid var(--rule-strong);
+}
+.compare-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 6px 4px 9px; border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 10px; color: var(--ink-muted);
+}
+.compare-head button {
+  margin-left: auto; background: none; border: 0; cursor: pointer;
+  color: var(--ink-faint); font-size: 15px; line-height: 1; padding: 0 3px;
+}
+.compare-head button:hover { color: var(--ink); }
+.compare-pane canvas {
+  display: block; width: 100%; height: 176px;
+  background: linear-gradient(var(--viewport-top), var(--viewport-bottom));
+}
+
 /* Measurement readout: sits on the canvas at the midpoint of the span, the
    way a dimension is labelled on a drawing. */
 .dim {
@@ -1377,6 +1399,10 @@ tbody tr.ceiling td:first-child::after {
         <button class="cmd" id="cmd-grid" aria-pressed="true" title="Ground grid">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-grid"></use></svg>Grid
         </button>
+        <button class="cmd" id="cmd-compare" aria-pressed="false"
+                title="Hold this part, then pick another to compare (C)">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-intervals"></use></svg>Compare
+        </button>
         <button class="cmd" id="cmd-bounds" aria-pressed="false"
                 title="Bounding box (B)">
           <svg class="icon" viewBox="0 0 24 24"><use href="#i-bounds"></use></svg>Bounds
@@ -1531,6 +1557,14 @@ tbody tr.ceiling td:first-child::after {
             aria-label="3D view of the selected part. Focus it and use the arrow keys to orbit, shift with the arrows to pan, plus and minus to zoom."></canvas>
 
     <div class="hud tl" id="hud-orientation">ISO</div>
+    <div class="compare-pane" id="compare-pane" hidden>
+      <div class="compare-head">
+        <span class="label" id="compare-name">Reference</span>
+        <span id="compare-delta"></span>
+        <button id="compare-close" aria-label="Close the comparison">&times;</button>
+      </div>
+      <canvas id="compare-canvas" aria-label="the part held for comparison"></canvas>
+    </div>
     <div class="dim" id="dim-readout" hidden></div>
 
     <div class="viewcube-wrap">
@@ -1902,6 +1936,7 @@ tbody tr.ceiling td:first-child::after {
         <dt>M</dt><dd>measure between two points</dd>
         <dt>P</dt><dd>parallel projection</dd>
         <dt>B</dt><dd>bounding box</dd>
+        <dt>C</dt><dd>hold this part to compare against</dd>
         <dt>Tab</dt><dd>focus the viewport, then arrows orbit it</dd>
         <dt>Space</dt><dd>play the build</dd>
         <dt>, .</dt><dd>roll back / forward one feature</dd>
@@ -3592,6 +3627,7 @@ function select(index) {
     </div>`).join('') : '<p class="empty">No constraints recorded.</p>';
 
   renderTimeline(design);
+  refreshCompare();
   writeRoute();
   el('dim-readout').hidden = true;
   if (measuring) el('status-measure').textContent = 'MEASURE: PICK A POINT';
@@ -4885,6 +4921,9 @@ function initViewer() {
     // an artifact of meshing, and drawing them buries the part in noise.
     { name: 'Wire', icon: 'i-wire', edges: true, wireframe: true },
   ];
+  el('cmd-compare').addEventListener('click', toggleCompare);
+  el('compare-close').addEventListener('click', closeCompare);
+
   const bounds = el('cmd-bounds');
   bounds.addEventListener('click', () => {
     viewer.showBounds = !viewer.showBounds;
@@ -5093,6 +5132,68 @@ function initTransport() {
   el('tl-last').addEventListener('click', () => { stopPlayback(); rollTo(null); });
 }
 
+/* ---------------------------------------------------------------- compare */
+
+let heldDesign = null;
+let compareView = null;
+
+/** Hold the current part, or drop the one being held. */
+function toggleCompare() {
+  const design = designs[selected];
+  if (!design) return;
+  if (heldDesign && heldDesign.design_id === design.design_id) {
+    closeCompare();
+    return;
+  }
+  heldDesign = design;
+  el('compare-pane').hidden = false;
+  el('cmd-compare').setAttribute('aria-pressed', 'true');
+
+  if (!compareView) {
+    try {
+      compareView = new Viewer(el('compare-canvas'));
+      compareView.setPalette(getComputedStyle(document.documentElement));
+      compareView.showGrid = false;
+      compareView.showShadow = false;
+    } catch (err) {
+      compareView = null;
+      el('compare-pane').hidden = true;
+      return;
+    }
+  }
+  if (heldDesign.mesh) compareView.load(heldDesign.mesh);
+  refreshCompare();
+}
+
+function closeCompare() {
+  heldDesign = null;
+  el('compare-pane').hidden = true;
+  el('cmd-compare').setAttribute('aria-pressed', 'false');
+}
+
+/** Label the held part and state how the current one differs. */
+function refreshCompare() {
+  if (!heldDesign) return;
+  const current = designs[selected];
+  el('compare-name').textContent = heldDesign.design_id.replace('design_', 'HELD ');
+
+  if (!current || current.design_id === heldDesign.design_id) {
+    el('compare-delta').textContent = 'pick another part';
+    return;
+  }
+  const change = (now, then) => {
+    if (!then || now === null || now === undefined) return null;
+    return ((now - then) / then) * 100;
+  };
+  const mass = change(current.mass_g, heldDesign.mass_g);
+  // Mass is the number these parts are optimised for, so it is the one worth
+  // spelling out; the rest is a click away in the inspector.
+  el('compare-delta').textContent = mass === null ? ''
+    : `${esc(current.design_id.replace('design_', ''))} is ${
+      mass > 0 ? '+' : ''}${mass.toFixed(1)}% mass`;
+  if (compareView) compareView.render();
+}
+
 /* ---------------------------------------------------------------- measure */
 
 let measuring = false;
@@ -5294,6 +5395,7 @@ function initKeys() {
       case 'm': case 'M': press('cmd-measure'); break;
       case 'p': case 'P': press('cmd-ortho'); break;
       case 'b': case 'B': press('cmd-bounds'); break;
+      case 'c': case 'C': press('cmd-compare'); break;
       case ' ': event.preventDefault(); playBuild(); break;
       case ',': stepBy(-1); break;
       case '.': stepBy(1); break;
