@@ -414,6 +414,68 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** The corpus the browser samples from. */
+function renderDataset() {
+  const data = DATA.dataset || {};
+  if (!data.designs) {
+    el('dataset-stats').innerHTML = '<p class="empty">No dataset in this bundle.</p>';
+    el('family-counts').innerHTML = '';
+    el('mass-histogram').innerHTML = '';
+    return;
+  }
+  const shown = (DATA.designs || []).length;
+  el('dataset-stats').innerHTML = `
+    <div class="stat">
+      <div class="stat-value">${data.designs.toLocaleString()}</div>
+      <span class="label">Designs</span>
+      <div class="stat-sub">${shown} carried on this page</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${(data.families || []).length}</div>
+      <span class="label">Families</span>
+      <div class="stat-sub">procedurally generated</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${fmt(data.steps_mean, 1)}</div>
+      <span class="label">Expert steps</span>
+      <div class="stat-sub">${data.steps_min} to ${data.steps_max}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">${fmt(data.mass_max, 0)}</div>
+      <span class="label">Heaviest, g</span>
+      <div class="stat-sub">lightest ${fmt(data.mass_min, 1)} g</div>
+    </div>`;
+
+  const families = data.families || [];
+  const most = Math.max(1, ...families.map((f) => f.count));
+  el('family-counts').innerHTML = `
+    <table>
+      <thead><tr><th>Family</th><th>Designs</th><th style="width:52%"></th><th>Share</th></tr></thead>
+      <tbody>${families.map((family) => `
+        <tr>
+          <td><code>${esc(family.name)}</code></td>
+          <td>${family.count}</td>
+          <td><span class="sharebar" style="width:${(family.count / most * 100).toFixed(1)}%"></span></td>
+          <td>${fmt(family.count / data.designs * 100, 1)}%</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+
+  const histogram = data.mass_histogram || [];
+  const tallest = Math.max(1, ...histogram.map((b) => b.count));
+  el('mass-histogram').innerHTML = `
+    <div class="histogram">
+      ${histogram.map((bucket) => `
+        <span class="hbar" title="${fmt(bucket.from, 1)} to ${fmt(bucket.to, 1)} g: ${bucket.count} designs">
+          <i style="height:${(bucket.count / tallest * 100).toFixed(1)}%"></i>
+        </span>`).join('')}
+    </div>
+    <div class="haxis">
+      <span>${fmt(data.mass_min, 1)} g</span>
+      <span>${histogram.length} buckets, tallest ${tallest} designs</span>
+      <span>${fmt(data.mass_max, 0)} g</span>
+    </div>`;
+}
+
 /** The codec audit, stated beside the ceiling it explains. */
 function renderCodec() {
   const codec = DATA.codec || {};
@@ -891,7 +953,8 @@ function renderRollouts() {
   body.querySelectorAll('.track').forEach((track) => {
     track.addEventListener('click', () => {
       rolloutPolicy = track.dataset.policy;
-      renderCodec();
+      renderDataset();
+  renderCodec();
   renderFamilies();
   renderFunnel();
   renderTaskTypes();
@@ -1285,7 +1348,7 @@ function initTabs() {
       document.querySelectorAll('.group[data-workspace]').forEach((group) => {
         group.hidden = group.dataset.workspace !== view;
       });
-      ['benchmark', 'training', 'rollouts', 'ablations'].forEach((name) => {
+      ['dataset', 'benchmark', 'training', 'rollouts', 'ablations'].forEach((name) => {
         el('sheet-' + name).hidden = view !== name;
       });
       // A canvas has no size while hidden, so the first draw into a zero-width
@@ -1546,6 +1609,7 @@ function init() {
   renderComparisons();
   renderTraining();
   renderAblations();
+  renderDataset();
   renderCodec();
   renderFamilies();
   renderFunnel();

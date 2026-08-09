@@ -576,6 +576,27 @@ td.stacked { line-height: 1.25; }
 td .sub { display: block; font-size: 9.5px; color: var(--ink-faint); }
 td.wide-gap { color: var(--warn); }
 
+/* `.bar` is scoped to .scalebar, so a bare one in a table has no styles and
+   no height: it renders as nothing at all. This has its own name. */
+.sharebar {
+  display: block; height: 7px; min-width: 2px;
+  background: var(--accent); opacity: 0.7; border-radius: 1px;
+}
+
+/* --------------------------------------------------------------- histogram */
+
+.histogram {
+  display: flex; align-items: flex-end; gap: 2px; height: 150px;
+  border: 1px solid var(--rule); border-bottom-width: 2px;
+  background: var(--chrome); padding: 8px 9px 0;
+}
+.histogram .hbar { flex: 1; display: flex; align-items: flex-end; height: 100%; }
+.histogram .hbar i { width: 100%; background: var(--accent); opacity: 0.7; border-radius: 1px 1px 0 0; }
+.haxis {
+  display: flex; justify-content: space-between; margin-top: 5px;
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint);
+}
+
 /* ------------------------------------------------------ failure taxonomy */
 
 .fail-row { border: 1px solid var(--rule); background: var(--chrome); padding: 9px 11px; margin-bottom: 9px; }

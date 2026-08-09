@@ -30,6 +30,7 @@
 
   <nav class="workspaces" aria-label="Workspace">
     <button data-view="model" aria-selected="true">Model</button>
+    <button data-view="dataset" aria-selected="false">Dataset</button>
     <button data-view="benchmark" aria-selected="false">Benchmark</button>
     <button data-view="training" aria-selected="false">Training</button>
     <button data-view="rollouts" aria-selected="false">Rollouts</button>
@@ -135,6 +136,18 @@
       <span class="label">Export</span>
     </div>
 
+    <div class="group" data-workspace="dataset" hidden>
+      <div class="commands">
+        <button class="cmd" data-goto="dataset-families">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-folder"></use></svg>Families
+        </button>
+        <button class="cmd" data-goto="dataset-mass">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-leaderboard"></use></svg>Mass
+        </button>
+      </div>
+      <span class="label">Corpus</span>
+    </div>
+
     <div class="group" data-workspace="benchmark" hidden>
       <div class="commands">
         <button class="cmd" data-goto="leaderboard">
@@ -237,6 +250,36 @@
 
     <p class="viewer-error" id="viewer-error" hidden></p>
   </main>
+
+  <section class="sheet" id="sheet-dataset" hidden>
+    <section class="span">
+      <h2>The corpus</h2>
+      <p class="note">
+        The browser carries a capped sample of this. Every part was built by a
+        procedural expert from a generated requirement and then measured, so
+        the trajectory beside each one is a real construction rather than a
+        label.
+      </p>
+      <div class="statgrid" id="dataset-stats"></div>
+    </section>
+    <section id="dataset-families">
+      <h2>Families</h2>
+      <p class="note">
+        Eight shapes, generated to be close to even. Nothing balances them
+        exactly: generation rejects parts that fail their own constraints, and
+        some families fail more often than others.
+      </p>
+      <div class="tablewrap" id="family-counts"></div>
+    </section>
+    <section id="dataset-mass">
+      <h2>Mass</h2>
+      <p class="note">
+        The spread the surrogate and the reward have to cover. A single family
+        would be a narrow band; eight of them are two orders of magnitude.
+      </p>
+      <div id="mass-histogram"></div>
+    </section>
+  </section>
 
   <section class="sheet" id="sheet-benchmark" hidden>
     <section class="span">
