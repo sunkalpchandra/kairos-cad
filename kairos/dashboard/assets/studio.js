@@ -414,6 +414,60 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** Mean progress per family, per policy. */
+function renderFamilies() {
+  const data = DATA.families_scored || {};
+  const families = data.families || [];
+  const policies = data.policies || [];
+  if (!families.length || !policies.length) {
+    el('families').innerHTML = '<p class="empty">No traces in this bundle.</p>';
+    el('families-note').textContent = '';
+    return;
+  }
+  const mean = (p) => {
+    const values = (data.cells[p] || []).filter((v) => v !== null && v !== undefined);
+    return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  };
+  const ordered = policies.slice().sort((a, b) => mean(b) - mean(a));
+
+  el('families').innerHTML = `
+    <table>
+      <thead><tr><th>Policy</th>${families.map((f) =>
+        `<th title="${f.episodes} episodes">${esc(f.name.replace(/_/g, ' '))}</th>`).join('')}
+        <th>Spread</th></tr></thead>
+      <tbody>${ordered.map((policy) => {
+        const row = data.cells[policy] || [];
+        const seen = row.filter((v) => v !== null && v !== undefined);
+        const low = Math.min(...seen), high = Math.max(...seen);
+        return `<tr>
+          <td><code>${esc(policy)}</code></td>
+          ${row.map((value) => value === null || value === undefined
+            ? '<td class="sub">—</td>'
+            // Shade the cell by score so the row reads before it is read.
+            : `<td style="background:color-mix(in srgb, var(--pass) ${
+                (value * 55).toFixed(0)}%, transparent)">${fmt(value)}</td>`).join('')}
+          <td class="${high - low > 0.25 ? 'wide-gap' : ''}">${fmt(high - low)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+
+  const learned = ordered.filter((p) => /^(bc|ppo)$/.test(p));
+  if (!learned.length) { el('families-note').textContent = ''; return; }
+  const parts = learned.map((policy) => {
+    const row = data.cells[policy];
+    let best = 0, worst = 0;
+    families.forEach((f, i) => {
+      if (row[i] === null || row[i] === undefined) return;
+      if (row[i] > (row[best] ?? -1)) best = i;
+      if (row[i] < (row[worst] ?? 2)) worst = i;
+    });
+    return `${esc(policy)} reaches ${fmt(row[best])} on ${esc(families[best].name)}`
+      + ` and ${fmt(row[worst])} on ${esc(families[worst].name)}`;
+  });
+  el('families-note').innerHTML = '<strong>Difficulty is not evenly spread.</strong> '
+    + parts.join('; ') + '.';
+}
+
 /** Milestone reach rates as a funnel per policy. */
 function renderFunnel() {
   const data = DATA.funnel || {};
@@ -817,7 +871,8 @@ function renderRollouts() {
   body.querySelectorAll('.track').forEach((track) => {
     track.addEventListener('click', () => {
       rolloutPolicy = track.dataset.policy;
-      renderFunnel();
+      renderFamilies();
+  renderFunnel();
   renderTaskTypes();
   renderMatrix();
   renderFailures();
@@ -1464,6 +1519,7 @@ function init() {
   renderComparisons();
   renderTraining();
   renderAblations();
+  renderFamilies();
   renderFunnel();
   renderTaskTypes();
   renderMatrix();
