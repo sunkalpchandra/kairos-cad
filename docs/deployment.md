@@ -14,8 +14,8 @@ how it scored, and where it fails. The sandbox is for running the agent.
 ## Review station (static)
 
 ```bash
-make dashboard-studio          # -> docs/kairos.html
-open docs/kairos.html
+make dashboard-studio          # -> docs/index.html
+open docs/index.html
 ```
 
 One file, ~280 KB, no server and no network. It carries 24 tessellated parts,
@@ -25,8 +25,9 @@ a number on screen can always be traced to a file on disk.
 
 Host it anywhere that serves a file:
 
-- **GitHub Pages**: push `docs/` and enable Pages on the `docs/` folder. Free
-  for public repositories; private ones need a paid plan.
+- **GitHub Pages**: served from `docs/` on `main`. Free for public repositories
+  only; a private repo needs GitHub Pro or above. `docs/.nojekyll` is required,
+  or Jekyll strips the underscore-prefixed assets and reprocesses the markdown.
 - **Object storage**: upload the single file to S3, R2, or GCS with public read.
 - **Netlify / Vercel / Cloudflare Pages**: point at `docs/`, no build step.
 - **`python3 -m http.server --directory docs`** for a local share.

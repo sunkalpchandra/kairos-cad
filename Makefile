@@ -97,7 +97,7 @@ audit-codec:
 dashboard-studio:
 	$(PYTHON) scripts/build_dashboard.py --dataset dataset \
 		--benchmark runs/benchmark_core --ablation runs/ablation --runs runs \
-		--layout studio --out docs/kairos.html --stamp "$(SUITE_VERSION)"
+		--layout studio --out docs/index.html --stamp "$(SUITE_VERSION)"
 
 ## The plain report layout over the same bundle.
 dashboard:

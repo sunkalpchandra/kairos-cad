@@ -38,15 +38,15 @@ function buildTree() {
     <div class="family" data-group="${groupIndex}">
       <button class="node group-node" data-toggle="${groupIndex}" aria-expanded="true">
         <span class="twisty">&#9660;</span>
-        <svg class="icon" viewBox="0 0 16 16"><use href="#i-folder"></use></svg>
+        <svg class="icon" viewBox="0 0 24 24"><use href="#i-folder"></use></svg>
         ${esc(family)}<span class="count">${rows.length}</span>
       </button>
       <div class="leaves" data-leaves="${groupIndex}">
       ${rows.map(({ design, index }) => `
         <button class="leaf" data-index="${index}" aria-current="false">
-          <svg class="icon" viewBox="0 0 16 16"><use href="#i-body"></use></svg>
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-body"></use></svg>
           <span class="name">${esc(design.design_id.replace('design_', ''))}</span>
-          <svg class="icon eye ${design.all_satisfied ? '' : 'warn'}" viewBox="0 0 16 16"
+          <svg class="icon eye ${design.all_satisfied ? '' : 'warn'}" viewBox="0 0 24 24"
                aria-label="${design.all_satisfied ? 'all constraints met' : 'constraints unmet'}">
             <use href="#i-eye"></use></svg>
         </button>`).join('')}
@@ -390,7 +390,7 @@ function renderTimeline(design) {
     const terminal = op === 'FINISH_DESIGN' ? ' terminal' : '';
     return `<button class="tl-node${terminal}" data-step="${index}"
       title="${index + 1}. ${esc(op)}" aria-current="false">
-      <svg class="icon" viewBox="0 0 16 16"><use href="#${icon}"></use></svg>
+      <svg class="icon" viewBox="0 0 24 24"><use href="#${icon}"></use></svg>
     </button>`;
   }).join('');
 
