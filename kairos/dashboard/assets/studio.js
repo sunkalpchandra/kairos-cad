@@ -115,6 +115,7 @@ function select(index) {
     </div>`).join('') : '<p class="empty">No constraints recorded.</p>';
 
   renderTimeline(design);
+  writeRoute();
   el('dim-readout').hidden = true;
   if (measuring) el('status-measure').textContent = 'MEASURE: PICK A POINT';
 
@@ -700,6 +701,7 @@ function renderRollouts() {
     });
   });
   showRolloutSolids(task);
+  writeRoute();
 }
 
 /* ---------------------------------------------------------------- shell */
@@ -1057,6 +1059,7 @@ function initTabs() {
       // Same reason the model canvas is redrawn on reveal: these had no size
       // while the sheet was hidden, so the first draw went into nothing.
       if (view === 'rollouts') renderRollouts();
+      writeRoute();
       // The part readouts describe something that is not on screen in a data
       // workspace, so they go quiet rather than reporting a stale part.
       ['status-part', 'status-mesh', 'status-style', 'status-step',
@@ -1157,6 +1160,62 @@ function placeDimension() {
   readout.style.top = middle.y + 'px';
 }
 
+/* ---------------------------------------------------------------- routing */
+
+/* The station is a thing people send each other. Without this, "look at the
+ * flange" is a URL plus a sentence of instructions, and every reload lands
+ * back on the first part of the first workspace.
+ *
+ * The hash is written, never read back except on load and on an explicit
+ * back/forward: a listener that reacted to its own writes would fight the UI. */
+let applyingRoute = false;
+
+function writeRoute() {
+  if (applyingRoute) return;
+  const view = activeWorkspace();
+  const parts = [view];
+  if (view === 'model' && designs[selected]) parts.push(designs[selected].design_id);
+  if (view === 'rollouts') {
+    const tasks = (DATA.rollouts || {}).tasks || [];
+    if (tasks[rolloutTask]) parts.push(tasks[rolloutTask].task_id);
+    if (rolloutPolicy) parts.push(rolloutPolicy);
+  }
+  const hash = '#' + parts.join('/');
+  if (hash !== window.location.hash) {
+    history.replaceState(null, '', hash);
+  }
+}
+
+/** Restore whatever the hash names, ignoring anything it does not. */
+function applyRoute() {
+  const raw = decodeURIComponent(window.location.hash.replace(/^#/, ''));
+  if (!raw) return;
+  const [view, ...rest] = raw.split('/');
+  const tab = document.querySelector(`.workspaces button[data-view="${CSS.escape(view)}"]`);
+  if (!tab) return;
+
+  applyingRoute = true;
+  try {
+    tab.click();
+    if (view === 'model' && rest[0]) {
+      const index = designs.findIndex((d) => d.design_id === rest[0]);
+      // A part that is not in this bundle leaves the selection alone rather
+      // than clearing it: the bundle is capped at 24 designs and a link to
+      // the 500th is a link to something this page never had.
+      if (index >= 0) select(index);
+    }
+    if (view === 'rollouts' && rest[0]) {
+      const tasks = (DATA.rollouts || {}).tasks || [];
+      const index = tasks.findIndex((t) => t.task_id === rest[0]);
+      if (index >= 0) rolloutTask = index;
+      if (rest[1]) rolloutPolicy = rest[1];
+      renderRollouts();
+    }
+  } finally {
+    applyingRoute = false;
+  }
+}
+
 /** Which workspace tab is selected. */
 function activeWorkspace() {
   const chosen = document.querySelector('.workspaces button[aria-selected="true"]');
@@ -1231,6 +1290,10 @@ function init() {
   initFilter();
   initTransport();
   initKeys();
+  // After everything is wired, so a link can name a part or a task that only
+  // exists once the tree and the rollouts have been built.
+  applyRoute();
+  window.addEventListener('hashchange', applyRoute);
   renderBenchmark();
   renderSuccessCurve();
   renderComparisons();
