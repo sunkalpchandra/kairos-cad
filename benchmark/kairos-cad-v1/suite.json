@@ -8,5 +8,7 @@
     0.15,
     0.15
   ],
-  "splits_sha256": "46a9b00cf2edc6b46fa8e3e720266b03f3b18d71dc60846dc46a780358bdaf03"
+  "splits_sha256": "46a9b00cf2edc6b46fa8e3e720266b03f3b18d71dc60846dc46a780358bdaf03",
+  "trajectories_sha256": "0c54229fc80d05b1d5d9d09de79b38605f5b7fbfcee2d4cc0057e9d1aaee7b10",
+  "test_trajectories": 162
 }

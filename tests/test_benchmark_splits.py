@@ -136,3 +136,51 @@ def test_loading_a_dataset_skips_unreadable_entries(tmp_path):
     broken.mkdir(parents=True)
     (broken / "requirements.json").write_text("{not json")
     assert load_requirements_by_design(tmp_path) == {"design_000000": "Design a plate"}
+
+
+def test_trajectory_drift_is_detected(tmp_path):
+    """The split pins which designs are held out, not what they contain.
+
+    build_tasks re-reads trajectory.json at run time, so regenerating the
+    dataset changes what the benchmark measures while suite_version and
+    splits_sha256 stay identical. The dataset was regenerated three times
+    during Phase 7 and the frozen suite silently followed it.
+    """
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from run_benchmark import _trajectory_drift
+
+    suite = tmp_path / "suite"
+    suite.mkdir()
+    designs = tmp_path / "designs"
+    (designs / "design_000001").mkdir(parents=True)
+    trajectory = designs / "design_000001" / "trajectory.json"
+    trajectory.write_text('{"actions": []}')
+
+    import hashlib
+    digest = hashlib.sha256(trajectory.read_bytes()).hexdigest()
+    (suite / "trajectories.sha256").write_text(f"{digest}  design_000001\n")
+
+    root = tmp_path
+    assert _trajectory_drift(suite, root, ["design_000001"]) == []
+
+    trajectory.write_text('{"actions": [], "changed": true}')
+    assert _trajectory_drift(suite, root, ["design_000001"]) == [
+        "design_000001: content changed"
+    ]
+
+    trajectory.unlink()
+    assert _trajectory_drift(suite, root, ["design_000001"]) == ["design_000001: missing"]
+
+
+def test_a_suite_without_pinned_digests_still_runs(tmp_path):
+    """Older frozen directories must not be blocked by a check they predate."""
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    from run_benchmark import _trajectory_drift
+
+    assert _trajectory_drift(tmp_path, tmp_path, ["design_000001"]) == []

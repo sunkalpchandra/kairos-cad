@@ -36,6 +36,10 @@ def main() -> int:
     parser.add_argument("--ppo", type=Path, default=Path("runs/ppo/best.pt"))
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
+        "--allow-drift", action="store_true",
+        help="run even when the dataset no longer matches the frozen suite",
+    )
+    parser.add_argument(
         "--ablate", default="",
         help="comma-separated policies to also run ablated (shuffled/blank "
              "requirement, no action mask)",
@@ -53,6 +57,21 @@ def main() -> int:
               file=sys.stderr)
         return 1
     splits = SplitSet.load(splits_path)
+
+    drift = _trajectory_drift(args.suite, args.root, splits["test"].design_ids)
+    if drift and not args.allow_drift:
+        print(
+            f"error: {len(drift)} test trajectories differ from the frozen suite:\n  "
+            + "\n  ".join(drift[:5])
+            + ("\n  ..." if len(drift) > 5 else "")
+            + "\n\nThe split pins which designs are held out, not what they "
+            "contain, so a regenerated dataset changes what this measures while "
+            "suite_version stays the same. Re-freeze with `make benchmark-suite` "
+            "(this invalidates published numbers) or pass --allow-drift to "
+            "proceed knowing the results are not comparable.",
+            file=sys.stderr,
+        )
+        return 1
 
     tasks = build_tasks(args.root, splits["test"].design_ids)
     tasks = select(tasks, limit_per_group=PRESETS[args.preset])
@@ -167,6 +186,36 @@ def main() -> int:
     )
     print(f"\nwrote {args.out}/leaderboard.json")
     return 0 if invariants["ok"] else 2
+
+
+def _trajectory_drift(suite: Path, root: Path, design_ids: list[str]) -> list[str]:
+    """Test designs whose trajectory no longer matches the frozen digest.
+
+    Returns [] when the suite predates digest pinning, so an older frozen
+    directory keeps working rather than blocking every run.
+    """
+    import hashlib
+
+    pinned_file = suite / "trajectories.sha256"
+    if not pinned_file.exists():
+        return []
+    pinned = {}
+    for line in pinned_file.read_text().splitlines():
+        parts = line.split()
+        if len(parts) == 2:
+            pinned[parts[1]] = parts[0]
+
+    drifted = []
+    for design_id in sorted(design_ids):
+        expected = pinned.get(design_id)
+        if expected is None:
+            continue
+        path = root / "designs" / design_id / "trajectory.json"
+        if not path.exists():
+            drifted.append(f"{design_id}: missing")
+        elif hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            drifted.append(f"{design_id}: content changed")
+    return drifted
 
 
 def _add_learned_policies(policies: dict, args) -> None:
