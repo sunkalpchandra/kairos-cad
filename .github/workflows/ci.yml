@@ -47,77 +47,35 @@ jobs:
 
   cad:
     # FreeCAD's interpreter, which is where the CAD half of the project lives.
-    # These tests (90 of them, deselected from every other job) had never run
-    # anywhere but a developer machine.
     #
-    # Debian rather than the Ubuntu runner: noble has neither freecad-python3
-    # nor an installable freecad ("no installation candidate"), while bookworm
-    # ships freecad-python3. That is also what deploy/Dockerfile builds on, so
-    # this job doubles as a check on the image's package assumption.
+    # Debian rather than the Ubuntu runner: noble has no installable freecad.
     #
-    # The module path is DISCOVERED from the package manifest, not assumed.
-    # Getting here took four wrong guesses: the Ubuntu package name, an
-    # installable freecad on Ubuntu at all, `freecadcmd -m pip` (freecadcmd is
-    # not a python binary), and finally that freecad-python3 lands on the
-    # default sys.path (it does not).
+    # pytest runs INSIDE FreeCADCmd rather than under system python. Importing
+    # FreeCAD from plain python succeeds but gives a core without workbenches:
+    # Sketcher and PartDesign live in Mod/ directories that FreeCADCmd sets up
+    # during startup, and adding those to PYTHONPATH by hand is not equivalent
+    # (tried; every recipe still died at CREATE_SKETCH). That is exactly why
+    # the Makefile drives the bundled interpreter on macOS too.
     runs-on: ubuntu-latest
     container: debian:bookworm-slim
     steps:
       - name: Install FreeCAD
         run: |
           apt-get update
-          # NOT --no-install-recommends for freecad: the workbench modules
-          # (PartDesign, Sketcher, Part) are recommends, and without them
-          # FreeCAD imports but every recipe dies at CREATE_SKETCH with
-          # "No module named 'PartDesign'". Everything else stays minimal.
           apt-get install -y freecad-python3
           apt-get install -y --no-install-recommends \
             git ca-certificates python3-pip python3-numpy
       - uses: actions/checkout@v4
-      - name: Discover the FreeCAD module path
-        id: freecad
-        run: |
-          # freecad-python3 is a metapackage and ships no module itself, so
-          # search the filesystem rather than one package's manifest.
-          echo "--- installed freecad packages ---"
-          dpkg -l | grep -i freecad || true
-          module=$(find / -name 'FreeCAD.so' -o -name 'FreeCAD.py' 2>/dev/null | head -1)
-          if [ -z "$module" ]; then
-            echo "no FreeCAD module anywhere on the filesystem:" >&2
-            find / -iname 'freecad*' -maxdepth 6 2>/dev/null | head -30 >&2
-            exit 1
-          fi
-          dir=$(dirname "$module")
-          echo "FreeCAD module at $module"
-
-          # The workbenches (PartDesign, Sketcher, Part) are not importable
-          # from that directory: they live in Mod/<Workbench>/ and FreeCADCmd
-          # adds them during startup. Plain python does not, which is why every
-          # recipe died at CREATE_SKETCH with "No module named PartDesign"
-          # even after installing the full package.
-          mod=$(find / -type d -name PartDesign -path '*/Mod/*' 2>/dev/null | head -1)
-          if [ -z "$mod" ]; then
-            echo "no Mod/PartDesign directory found:" >&2
-            find / -type d -name Mod -maxdepth 6 2>/dev/null | head -10 >&2
-            exit 1
-          fi
-          modroot=$(dirname "$mod")
-          echo "workbenches under $modroot"
-          # Every workbench directory, colon-joined.
-          wb=$(find "$modroot" -mindepth 1 -maxdepth 1 -type d | tr '\n' ':')
-          echo "pythonpath=$dir:$wb" >> "$GITHUB_OUTPUT"
-      - name: Confirm FreeCAD imports
-        run: |
-          PYTHONPATH="${{ steps.freecad.outputs.pythonpath }}" python3 -c "
-          import FreeCAD
-          print('FreeCAD', '.'.join(FreeCAD.Version()[:2]))
-          "
-      - name: Install test dependencies
+      - name: Install pytest
+        # freecad-python3 shares the system python on Debian, so a system-level
+        # install is visible inside FreeCADCmd.
         run: pip3 install --break-system-packages pytest
       - name: CAD tests
-        env:
-          # The bridge tests spawn a FreeCAD interpreter. On Debian that is the
-          # system python, since freecad-python3 installs into it.
-          KAIROS_FREECAD_PYTHON: python3
-          PYTHONPATH: ${{ github.workspace }}:${{ steps.freecad.outputs.pythonpath }}
-        run: python3 -m pytest -m cad -q tests
+        run: |
+          cat > /tmp/run_cad_tests.py <<'RUNNER'
+          import sys, pytest
+          sys.path.insert(0, "/__w/kairos-cad/kairos-cad")
+          sys.exit(pytest.main(["-m", "cad", "-q", "tests"]))
+          RUNNER
+          cd "$GITHUB_WORKSPACE"
+          freecadcmd /tmp/run_cad_tests.py
