@@ -64,6 +64,9 @@ ICONS: dict[str, str] = {
     "i-loss": "trending-down",
     "i-ppo": "cpu",
     "i-ablate": "flask-conical",
+    "i-section": "scissors",
+    "i-axis": "move-3d",
+    "i-export": "download",
 }
 
 #: The brand mark. Drawn here rather than borrowed: an extruded L-bracket in

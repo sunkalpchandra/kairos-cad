@@ -429,15 +429,19 @@ function initViewer() {
       + '. Metrics and tables are unaffected.';
     return;
   }
-  // The viewport ground is a token, so it tracks the active theme.
-  const ground = getComputedStyle(document.body).getPropertyValue('--viewport').trim();
-  if (/^#[0-9a-f]{6}$/i.test(ground)) {
-    viewer.background = [
-      parseInt(ground.slice(1, 3), 16) / 255,
-      parseInt(ground.slice(3, 5), 16) / 255,
-      parseInt(ground.slice(5, 7), 16) / 255,
-    ];
+  // The canvas composites over the CSS gradient, so only the grid tones need
+  // handing to the renderer. They are tokens, so they track the active theme.
+  viewer.setPalette(getComputedStyle(document.documentElement));
+
+  // A theme can change after load: the host stamps data-theme when the viewer
+  // switches. Re-read rather than keeping the tones from first paint.
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      viewer.setPalette(getComputedStyle(document.documentElement));
+    });
   }
+  new MutationObserver(() => viewer.setPalette(getComputedStyle(document.documentElement)))
+    .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
   // Both the ribbon and the ViewCube drive the same setView.
   document.querySelectorAll('[data-view3d]').forEach((button) => {
@@ -480,6 +484,45 @@ function initViewer() {
         el(other).setAttribute('aria-pressed', String(other === id));
       });
     });
+  });
+
+  // ---- section view -------------------------------------------------------
+  const axes = ['X', 'Y', 'Z'];
+  const sectionState = () => {
+    el('status-section').textContent = viewer.section.on
+      ? `SECTION ${axes[viewer.section.axis]} @ ${(viewer.section.cut * 100).toFixed(0)}%`
+      : '';
+  };
+  const sectionButton = el('cmd-section');
+  sectionButton.addEventListener('click', () => {
+    viewer.section.on = !viewer.section.on;
+    sectionButton.setAttribute('aria-pressed', String(viewer.section.on));
+    sectionState();
+    viewer.render();
+  });
+  el('cmd-axis').addEventListener('click', () => {
+    viewer.section.axis = (viewer.section.axis + 1) % 3;
+    el('axis-label').textContent = axes[viewer.section.axis];
+    sectionState();
+    viewer.render();
+  });
+  el('section-cut').addEventListener('input', (event) => {
+    viewer.section.cut = Number(event.target.value) / 100;
+    sectionState();
+    viewer.render();
+  });
+
+  // ---- export -------------------------------------------------------------
+  el('cmd-export').addEventListener('click', () => {
+    const design = designs[selected];
+    if (!design || !viewer.mesh) return;
+    const url = URL.createObjectURL(viewer.toStl(design.design_id));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${design.design_id}.stl`;
+    link.click();
+    // Revoke on the next tick: revoking synchronously can beat the download.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
 
   el('cmd-prev').addEventListener('click', () => select((selected - 1 + designs.length) % designs.length));
@@ -525,6 +568,65 @@ function initTabs() {
   });
 }
 
+/** Filter the browser tree, hiding families that end up empty. */
+function initFilter() {
+  const input = el('tree-filter');
+  if (!input) return;
+  input.addEventListener('input', () => {
+    const needle = input.value.trim().toLowerCase();
+    el('tree').querySelectorAll('.family').forEach((family) => {
+      let shown = 0;
+      family.querySelectorAll('.leaf').forEach((leaf) => {
+        const design = designs[Number(leaf.dataset.index)] || {};
+        const hay = `${design.design_id} ${design.family}`.toLowerCase();
+        const match = !needle || hay.includes(needle);
+        leaf.hidden = !match;
+        if (match) shown += 1;
+      });
+      // A family with nothing left is noise, not an empty state.
+      family.hidden = shown === 0;
+    });
+  });
+}
+
+/** Keyboard commands, as a CAD tool has. */
+function initKeys() {
+  const panel = el('keymap');
+  const close = () => { panel.hidden = true; };
+  el('keymap-close').addEventListener('click', close);
+  panel.addEventListener('click', (event) => { if (event.target === panel) close(); });
+
+  document.addEventListener('keydown', (event) => {
+    // Never steal a key from a field the user is typing in.
+    const tag = (event.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') {
+      if (event.key === 'Escape') event.target.blur();
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+    const press = (id) => { const node = el(id); if (node) node.click(); };
+    switch (event.key) {
+      case 'ArrowLeft': press('cmd-prev'); break;
+      case 'ArrowRight': press('cmd-next'); break;
+      case '1': document.querySelector('.cmd[data-view3d="iso"]').click(); break;
+      case '2': document.querySelector('.cmd[data-view3d="front"]').click(); break;
+      case '3': document.querySelector('.cmd[data-view3d="top"]').click(); break;
+      case '4': document.querySelector('.cmd[data-view3d="right"]').click(); break;
+      case 'f': case 'F': press('cmd-fit'); break;
+      case 'g': case 'G': press('cmd-grid'); break;
+      case 'w': case 'W': press('cmd-shade'); break;
+      case 's': case 'S': press('cmd-section'); break;
+      case 'x': case 'X': press('cmd-axis'); break;
+      case 'e': case 'E': press('cmd-export'); break;
+      case '/': event.preventDefault(); el('tree-filter').focus(); break;
+      case '?': panel.hidden = !panel.hidden; break;
+      case 'Escape': close(); break;
+      default: return;
+    }
+  });
+}
+
 function init() {
   const suite = (DATA.benchmark || {}).suite_version || DATA.generated_at || '';
   el('suite').textContent = suite ? 'rev ' + suite.replace('kairos-cad-', '') : 'rev -';
@@ -546,6 +648,8 @@ function init() {
   buildTree();
   initViewer();
   initTabs();
+  initFilter();
+  initKeys();
   renderBenchmark();
   renderSuccessCurve();
   renderComparisons();

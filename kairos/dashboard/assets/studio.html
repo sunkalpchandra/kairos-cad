@@ -93,6 +93,31 @@
       <span class="label">Inspect</span>
     </div>
 
+    <div class="group" data-workspace="model">
+      <div class="commands">
+        <button class="cmd" id="cmd-section" aria-pressed="false" title="Section view (S)">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-section"></use></svg>Section
+        </button>
+        <button class="cmd" id="cmd-axis" title="Cut axis">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-axis"></use></svg><span id="axis-label">X</span>
+        </button>
+        <label class="cmd slider" title="Cut position">
+          <input type="range" id="section-cut" min="0" max="100" value="50">
+          <span>Cut</span>
+        </label>
+      </div>
+      <span class="label">Section</span>
+    </div>
+
+    <div class="group" data-workspace="model">
+      <div class="commands">
+        <button class="cmd" id="cmd-export" title="Download this part as STL">
+          <svg class="icon" viewBox="0 0 24 24"><use href="#i-export"></use></svg>STL
+        </button>
+      </div>
+      <span class="label">Export</span>
+    </div>
+
     <div class="group" data-workspace="benchmark" hidden>
       <div class="commands">
         <button class="cmd" data-goto="leaderboard">
@@ -137,6 +162,10 @@
     <div class="browser-head">
       <span class="label">Browser</span>
       <span class="label" id="browser-count"></span>
+    </div>
+    <div class="browser-search">
+      <svg class="icon" viewBox="0 0 24 24"><use href="#i-zoom"></use></svg>
+      <input type="search" id="tree-filter" placeholder="Filter parts" aria-label="Filter parts">
     </div>
     <div id="tree"></div>
   </aside>
@@ -274,10 +303,30 @@
     <span id="status-part">-</span>
     <span id="status-mesh">-</span>
     <span id="status-step"></span>
+    <span id="status-section"></span>
     <span class="spacer"></span>
     <span>UNITS mm</span>
     <span id="status-invariant" class="ok">-</span>
   </footer>
+
+  <div class="keymap" id="keymap" hidden>
+    <div class="keymap-panel">
+      <div class="keymap-head"><span class="label">Keyboard</span>
+        <button id="keymap-close" aria-label="Close">&times;</button></div>
+      <dl>
+        <dt>&larr; &rarr;</dt><dd>previous / next part</dd>
+        <dt>1 2 3 4</dt><dd>iso, front, top, right</dd>
+        <dt>F</dt><dd>fit</dd>
+        <dt>G</dt><dd>ground grid</dd>
+        <dt>W</dt><dd>wireframe</dd>
+        <dt>S</dt><dd>section view</dd>
+        <dt>X</dt><dd>cycle cut axis</dd>
+        <dt>E</dt><dd>export STL</dd>
+        <dt>/</dt><dd>filter parts</dd>
+        <dt>?</dt><dd>this panel</dd>
+      </dl>
+    </div>
+  </div>
 
 </div>
 

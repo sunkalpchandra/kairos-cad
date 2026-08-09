@@ -21,6 +21,11 @@
   --sunken: #dfe2e7;
   --viewport-top: #cdd5de;
   --viewport-bottom: #eef1f4;
+  /* Grid tones live here so the renderer can read them per theme. Dark lines
+     on a light ground read as heavy black; these sit at matched contrast. */
+  --grid-line: #b9c2cd;
+  --grid-axis-x: #7fa8ad;
+  --grid-axis-y: #8fa4b5;
   --rule: #ccd2da;
   --rule-strong: #aab3bf;
   --ink: #1b212a;
@@ -52,6 +57,9 @@
     --sunken: #12171d;
     --viewport-top: #2b333e;
     --viewport-bottom: #12171d;
+    --grid-line: #29313c;
+    --grid-axis-x: #4d6b70;
+    --grid-axis-y: #425666;
     --rule: #2a323d;
     --rule-strong: #3a4552;
     --ink: #e3e8ef;
@@ -72,6 +80,9 @@
   --sunken: #12171d;
   --viewport-top: #2b333e;
   --viewport-bottom: #12171d;
+  --grid-line: #29313c;
+  --grid-axis-x: #4d6b70;
+  --grid-axis-y: #425666;
   --rule: #2a323d;
   --rule-strong: #3a4552;
   --ink: #e3e8ef;
@@ -258,6 +269,24 @@ svg.icon {
 .cmd[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .cmd:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* A slider reads as a control, not a command, so it drops the button chrome. */
+.cmd.slider { min-width: 74px; cursor: default; }
+.cmd.slider input[type="range"] {
+  width: 66px; height: 3px; margin: 6px 0 4px;
+  -webkit-appearance: none; appearance: none;
+  background: var(--rule-strong); border-radius: 2px; cursor: ew-resize;
+}
+.cmd.slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 10px; height: 14px; border-radius: 2px;
+  background: var(--accent); border: 0; cursor: ew-resize;
+}
+.cmd.slider input[type="range"]::-moz-range-thumb {
+  width: 10px; height: 14px; border-radius: 2px;
+  background: var(--accent); border: 0; cursor: ew-resize;
+}
+.cmd.slider input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* ------------------------------------------------------------------ browser */
 
 .browser {
@@ -274,6 +303,25 @@ svg.icon {
   background: var(--chrome);
   border-bottom: 1px solid var(--rule);
 }
+
+.browser-search {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink-faint);
+}
+.browser-search input {
+  flex: 1; min-width: 0;
+  background: var(--chrome-2);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--ink);
+  font: inherit; font-size: 11.5px;
+  padding: 3px 6px;
+}
+.browser-search input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.browser-search input::placeholder { color: var(--ink-faint); }
+.family[hidden], .leaf[hidden] { display: none; }
 
 .node {
   display: flex; align-items: center; gap: 6px;
@@ -493,6 +541,42 @@ svg.icon {
 .statusbar .ok { color: var(--pass); }
 .statusbar .bad { color: var(--warn); }
 .statusbar .spacer { margin-left: auto; }
+
+/* Keyboard reference, over the whole shell so it reads as modal. */
+.keymap {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--ground) 72%, transparent);
+}
+.keymap[hidden] { display: none; }
+.keymap-panel {
+  background: var(--chrome);
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  min-width: 300px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+.keymap-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; border-bottom: 1px solid var(--rule);
+}
+.keymap-head button {
+  background: none; border: 0; color: var(--ink-muted);
+  font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px;
+}
+.keymap-head button:hover { color: var(--ink); }
+.keymap dl {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 5px 14px; margin: 0; padding: 12px;
+  font-size: 12px;
+}
+.keymap dt {
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  white-space: nowrap;
+}
+.keymap dd { margin: 0; color: var(--ink-muted); }
+
+#status-keys { cursor: help; }
 
 /* ------------------------------------------------------------------ sheets */
 

@@ -21,7 +21,9 @@ uniform mat4 uProjection;
 uniform mat3 uNormalMatrix;
 varying vec3 vNormal;
 varying vec3 vViewPosition;
+varying vec3 vModelPosition;
 void main() {
+  vModelPosition = aPosition;
   vec4 viewPosition = uModelView * vec4(aPosition, 1.0);
   vViewPosition = viewPosition.xyz;
   vNormal = normalize(uNormalMatrix * aNormal);
@@ -49,9 +51,15 @@ const FRAGMENT_SHADER = `
 precision mediump float;
 varying vec3 vNormal;
 varying vec3 vViewPosition;
+varying vec3 vModelPosition;
 uniform vec3 uColor;
 uniform bool uFlat;
+// Section plane in model space: xyz is the axis mask, w the cut position.
+// Fragments on the far side are discarded, which is what opens a solid up.
+uniform vec4 uSection;
+uniform bool uSectioning;
 void main() {
+  if (uSectioning && dot(vModelPosition, uSection.xyz) > uSection.w) discard;
   vec3 viewDir = normalize(-vViewPosition);
   vec3 normal = normalize(vNormal);
   if (!gl_FrontFacing) normal = -normal;
@@ -270,7 +278,11 @@ class Viewer {
       normalMatrix: gl.getUniformLocation(this.program, 'uNormalMatrix'),
       color: gl.getUniformLocation(this.program, 'uColor'),
       flat: gl.getUniformLocation(this.program, 'uFlat'),
+      section: gl.getUniformLocation(this.program, 'uSection'),
+      sectioning: gl.getUniformLocation(this.program, 'uSectioning'),
     };
+    //: Section state: axis index (0..2), cut fraction through the bounds, on.
+    this.section = { axis: 0, cut: 0.5, on: false };
     this.flatShading = this.derivatives;
     this.buffers = {
       position: gl.createBuffer(),
@@ -282,6 +294,11 @@ class Viewer {
     this.background = [0.043, 0.055, 0.075];
     this.showGrid = true;
     this.wireframe = false;
+    //: Grid tones, overwritten from CSS by setPalette so the lines sit at the
+    //: same contrast in both themes. Hardcoded dark lines read as heavy black
+    //: on a light ground.
+    this.gridTone = [0.16, 0.19, 0.24];
+    this.axisTone = [[0.30, 0.42, 0.44], [0.26, 0.34, 0.40]];
     //: Pointer mode driven by the navigation bar. Orbit and pan share the
     //: drag gesture, so they are a mode rather than separate tools.
     this.mode = 'orbit';
@@ -338,9 +355,74 @@ class Viewer {
     this.render();
   }
 
+  /** The loaded mesh as a binary STL blob, in millimetres.
+   *
+   * The viewer already holds welded float positions, so this is a re-emit
+   * rather than a conversion: no geometry is recomputed and nothing is lost
+   * beyond the 0.01 mm quantum the bundle was built at.
+   */
+  toStl(name) {
+    const { positions, indices, count } = this.mesh;
+    const triangles = count / 3;
+    const buffer = new ArrayBuffer(84 + triangles * 50);
+    const view = new DataView(buffer);
+    const header = `KAIROS ${name || 'part'}`.slice(0, 79);
+    for (let i = 0; i < header.length; i++) view.setUint8(i, header.charCodeAt(i));
+    view.setUint32(80, triangles, true);
+
+    let offset = 84;
+    for (let i = 0; i < count; i += 3) {
+      const a = indices[i] * 3, b = indices[i + 1] * 3, c = indices[i + 2] * 3;
+      const ux = positions[b] - positions[a], uy = positions[b + 1] - positions[a + 1];
+      const uz = positions[b + 2] - positions[a + 2];
+      const vx = positions[c] - positions[a], vy = positions[c + 1] - positions[a + 1];
+      const vz = positions[c + 2] - positions[a + 2];
+      let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      const len = Math.hypot(nx, ny, nz) || 1;
+      view.setFloat32(offset, nx / len, true);
+      view.setFloat32(offset + 4, ny / len, true);
+      view.setFloat32(offset + 8, nz / len, true);
+      offset += 12;
+      for (const corner of [a, b, c]) {
+        view.setFloat32(offset, positions[corner], true);
+        view.setFloat32(offset + 4, positions[corner + 1], true);
+        view.setFloat32(offset + 8, positions[corner + 2], true);
+        offset += 12;
+      }
+      view.setUint16(offset, 0, true);
+      offset += 2;
+    }
+    return new Blob([buffer], { type: 'model/stl' });
+  }
+
   /** Millimetres spanned by the longest edge of the part's bounding box. */
   extentMm() {
     return this.mesh ? 2.0 / this.scale : 0;
+  }
+
+  /** Take the viewport ground and grid tones from CSS custom properties. */
+  setPalette(styles) {
+    const parse = (name, fallback) => {
+      const raw = styles.getPropertyValue(name).trim();
+      if (!/^#[0-9a-f]{6}$/i.test(raw)) return fallback;
+      return [
+        parseInt(raw.slice(1, 3), 16) / 255,
+        parseInt(raw.slice(3, 5), 16) / 255,
+        parseInt(raw.slice(5, 7), 16) / 255,
+      ];
+    };
+    this.gridTone = parse('--grid-line', this.gridTone);
+    this.axisTone = [
+      parse('--grid-axis-x', this.axisTone[0]),
+      parse('--grid-axis-y', this.axisTone[1]),
+    ];
+    this._grid = buildGrid(20, 2.0, this.gridTone, this.axisTone[0], this.axisTone[1]);
+    const gl = this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffers.position);
+    gl.bufferData(gl.ARRAY_BUFFER, this._grid.positions, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffers.color);
+    gl.bufferData(gl.ARRAY_BUFFER, this._grid.colors, gl.STATIC_DRAW);
+    this.render();
   }
 
   setColor(hex) {
@@ -370,6 +452,7 @@ class Viewer {
 
     // Normalize every part to a unit-ish box so a 6 mm spacer and a 200 mm
     // rail both arrive framed, and one camera distance suits all of them.
+    this.bounds = meshData.bounds;
     const min = meshData.bounds.min, max = meshData.bounds.max;
     this.center = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
     const extent = Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2]) || 1;
@@ -427,6 +510,15 @@ class Viewer {
     gl.uniformMatrix3fv(this.uniforms.normalMatrix, false, upperLeft3x3(modelView));
     gl.uniform3fv(this.uniforms.color, this.color);
     gl.uniform1i(this.uniforms.flat, this.flatShading ? 1 : 0);
+
+    // The cut travels in model millimetres, so the slider means the same thing
+    // for a 6 mm spacer and a 200 mm rail.
+    const axis = [[1, 0, 0], [0, 1, 0], [0, 0, 1]][this.section.axis];
+    const low = this.bounds ? this.bounds.min[this.section.axis] : -1;
+    const high = this.bounds ? this.bounds.max[this.section.axis] : 1;
+    const where = low + (high - low) * this.section.cut;
+    gl.uniform4f(this.uniforms.section, axis[0], axis[1], axis[2], where);
+    gl.uniform1i(this.uniforms.sectioning, this.section.on ? 1 : 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.position);
     gl.enableVertexAttribArray(this.attributes.position);
