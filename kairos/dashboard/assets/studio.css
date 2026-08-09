@@ -575,6 +575,8 @@ svg.icon {
 td.stacked { line-height: 1.25; }
 td .sub { display: block; font-size: 9.5px; color: var(--ink-faint); }
 td.wide-gap { color: var(--warn); }
+td.sep-yes { color: var(--pass); }
+td.sep-no { color: var(--ink-faint); }
 
 /* `.bar` is scoped to .scalebar, so a bare one in a table has no styles and
    no height: it renders as nothing at all. This has its own name. */

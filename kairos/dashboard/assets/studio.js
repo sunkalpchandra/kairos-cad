@@ -414,6 +414,43 @@ function renderAblations() {
       + 'of its action legality belongs to the environment rather than the policy.';
 }
 
+/** Ablation deltas with their intervals. */
+function renderAblationIntervals() {
+  const data = DATA.ablation_intervals || {};
+  const rows = data.rows || [];
+  if (!rows.length) {
+    el('ablation-intervals').innerHTML =
+      '<p class="empty">No ablation traces in this bundle.</p>';
+    el('ablation-intervals-note').textContent = '';
+    return;
+  }
+  el('ablation-intervals').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Condition</th><th>Difference</th><th>95% interval</th>
+        <th>Tasks</th><th>Separates</th>
+      </tr></thead>
+      <tbody>${rows.map((row) => `
+        <tr>
+          <td><code>${esc(row.condition)}</code></td>
+          <td>${row.difference > 0 ? '+' : ''}${fmt(row.difference)}</td>
+          <td>[${row.low > 0 ? '+' : ''}${fmt(row.low)}, ${row.high > 0 ? '+' : ''}${fmt(row.high)}]</td>
+          <td>${row.n_pairs}</td>
+          <td class="${row.separates ? 'sep-yes' : 'sep-no'}">${row.separates ? 'YES' : 'no'}</td>
+        </tr>`).join('')}</tbody>
+    </table>`;
+
+  const requirement = rows.filter((r) => /req/.test(r.condition));
+  const separating = requirement.filter((r) => r.separates);
+  el('ablation-intervals-note').innerHTML = requirement.length && !separating.length
+    ? '<strong>The requirement ablations do not separate.</strong> Corrupting the '
+      + 'requirement and removing it both leave an interval spanning zero, so this '
+      + 'benchmark cannot detect that the policy reads the text at all. Two point '
+      + 'estimates of that difference were reported and retracted before these '
+      + 'intervals existed; they disagreed on the sign.'
+    : '';
+}
+
 /** The corpus the browser samples from. */
 function renderDataset() {
   const data = DATA.dataset || {};
@@ -1609,6 +1646,7 @@ function init() {
   renderComparisons();
   renderTraining();
   renderAblations();
+  renderAblationIntervals();
   renderDataset();
   renderCodec();
   renderFamilies();
